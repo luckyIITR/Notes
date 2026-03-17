@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Policy Gradient Methods — RL Concepts</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #475569;
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* Formula block */
+    .formula-block {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+      margin: 0.8rem 0;
+    }
+    .formula-block .formula-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+    }
+    .formula-block .formula-main {
+      font-size: 1rem;
+      color: #c7d2fe;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      line-height: 2;
+    }
+    .formula-block .formula-legend {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 2;
+    }
+    .formula-block .formula-legend span {
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* Algorithm steps */
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.75rem 0.9rem 0.75rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.85rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Spectrum bar — value-based ↔ policy-based */
+    .spectrum {
+      display: flex;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #2d3148;
+      margin: 0.8rem 0;
+    }
+    .spectrum-segment {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+    .spectrum-segment .seg-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+    .spectrum-segment.left  { background: #151a2e; }
+    .spectrum-segment.mid   { background: #1a1e30; border-left: 1px solid #2d3148; border-right: 1px solid #2d3148; }
+    .spectrum-segment.right { background: #1a1528; }
+    .spectrum-segment.left  .seg-label { color: #60a5fa; }
+    .spectrum-segment.mid   .seg-label { color: #a5b4fc; }
+    .spectrum-segment.right .seg-label { color: #c084fc; }
+
+    /* Variance-bias tradeoff visual */
+    .tradeoff-row {
+      display: flex;
+      gap: 0.7rem;
+      margin-top: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .tradeoff-item {
+      flex: 1;
+      min-width: 160px;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+    }
+    .tradeoff-item .ti-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .tradeoff-item.mc  .ti-label { color: #60a5fa; }
+    .tradeoff-item.td1 .ti-label { color: #4ade80; }
+    .tradeoff-item.td  .ti-label { color: #fb923c; }
+    .tradeoff-item p { font-size: 0.82rem; color: #64748b; line-height: 1.6; }
+
+    /* Policy parameterization boxes */
+    .param-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin-top: 0.6rem;
+    }
+    .param-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+    }
+    .param-item .pi-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .param-item .pi-formula {
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: #c7d2fe;
+      background: #1e2130;
+      border-radius: 6px;
+      padding: 0.4rem 0.6rem;
+      margin-bottom: 0.4rem;
+    }
+    .param-item p { font-size: 0.8rem; color: #64748b; line-height: 1.6; }
+
+    @media (max-width: 540px) {
+      .param-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Policy-Based · On-Policy · Function Approximation</p>
+      <h1>Policy Gradient Methods</h1>
+      <p>A family of RL algorithms that directly optimize a parameterized policy using gradient ascent on expected return — without needing a value function as an intermediary.</p>
+    </header>
+
+    <!-- ══════════════════════════════════════
+         1. Motivation
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Motivation — Why Not Just Use Value Methods?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> The Case for Policy-Based Approaches</h2>
+      <ul>
+        <li>Value-based methods (Q-Learning, DQN) learn Q(s,a) and derive a policy indirectly via <span class="term">argmax</span>. This requires a discrete, enumerable action space.</li>
+        <li><strong>Policy gradient methods</strong> parameterize the policy directly as <span class="term">π(a|s; θ)</span> and optimize <span class="term">θ</span> directly.</li>
+        <li>They naturally handle <strong>continuous action spaces</strong> (e.g. robot joint torques) where argmax over actions is intractable.</li>
+        <li>They can learn <strong>stochastic policies</strong> — useful in partially observable or adversarial environments.</li>
+        <li>They are more compatible with function approximation — no need for the greedy argmax that causes instability in value methods.</li>
+      </ul>
+
+      <div class="spectrum">
+        <div class="spectrum-segment left">
+          <div class="seg-label">Value-Based</div>
+          <div style="color:#94a3b8;font-size:0.82rem">Q-Learning, DQN<br/><span style="color:#475569;font-size:0.75rem">Implicit policy via argmax</span></div>
+        </div>
+        <div class="spectrum-segment mid">
+          <div class="seg-label">Actor-Critic</div>
+          <div style="color:#94a3b8;font-size:0.82rem">A2C, PPO, SAC<br/><span style="color:#475569;font-size:0.75rem">Both policy + value network</span></div>
+        </div>
+        <div class="spectrum-segment right">
+          <div class="seg-label">Policy-Based</div>
+          <div style="color:#94a3b8;font-size:0.82rem">REINFORCE<br/><span style="color:#475569;font-size:0.75rem">Explicit policy, no critic</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         2. Policy Parameterization
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · Policy Parameterization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Representing π(a|s; θ) with a Function Approximator</h2>
+      <ul>
+        <li>Instead of a lookup table, the policy is a <strong>parameterized function</strong> — typically a neural network with weights <span class="term">θ</span>.</li>
+        <li>The network takes state <span class="term">s</span> as input and outputs a <strong>probability distribution</strong> over actions.</li>
+        <li>We optimize <span class="term">θ</span> to maximize the objective <span class="term">J(θ) = E[G<sub>t</sub>]</span>.</li>
+      </ul>
+      <div class="param-grid">
+        <div class="param-item">
+          <div class="pi-title">🎲 Softmax (Discrete Actions)</div>
+          <div class="pi-formula">π(a|s;θ) = e^h(s,a,θ) / Σ e^h(s,b,θ)</div>
+          <p>h(s,a,θ) is the action preference (a linear or neural net function). Ensures valid probability distribution over all discrete actions.</p>
+        </div>
+        <div class="param-item">
+          <div class="pi-title">📊 Gaussian (Continuous Actions)</div>
+          <div class="pi-formula">π(a|s;θ) = N(μ(s,θ), σ²(s,θ))</div>
+          <p>Network outputs mean μ and variance σ². Actions are sampled from this Gaussian. Used in robotics, continuous control tasks.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         3. Objective Function
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Objective Function</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> What We're Optimizing</h2>
+      <ul>
+        <li>The goal is to find <span class="term">θ</span> that maximizes the <strong>expected return</strong>.</li>
+        <li>For episodic tasks, the objective is the expected total return from the start state.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Performance Objective</div>
+        <div class="formula-main">J(θ) = E<sub>π<sub>θ</sub></sub>[ G<sub>0</sub> ] = E<sub>π<sub>θ</sub></sub>[ Σ<sub>t=0</sub><sup>∞</sup> γ<sup>t</sup> r<sub>t+1</sub> ]</div>
+        <div class="formula-legend">
+          <span>θ</span> — policy parameters (neural network weights)<br/>
+          <span>π<sub>θ</sub></span> — the parameterized policy<br/>
+          <span>G<sub>0</sub></span> — total discounted return from timestep 0<br/>
+          <span>γ</span> — discount factor
+        </div>
+      </div>
+      <div class="callout">
+        We want to perform <strong>gradient ascent</strong> on J(θ): <code>θ ← θ + α ∇<sub>θ</sub> J(θ)</code>. The challenge is computing ∇<sub>θ</sub> J(θ) — the policy gradient theorem solves this.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         4. Policy Gradient Theorem
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · The Policy Gradient Theorem</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📜</span> The Core Result</h2>
+      <ul>
+        <li>The Policy Gradient Theorem (Sutton et al., 1999) gives a tractable expression for ∇<sub>θ</sub> J(θ) that does not require differentiating through the environment dynamics.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Policy Gradient Theorem</div>
+        <div class="formula-main">∇<sub>θ</sub> J(θ) ∝ Σ<sub>s</sub> μ(s) Σ<sub>a</sub> Q<sup>π</sup>(s,a) ∇<sub>θ</sub> π(a|s; θ)</div>
+        <div class="formula-legend">
+          <span>μ(s)</span> — on-policy state distribution (how often s is visited under π<sub>θ</sub>)<br/>
+          <span>Q<sup>π</sup>(s,a)</span> — action-value function under current policy<br/>
+          <span>∇<sub>θ</sub> π(a|s; θ)</span> — gradient of the policy w.r.t. θ
+        </div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Log-Derivative Trick (Likelihood Ratio)</div>
+        <div class="formula-main">∇<sub>θ</sub> J(θ) = E<sub>π<sub>θ</sub></sub>[ Q<sup>π</sup>(s,a) · ∇<sub>θ</sub> log π(a|s; θ) ]</div>
+        <div class="formula-legend">
+          Uses identity: <span>∇ π = π · ∇ log π</span> to convert to an expectation.<br/>
+          This expectation can be estimated by <strong>sampling trajectories</strong> — no need to know transition dynamics.
+        </div>
+      </div>
+      <div class="callout">
+        Key insight: <strong>∇<sub>θ</sub> log π(a|s; θ)</strong> (the score function) is easy to compute via backprop through the policy network. The environment dynamics cancel out entirely.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         5. REINFORCE Algorithm
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · REINFORCE — Monte Carlo Policy Gradient</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎲</span> The Simplest Policy Gradient Algorithm</h2>
+      <ul>
+        <li>REINFORCE (Williams, 1992) estimates the gradient by substituting the actual sampled return <span class="term">G<sub>t</sub></span> in place of <span class="term">Q<sup>π</sup>(s<sub>t</sub>, a<sub>t</sub>)</span>.</li>
+        <li>It is a <strong>Monte Carlo</strong> method — a full episode must complete before any update.</li>
+        <li><strong>Intuition:</strong> if an action led to high return, increase its probability. If low return, decrease it.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">REINFORCE Gradient Estimate</div>
+        <div class="formula-main">∇<sub>θ</sub> J(θ) ≈ Σ<sub>t=0</sub><sup>T</sup> G<sub>t</sub> · ∇<sub>θ</sub> log π(a<sub>t</sub>|s<sub>t</sub>; θ)</div>
+        <div class="formula-legend">
+          <span>G<sub>t</sub></span> — actual return from step t to end of episode<br/>
+          <span>∇<sub>θ</sub> log π(a<sub>t</sub>|s<sub>t</sub>; θ)</span> — score function (gradient of log policy)
+        </div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Parameter Update</div>
+        <div class="formula-main">θ ← θ + α · G<sub>t</sub> · ∇<sub>θ</sub> log π(a<sub>t</sub>|s<sub>t</sub>; θ)</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         6. REINFORCE Algorithm Steps
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · REINFORCE Algorithm</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Step-by-Step</h2>
+      <ol class="algo-steps">
+        <li>Initialize policy network parameters <span class="term">θ</span> randomly.</li>
+        <li>Generate a full episode by following <span class="term">π(·|·; θ)</span>: collect trajectory <span class="term">(s<sub>0</sub>, a<sub>0</sub>, r<sub>1</sub>, s<sub>1</sub>, a<sub>1</sub>, r<sub>2</sub>, …, s<sub>T</sub>)</span>.</li>
+        <li>For each timestep <span class="term">t = 0, 1, …, T−1</span>, compute the return: <span class="term">G<sub>t</sub> = Σ<sub>k=t+1</sub><sup>T</sup> γ<sup>k−t−1</sup> r<sub>k</sub></span>.</li>
+        <li>Compute the policy gradient estimate: <span class="term">∇θ J ≈ Σ<sub>t</sub> G<sub>t</sub> · ∇<sub>θ</sub> log π(a<sub>t</sub>|s<sub>t</sub>; θ)</span>.</li>
+        <li>Update parameters: <span class="term">θ ← θ + α · ∇<sub>θ</sub> J(θ)</span>.</li>
+        <li>Repeat from step 2 until convergence.</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         7. The Variance Problem & Baselines
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Variance Problem &amp; Baselines</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📉</span> High Variance in REINFORCE</h2>
+      <ul>
+        <li>REINFORCE has <strong>unbiased</strong> gradient estimates but extremely <strong>high variance</strong> — returns G<sub>t</sub> can differ wildly between episodes even for the same policy.</li>
+        <li>High variance means the learning signal is noisy, requiring many episodes and small learning rates.</li>
+        <li><strong>Solution:</strong> subtract a <span class="term">baseline</span> b(s) from the return. This reduces variance without introducing bias.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">REINFORCE with Baseline</div>
+        <div class="formula-main">θ ← θ + α · (G<sub>t</sub> − b(s<sub>t</sub>)) · ∇<sub>θ</sub> log π(a<sub>t</sub>|s<sub>t</sub>; θ)</div>
+        <div class="formula-legend">
+          <span>b(s<sub>t</sub>)</span> — baseline (any function of state, typically V(s<sub>t</sub>))<br/>
+          <span>(G<sub>t</sub> − b(s<sub>t</sub>))</span> — advantage estimate: how much better was this action than average?
+        </div>
+      </div>
+      <div class="callout">
+        The baseline b(s) does <strong>not bias</strong> the gradient because E[b(s) · ∇ log π] = 0. The optimal baseline is the value function V<sup>π</sup>(s) — this is what Actor-Critic methods learn explicitly.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         8. Advantage Function
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · The Advantage Function</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> A(s, a) — Relative Action Quality</h2>
+      <ul>
+        <li>The <span class="term">advantage function</span> measures how much better action <span class="term">a</span> is compared to the average action in state <span class="term">s</span>.</li>
+        <li>It replaces the raw return in the policy gradient, centering updates around zero — actions better than average get a positive signal, worse ones get negative.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Advantage Function</div>
+        <div class="formula-main">A<sup>π</sup>(s, a) = Q<sup>π</sup>(s, a) − V<sup>π</sup>(s)</div>
+        <div class="formula-legend">
+          <span>Q<sup>π</sup>(s, a)</span> — expected return taking action a, then following π<br/>
+          <span>V<sup>π</sup>(s)</span> — expected return from state s following π (the baseline)<br/>
+          <span>A > 0</span> — action a is better than average → increase its probability<br/>
+          <span>A &lt; 0</span> — action a is worse than average → decrease its probability
+        </div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Policy Gradient with Advantage</div>
+        <div class="formula-main">∇<sub>θ</sub> J(θ) = E<sub>π</sub>[ A<sup>π</sup>(s,a) · ∇<sub>θ</sub> log π(a|s; θ) ]</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         9. Function Approximation
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Function Approximation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Scaling with Neural Networks</h2>
+      <ul>
+        <li>For complex environments, <span class="term">π(a|s; θ)</span> is represented by a deep neural network — maps raw states (pixels, sensor readings) to action probabilities.</li>
+        <li>Gradients are computed via <strong>backpropagation</strong> through the network using the policy gradient as the loss signal.</li>
+        <li>Key compatibility condition: the function approximator must be <strong>differentiable</strong> w.r.t. θ.</li>
+        <li>Common architectures: fully-connected for low-dimensional states, CNN for pixel inputs, RNN/LSTM for partial observability.</li>
+      </ul>
+      <div class="callout">
+        With function approximation, the policy is no longer guaranteed to converge to the exact optimum — but it can <strong>approximately</strong> converge to a local maximum of J(θ), which is usually sufficient in practice.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         10. Bias–Variance Tradeoff in Return Estimates
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Bias–Variance Tradeoff</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Choosing How to Estimate Returns</h2>
+      <div class="tradeoff-row">
+        <div class="tradeoff-item mc">
+          <div class="ti-label">Monte Carlo (G<sub>t</sub>)</div>
+          <p>Uses actual full-episode return. <strong>Unbiased</strong> but <strong>very high variance</strong>. Must wait for episode end.</p>
+        </div>
+        <div class="tradeoff-item td1">
+          <div class="ti-label">1-Step TD (r + γV(s'))</div>
+          <p>Bootstraps using next-state value. <strong>Low variance</strong> but <strong>high bias</strong> (depends on accuracy of V). Can update online.</p>
+        </div>
+        <div class="tradeoff-item td">
+          <div class="ti-label">n-Step / GAE</div>
+          <p>Interpolates between MC and TD. <strong>Generalized Advantage Estimation (GAE)</strong> uses a λ parameter to tune the tradeoff.</p>
+        </div>
+      </div>
+      <div class="formula-block" style="margin-top:0.9rem">
+        <div class="formula-label">Generalized Advantage Estimation (GAE)</div>
+        <div class="formula-main">Â<sub>t</sub><sup>GAE(γ,λ)</sup> = Σ<sub>l=0</sub><sup>∞</sup> (γλ)<sup>l</sup> δ<sub>t+l</sub></div>
+        <div class="formula-legend">
+          <span>δ<sub>t</sub></span> = r<sub>t</sub> + γV(s<sub>t+1</sub>) − V(s<sub>t</sub>) — TD residual<br/>
+          <span>λ=0</span> → pure 1-step TD (low variance, high bias)<br/>
+          <span>λ=1</span> → pure Monte Carlo (high variance, low bias)
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         11. Actor-Critic
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Actor-Critic Architecture</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎭</span> Combining Policy &amp; Value Learning</h2>
+      <ul>
+        <li>A natural extension: instead of using Monte Carlo returns, learn a <span class="term">critic</span> V(s; w) to estimate the baseline/advantage online.</li>
+        <li><span class="term">Actor</span> — the policy network π(a|s; θ). Updated via policy gradient.</li>
+        <li><span class="term">Critic</span> — the value network V(s; w). Updated via TD error to minimize <span class="term">(r + γV(s';w) − V(s;w))²</span>.</li>
+        <li>The TD error <span class="term">δ = r + γV(s') − V(s)</span> serves as a low-variance advantage estimate for the actor.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Actor Update (using critic's TD error as advantage)</div>
+        <div class="formula-main">θ ← θ + α<sub>θ</sub> · δ · ∇<sub>θ</sub> log π(a|s; θ)</div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Critic Update (TD learning)</div>
+        <div class="formula-main">w ← w + α<sub>w</sub> · δ · ∇<sub>w</sub> V(s; w)</div>
+        <div class="formula-legend">
+          <span>δ</span> = r + γV(s'; w) − V(s; w) — shared TD error used by both actor and critic
+        </div>
+      </div>
+      <div class="callout">
+        Actor-Critic is the foundation for modern algorithms: <strong>A2C, A3C, PPO, SAC, TD3</strong> — all combine a learned policy with a learned value estimate.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         12. Pros & Cons
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Pros &amp; Cons</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Strengths &amp; Limitations</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul style="margin-top:0.4rem">
+            <li>Works with continuous action spaces</li>
+            <li>Can learn stochastic policies</li>
+            <li>Smooth, stable optimization landscape</li>
+            <li>No need for argmax over actions</li>
+            <li>Strong theoretical guarantees (local optima)</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul style="margin-top:0.4rem">
+            <li>High variance (REINFORCE without baseline)</li>
+            <li>Sample inefficient — needs many trajectories</li>
+            <li>Sensitive to learning rate</li>
+            <li>May converge to local optima</li>
+            <li>On-policy: cannot reuse old experience</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         13. Comparison with Value-Based
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Policy Gradient vs Value-Based</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> Side-by-Side</h2>
+      <table>
+        <thead>
+          <tr><th></th><th>Value-Based (DQN)</th><th>Policy Gradient (REINFORCE)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>What is learned</td><td>Q(s,a) or V(s)</td><td>π(a|s; θ) directly</td></tr>
+          <tr><td>Policy type</td><td>Implicit (argmax Q)</td><td>Explicit parameterized</td></tr>
+          <tr><td>Action spaces</td><td>Discrete only</td><td>Discrete &amp; continuous</td></tr>
+          <tr><td>Stochastic policy</td><td>Only via ε-greedy</td><td>Naturally stochastic</td></tr>
+          <tr><td>On/Off policy</td><td>Off-policy (DQN)</td><td>On-policy (REINFORCE)</td></tr>
+          <tr><td>Sample efficiency</td><td>Higher (replay buffer)</td><td>Lower (no replay)</td></tr>
+          <tr><td>Variance</td><td>Low (bootstrapping)</td><td>High (MC returns)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         14. Extensions
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Extensions &amp; Modern Algorithms</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Building on Policy Gradients</h2>
+      <ul>
+        <li><span class="term">A2C / A3C</span> — synchronous/asynchronous advantage actor-critic; multiple parallel workers for faster data collection.</li>
+        <li><span class="term">PPO (Proximal Policy Optimization)</span> — clips the policy update ratio to prevent destructively large steps. The most widely used modern algorithm.</li>
+        <li><span class="term">TRPO (Trust Region Policy Optimization)</span> — constrains the KL divergence between old and new policy to ensure monotonic improvement.</li>
+        <li><span class="term">SAC (Soft Actor-Critic)</span> — off-policy actor-critic with entropy regularization; highly sample-efficient for continuous control.</li>
+        <li><span class="term">TD3</span> — deterministic policy gradient with twin critics and delayed updates; addresses overestimation in actor-critic.</li>
+      </ul>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer>
+      <p>Updated March 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RL Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

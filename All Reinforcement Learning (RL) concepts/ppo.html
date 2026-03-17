@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPO — RL Concepts</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #475569;
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Formula block ── */
+    .formula-block {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+      margin: 0.8rem 0;
+    }
+    .formula-block .formula-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+    }
+    .formula-block .formula-main {
+      font-size: 1rem;
+      color: #c7d2fe;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      line-height: 2.2;
+    }
+    .formula-block .formula-legend {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 2;
+    }
+    .formula-block .formula-legend span {
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Algorithm steps ── */
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.75rem 0.9rem 0.75rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.85rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Clip visualizer ── */
+    .clip-viz {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #2d3148;
+      margin: 0.9rem 0 0.4rem;
+    }
+    .clip-region {
+      flex: 1;
+      padding: 0.85rem 0.7rem;
+      text-align: center;
+      font-size: 0.82rem;
+    }
+    .clip-region .cr-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+    .clip-region .cr-val {
+      font-family: 'Courier New', monospace;
+      font-size: 0.88rem;
+      color: #e2e8f0;
+    }
+    .clip-region .cr-desc { font-size: 0.75rem; color: #475569; margin-top: 0.2rem; }
+    .cr-bad-left  { background: #2a1515; border-right: 1px solid #2d3148; }
+    .cr-bad-left  .cr-label { color: #f87171; }
+    .cr-good      { background: #151a2e; border-right: 1px solid #2d3148; }
+    .cr-good      .cr-label { color: #4ade80; }
+    .cr-bad-right { background: #2a1515; }
+    .cr-bad-right .cr-label { color: #f87171; }
+
+    /* ── Two-variant cards ── */
+    .variant-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin-top: 0.7rem;
+    }
+    .variant-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+    }
+    .variant-item .vi-title {
+      font-size: 0.83rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .variant-item .vi-formula {
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      color: #c7d2fe;
+      background: #1e2130;
+      border-radius: 6px;
+      padding: 0.4rem 0.6rem;
+      margin-bottom: 0.45rem;
+    }
+    .variant-item p { font-size: 0.8rem; color: #64748b; line-height: 1.65; }
+
+    /* ── Epoch loop diagram ── */
+    .epoch-loop {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #2d3148;
+      margin: 0.8rem 0 0.4rem;
+      flex-wrap: wrap;
+    }
+    .epoch-step {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.75rem 0.7rem;
+      background: #151823;
+      border-right: 1px solid #2d3148;
+      text-align: center;
+      font-size: 0.82rem;
+    }
+    .epoch-step:last-child { border-right: none; }
+    .epoch-step .es-label {
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.25rem;
+    }
+    .epoch-step .es-val { color: #e2e8f0; font-weight: 600; }
+    .epoch-step .es-sub { font-size: 0.73rem; color: #475569; margin-top: 0.15rem; }
+
+    @media (max-width: 560px) {
+      .variant-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Policy Gradient · On-Policy · Actor-Critic</p>
+      <h1>Proximal Policy Optimization (PPO)</h1>
+      <p>A first-order policy gradient algorithm that uses a clipped surrogate objective to safely take the largest possible improvement step — without destabilizing training. Introduced by Schulman et al., OpenAI (2017).</p>
+    </header>
+
+    <!-- ══════════════════════════════════════
+         1. The Problem PPO Solves
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · The Problem PPO Solves</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> Why Vanilla Policy Gradient Is Fragile</h2>
+      <ul>
+        <li>Standard policy gradient (REINFORCE, A2C) computes a gradient and takes a step: <span class="term">θ ← θ + α ∇J(θ)</span>.</li>
+        <li>If the step is <strong>too large</strong>, the new policy can deviate drastically from the old one — the advantage estimates become stale and training collapses.</li>
+        <li>If the step is <strong>too small</strong>, learning is painfully slow.</li>
+        <li>Choosing the right learning rate is brittle — it varies by environment and is hard to tune.</li>
+      </ul>
+      <div class="callout">
+        <strong>TRPO</strong> (Trust Region Policy Optimization) solved this by enforcing a hard KL-divergence constraint, but required expensive second-order optimization (conjugate gradients). PPO achieves similar safety with a simple <strong>first-order clipping trick</strong>.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         2. The Probability Ratio
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Probability Ratio r<sub>t</sub>(θ)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Measuring How Much the Policy Changed</h2>
+      <ul>
+        <li>PPO builds on the <span class="term">importance-weighted surrogate objective</span> used in TRPO.</li>
+        <li>Instead of the raw log-probability gradient, we track the <strong>ratio</strong> of new-to-old action probabilities.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Probability Ratio</div>
+        <div class="formula-main">r<sub>t</sub>(θ) = π<sub>θ</sub>(a<sub>t</sub> | s<sub>t</sub>) / π<sub>θ_old</sub>(a<sub>t</sub> | s<sub>t</sub>)</div>
+        <div class="formula-legend">
+          <span>r<sub>t</sub>(θ) = 1</span> → policy hasn't changed for this action<br/>
+          <span>r<sub>t</sub>(θ) > 1</span> → new policy assigns higher probability to a<sub>t</sub> than old<br/>
+          <span>r<sub>t</sub>(θ) &lt; 1</span> → new policy assigns lower probability to a<sub>t</sub> than old
+        </div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">Unclipped Surrogate Objective (CPI — Conservative Policy Iteration)</div>
+        <div class="formula-main">L<sup>CPI</sup>(θ) = E<sub>t</sub>[ r<sub>t</sub>(θ) · Â<sub>t</sub> ]</div>
+        <div class="formula-legend">
+          <span>Â<sub>t</sub></span> — advantage estimate at timestep t<br/>
+          Maximizing this encourages actions with positive advantage. But without constraints, r<sub>t</sub>(θ) can grow unboundedly large.
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         3. The Clipped Objective (PPO-Clip)
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · The Clipped Surrogate Objective</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✂️</span> PPO-Clip — The Core Idea</h2>
+      <ul>
+        <li>PPO-Clip adds a <strong>hard constraint</strong> on how far <span class="term">r<sub>t</sub>(θ)</span> can deviate from 1 using a clip function.</li>
+        <li>This implicitly limits the policy update size without any KL penalty or second-order computation.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">PPO-Clip Objective</div>
+        <div class="formula-main">
+          L<sup>CLIP</sup>(θ) = E<sub>t</sub>[ min( r<sub>t</sub>(θ) Â<sub>t</sub>,  clip(r<sub>t</sub>(θ), 1−ε, 1+ε) Â<sub>t</sub> ) ]
+        </div>
+        <div class="formula-legend">
+          <span>ε</span> — clip hyperparameter, typically 0.1 or 0.2<br/>
+          <span>clip(r, 1−ε, 1+ε)</span> — forces r to stay in [1−ε, 1+ε]<br/>
+          <span>min(·,·)</span> — takes the pessimistic (lower) of the two terms
+        </div>
+      </div>
+
+      <div class="clip-viz">
+        <div class="clip-region cr-bad-left">
+          <div class="cr-label">Clipped (shrinking)</div>
+          <div class="cr-val">r &lt; 1−ε</div>
+          <div class="cr-desc">Policy moved too far away from action — gradient zeroed, no further decrease allowed</div>
+        </div>
+        <div class="clip-region cr-good">
+          <div class="cr-label">Safe zone ✓</div>
+          <div class="cr-val">1−ε ≤ r ≤ 1+ε</div>
+          <div class="cr-desc">Normal gradient update applies here</div>
+        </div>
+        <div class="clip-region cr-bad-right">
+          <div class="cr-label">Clipped (growing)</div>
+          <div class="cr-val">r &gt; 1+ε</div>
+          <div class="cr-desc">Policy moved too aggressively toward action — gradient zeroed, no further increase allowed</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        The <strong>min</strong> makes the objective a lower bound. When <span class="term">Â<sub>t</sub> > 0</span>: we want r to grow but cap it at 1+ε. When <span class="term">Â<sub>t</sub> &lt; 0</span>: we want r to shrink but floor it at 1−ε. Either way, the policy can't move too far.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         4. Two Variants
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Two PPO Variants</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> PPO-Clip vs PPO-KL Penalty</h2>
+      <div class="variant-grid">
+        <div class="variant-item">
+          <div class="vi-title">✂️ PPO-Clip (recommended)</div>
+          <div class="vi-formula">L = E[min(r·Â, clip(r,1−ε,1+ε)·Â)]</div>
+          <p>No explicit KL term. Clipping acts as an implicit constraint. Simpler, more robust, and the default in practice. ε = 0.2 works across most tasks.</p>
+        </div>
+        <div class="variant-item">
+          <div class="vi-title">📏 PPO-KL Penalty</div>
+          <div class="vi-formula">L = E[r·Â] − β · KL[π_old ‖ π_new]</div>
+          <p>Adds adaptive KL penalty coefficient β. β is increased if KL exceeds target d<sub>targ</sub>, decreased if below. More principled but harder to tune.</p>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:0.9rem">
+        In the original paper, <strong>PPO-Clip outperformed PPO-KL</strong> on most benchmarks. PPO-Clip is the de-facto standard when people say "PPO".
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         5. Full PPO Loss
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Full PPO Loss Function</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📉</span> Three-Term Combined Objective</h2>
+      <ul>
+        <li>In practice, the policy and value networks often <strong>share lower layers</strong>. The full loss combines three terms.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Combined PPO Objective</div>
+        <div class="formula-main">L<sup>PPO</sup>(θ) = L<sup>CLIP</sup>(θ) − c<sub>1</sub> · L<sup>VF</sup>(θ) + c<sub>2</sub> · S[π<sub>θ</sub>](s<sub>t</sub>)</div>
+        <div class="formula-legend">
+          <span>L<sup>CLIP</sup>(θ)</span> — clipped policy gradient (maximize)<br/>
+          <span>L<sup>VF</sup>(θ)</span> = (V<sub>θ</sub>(s<sub>t</sub>) − V<sup>targ</sup><sub>t</sub>)² — value function MSE loss (minimize)<br/>
+          <span>S[π<sub>θ</sub>](s<sub>t</sub>)</span> — entropy bonus: encourages exploration by rewarding policy spread<br/>
+          <span>c<sub>1</sub></span> — value loss coefficient (typically 0.5)<br/>
+          <span>c<sub>2</sub></span> — entropy coefficient (typically 0.01)
+        </div>
+      </div>
+      <div class="callout">
+        The entropy bonus <strong>prevents premature convergence</strong> to a deterministic policy. As training progresses, c<sub>2</sub> is sometimes annealed toward 0.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         6. Advantage Estimation (GAE)
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Advantage Estimation — GAE</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> Generalized Advantage Estimation</h2>
+      <ul>
+        <li>PPO uses <span class="term">GAE(γ, λ)</span> to estimate advantages — a weighted sum of n-step TD residuals.</li>
+        <li>λ controls the bias-variance tradeoff: λ=0 is pure 1-step TD (low variance, biased), λ=1 is Monte Carlo (unbiased, high variance).</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">TD Residual</div>
+        <div class="formula-main">δ<sub>t</sub> = r<sub>t</sub> + γ · V(s<sub>t+1</sub>) − V(s<sub>t</sub>)</div>
+      </div>
+      <div class="formula-block">
+        <div class="formula-label">GAE Advantage</div>
+        <div class="formula-main">Â<sub>t</sub> = δ<sub>t</sub> + (γλ)δ<sub>t+1</sub> + (γλ)²δ<sub>t+2</sub> + ···</div>
+        <div class="formula-legend">
+          Typical values: <span>γ = 0.99</span>, <span>λ = 0.95</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         7. The Epoch Loop — Key Difference from A2C
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · The Epoch Loop — What Makes PPO Efficient</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Multiple Update Epochs per Data Batch</h2>
+      <ul>
+        <li>A2C/REINFORCE discard collected transitions after a single gradient step.</li>
+        <li>PPO <strong>reuses the same batch of transitions for K epochs</strong> of minibatch SGD — dramatically improving sample efficiency.</li>
+        <li>The clipping ensures that even after multiple epochs on the same data, the policy doesn't stray too far from where the data was collected.</li>
+      </ul>
+      <div class="epoch-loop">
+        <div class="epoch-step">
+          <div class="es-label">Collect</div>
+          <div class="es-val">T timesteps</div>
+          <div class="es-sub">Run π<sub>θ_old</sub> in env</div>
+        </div>
+        <div class="epoch-step">
+          <div class="es-label">Compute</div>
+          <div class="es-val">Â<sub>t</sub>, V<sup>targ</sup></div>
+          <div class="es-sub">GAE advantages + returns</div>
+        </div>
+        <div class="epoch-step">
+          <div class="es-label">Optimize</div>
+          <div class="es-val">K epochs</div>
+          <div class="es-sub">Minibatch SGD on L<sup>PPO</sup></div>
+        </div>
+        <div class="epoch-step">
+          <div class="es-label">Update</div>
+          <div class="es-val">θ<sub>old</sub> ← θ</div>
+          <div class="es-sub">Set new old policy, repeat</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         8. Full Algorithm
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Full PPO Algorithm</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Step-by-Step</h2>
+      <ol class="algo-steps">
+        <li>Initialize policy network <span class="term">π<sub>θ</sub></span> and value network <span class="term">V<sub>φ</sub></span> (may share layers).</li>
+        <li>For each iteration, run the current policy <span class="term">π<sub>θ_old</sub></span> in the environment for <span class="term">T</span> timesteps across <span class="term">N</span> parallel actors, collecting transitions <span class="term">(s<sub>t</sub>, a<sub>t</sub>, r<sub>t</sub>, s<sub>t+1</sub>)</span>.</li>
+        <li>Compute TD residuals <span class="term">δ<sub>t</sub></span> and GAE advantage estimates <span class="term">Â<sub>t</sub></span> for all timesteps using the current value network.</li>
+        <li>Compute value targets: <span class="term">V<sup>targ</sup><sub>t</sub> = Â<sub>t</sub> + V<sub>φ</sub>(s<sub>t</sub>)</span>.</li>
+        <li>For <span class="term">K</span> epochs, shuffle the <span class="term">N×T</span> transitions and split into minibatches of size <span class="term">M</span>.</li>
+        <li>For each minibatch, compute the PPO loss <span class="term">L<sup>PPO</sup>(θ)</span> and update <span class="term">θ</span> via gradient ascent (Adam optimizer).</li>
+        <li>Set <span class="term">θ<sub>old</sub> ← θ</span>. Repeat from step 2.</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         9. Hyperparameters
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Hyperparameters</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎛️</span> Typical PPO Settings</h2>
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Typical Value</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Clip range (ε)</td><td>0.1 – 0.2</td><td>How far the ratio r<sub>t</sub>(θ) can deviate from 1</td></tr>
+          <tr><td>Epochs per iteration (K)</td><td>3 – 10</td><td>How many passes over the collected batch</td></tr>
+          <tr><td>Mini-batch size (M)</td><td>32 – 256</td><td>Samples per gradient step</td></tr>
+          <tr><td>Rollout length (T)</td><td>128 – 2048</td><td>Steps collected before each update</td></tr>
+          <tr><td>Discount (γ)</td><td>0.99</td><td>Long-term reward weighting</td></tr>
+          <tr><td>GAE lambda (λ)</td><td>0.95</td><td>Advantage bias-variance tradeoff</td></tr>
+          <tr><td>Learning rate</td><td>3×10⁻⁴</td><td>Adam step size (often linearly decayed)</td></tr>
+          <tr><td>Value coeff (c<sub>1</sub>)</td><td>0.5</td><td>Weight of value loss in combined objective</td></tr>
+          <tr><td>Entropy coeff (c<sub>2</sub>)</td><td>0.01</td><td>Encourages exploration via policy entropy</td></tr>
+          <tr><td>Parallel actors (N)</td><td>4 – 64</td><td>Number of env workers collecting data</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         10. Pros & Cons
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Pros &amp; Cons</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Strengths &amp; Limitations</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul style="margin-top:0.4rem">
+            <li>Simple to implement (first-order only)</li>
+            <li>Stable training — clip prevents catastrophic updates</li>
+            <li>Works on both discrete &amp; continuous actions</li>
+            <li>Reuses data for K epochs — more efficient than A2C</li>
+            <li>Strong default choice across many domains</li>
+            <li>Scales well with parallel actors</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul style="margin-top:0.4rem">
+            <li>On-policy — cannot reuse old replay data</li>
+            <li>Less sample-efficient than SAC/TD3 on continuous tasks</li>
+            <li>Sensitive to ε and K — too large causes instability</li>
+            <li>Clipping is a heuristic; no formal guarantee like TRPO</li>
+            <li>Still requires many environment interactions</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         11. PPO vs TRPO vs Vanilla PG
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · PPO vs TRPO vs Vanilla Policy Gradient</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> Algorithm Comparison</h2>
+      <table>
+        <thead>
+          <tr><th></th><th>Vanilla PG</th><th>TRPO</th><th>PPO</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Policy constraint</td><td>None</td><td>KL ≤ δ (hard)</td><td>Clip ratio (soft)</td></tr>
+          <tr><td>Optimization order</td><td>1st order</td><td>2nd order</td><td>1st order</td></tr>
+          <tr><td>Complexity</td><td>Low</td><td>High (conjugate gradient)</td><td>Low</td></tr>
+          <tr><td>Data reuse</td><td>No</td><td>No</td><td>Yes (K epochs)</td></tr>
+          <tr><td>Stability</td><td>Low</td><td>High</td><td>High</td></tr>
+          <tr><td>Performance</td><td>Moderate</td><td>High</td><td>High</td></tr>
+          <tr><td>Implementation</td><td>Easy</td><td>Hard</td><td>Easy</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         12. Where PPO Is Used
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Real-World Applications</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌍</span> PPO in Practice</h2>
+      <div class="app-grid">
+        <div class="app-item"><span class="emoji">🤖</span> OpenAI Dota 2 (OpenAI Five)</div>
+        <div class="app-item"><span class="emoji">🦾</span> Robotics &amp; locomotion</div>
+        <div class="app-item"><span class="emoji">🎮</span> Game playing (Atari, MuJoCo)</div>
+        <div class="app-item"><span class="emoji">💬</span> RLHF for LLMs (ChatGPT)</div>
+        <div class="app-item"><span class="emoji">✈️</span> Drone &amp; UAV control</div>
+        <div class="app-item"><span class="emoji">🔬</span> Scientific optimization</div>
+      </div>
+      <div class="callout" style="margin-top:0.9rem">
+        PPO is the algorithm behind <strong>RLHF (Reinforcement Learning from Human Feedback)</strong> used to fine-tune large language models like ChatGPT — where the "reward signal" comes from a human preference model.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         13. Extensions
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Extensions &amp; Related Algorithms</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Building on PPO</h2>
+      <ul>
+        <li><span class="term">PPG (Phasic Policy Gradient)</span> — separates policy and value optimization phases for better representations.</li>
+        <li><span class="term">APPO / IMPALA</span> — asynchronous distributed variants of PPO for large-scale training.</li>
+        <li><span class="term">DAPO</span> — decoupled clip ratios for actor and reference policies; used in LLM post-training.</li>
+        <li><span class="term">GRPO</span> — group relative policy optimization; removes the critic entirely using group-normalized advantages.</li>
+        <li><span class="term">SAC</span> — off-policy alternative for continuous control; often more sample-efficient than PPO.</li>
+      </ul>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer>
+      <p>Updated March 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RL Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
