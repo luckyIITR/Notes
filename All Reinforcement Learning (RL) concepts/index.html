@@ -98,6 +98,66 @@
 
     </nav>
 
+    <div class="section-divider"><span>Alignment &amp; Human Feedback</span><hr /></div>
+    <nav class="module-list">
+
+      <a href="rlhf.html" class="module-card">
+        <div class="module-icon">🧑‍🏫</div>
+        <div class="module-info">
+          <p class="module-tag">RLHF · Reward Learning · Human Feedback</p>
+          <h2>Deep RL from Human Preferences</h2>
+          <p>Learns a reward model from human preference labels on behavior clips — the origin paper of RLHF. Foundation of InstructGPT and ChatGPT alignment.</p>
+        </div>
+        <span class="module-arrow">›</span>
+      </a>
+
+      <a href="instructgpt.html" class="module-card">
+        <div class="module-icon">💬</div>
+        <div class="module-info">
+          <p class="module-tag">LLM Alignment · RLHF · Instruction Following</p>
+          <h2>Training LMs to Follow Instructions with Human Feedback</h2>
+          <p>The InstructGPT paper — a 3-step SFT → Reward Model → PPO pipeline that created ChatGPT-style models. A 1.3B InstructGPT outperforms GPT-3 175B.</p>
+        </div>
+        <span class="module-arrow">›</span>
+      </a>
+
+    </nav>
+
+    <div class="section-divider"><span>Reasoning &amp; Process Supervision</span><hr /></div>
+    <nav class="module-list">
+
+      <a href="lets-verify-step-by-step.html" class="module-card">
+        <div class="module-icon">🔬</div>
+        <div class="module-info">
+          <p class="module-tag">Process Reward Model · Reasoning · Step-Level Supervision</p>
+          <h2>Let's Verify Step by Step</h2>
+          <p>Instead of rewarding only the final answer (ORM), reward each reasoning step with a Process Reward Model (PRM) — enabling precise error localization and step-level search. Foundation of o1-style reasoning models.</p>
+        </div>
+        <span class="module-arrow">›</span>
+      </a>
+
+      <a href="deepseekmath.html" class="module-card">
+        <div class="module-icon">🧮</div>
+        <div class="module-info">
+          <p class="module-tag">Mathematical Reasoning · GRPO · Pretraining · RL</p>
+          <h2>DeepSeekMath: Pushing the Limits of Mathematical Reasoning</h2>
+          <p>Introduces GRPO — eliminates the PPO critic by using group-normalized rewards as the baseline. A 7B model matches GPT-4 on MATH. Directly inspired DeepSeek-R1.</p>
+        </div>
+        <span class="module-arrow">›</span>
+      </a>
+
+      <a href="deepseek-r1.html" class="module-card">
+        <div class="module-icon">🌟</div>
+        <div class="module-info">
+          <p class="module-tag">Reasoning · GRPO · RL from Scratch · Distillation</p>
+          <h2>DeepSeek-R1: Incentivizing Reasoning via RL</h2>
+          <p>The first open-source model to match o1 — reasoning emerges from pure RL (R1-Zero) with no SFT. The full R1 uses a 4-stage pipeline with cold start, GRPO, rejection sampling, and distillation to smaller models.</p>
+        </div>
+        <span class="module-arrow">›</span>
+      </a>
+
+    </nav>
+
     <footer>
       <p>Updated March 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="../index.html" style="color:#475569;text-decoration:none;">← All Courses</a></p>
     </footer>

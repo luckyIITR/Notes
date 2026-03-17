@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Let's Verify Step by Step — Process-Based RL for Reasoning</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #475569;
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Paper citation ── */
+    .paper-cite {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-left: 3px solid #6366f1;
+      border-radius: 0 8px 8px 0;
+      padding: 0.9rem 1.1rem;
+      margin: 0.8rem 0 0;
+      font-size: 0.85rem;
+    }
+    .paper-cite .pc-title  { color: #c7d2fe; font-weight: 700; margin-bottom: 0.2rem; }
+    .paper-cite .pc-authors { color: #64748b; font-size: 0.78rem; }
+
+    /* ── Formula block ── */
+    .formula-block {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+      margin: 0.8rem 0;
+    }
+    .formula-block .formula-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+    }
+    .formula-block .formula-main {
+      font-size: 0.98rem;
+      color: #c7d2fe;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      line-height: 2.2;
+    }
+    .formula-block .formula-legend {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 2;
+    }
+    .formula-block .formula-legend span {
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Algorithm steps ── */
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.75rem 0.9rem 0.75rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.85rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Reasoning chain with step labels ── */
+    .reasoning-chain {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0.8rem 0;
+    }
+    .rc-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+    .rc-step.correct  { border-left: 3px solid #4ade80; }
+    .rc-step.wrong    { border-left: 3px solid #f87171; }
+    .rc-step.neutral  { border-left: 3px solid #2d3148; }
+    .rc-badge {
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+      white-space: nowrap;
+      margin-top: 0.1rem;
+    }
+    .rc-step.correct .rc-badge { background: #14532d; color: #86efac; }
+    .rc-step.wrong   .rc-badge { background: #450a0a; color: #fca5a5; }
+    .rc-step.neutral .rc-badge { background: #1e2130; color: #64748b; }
+    .rc-text { font-size: 0.85rem; color: #cbd5e1; line-height: 1.6; }
+    .rc-score {
+      margin-left: auto;
+      flex-shrink: 0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+    }
+    .rc-step.correct .rc-score { color: #4ade80; background: #0f2a1a; }
+    .rc-step.wrong   .rc-score { color: #f87171; background: #2a0f0f; }
+    .rc-step.neutral .rc-score { color: #64748b; background: #1e2130; }
+
+    /* ── ORM vs PRM side-by-side ── */
+    .orm-prm-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin: 0.8rem 0;
+    }
+    .model-card {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .model-card-header {
+      padding: 0.75rem 1rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .model-card.orm .model-card-header { background: #2a1a0a; color: #fb923c; border-bottom: 1px solid #3d2a10; }
+    .model-card.prm .model-card-header { background: #0f2a1a; color: #4ade80; border-bottom: 1px solid #14532d; }
+    .model-card-body { padding: 0.85rem 1rem; }
+    .model-card-body ul li { font-size: 0.82rem; }
+
+    /* ── Search strategy visual ── */
+    .search-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.7rem;
+      margin: 0.8rem 0;
+    }
+    .search-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      text-align: center;
+    }
+    .search-item .si-icon { font-size: 1.4rem; margin-bottom: 0.35rem; }
+    .search-item .si-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      margin-bottom: 0.3rem;
+    }
+    .search-item p { font-size: 0.77rem; color: #475569; line-height: 1.55; }
+
+    /* ── Stat pills ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.7rem;
+      margin-top: 0.6rem;
+    }
+    .stat-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      text-align: center;
+    }
+    .stat-item .sn { font-size: 1.5rem; font-weight: 800; color: #a5b4fc; display: block; margin-bottom: 0.15rem; }
+    .stat-item .sl { font-size: 0.72rem; color: #475569; line-height: 1.4; }
+
+    /* ── Annotation label row ── */
+    .label-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.6rem 0;
+    }
+    .label-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border: 1px solid;
+    }
+    .label-pill.pos { background: #0f2a1a; border-color: #4ade80; color: #4ade80; }
+    .label-pill.neg { background: #2a0f0f; border-color: #f87171; color: #f87171; }
+    .label-pill.neu { background: #1e2130; border-color: #475569; color: #64748b; }
+
+    @media (max-width: 580px) {
+      .orm-prm-grid { grid-template-columns: 1fr; }
+      .search-grid   { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Process Reward Model · Reasoning · Step-Level Supervision</p>
+      <h1>Let's Verify Step by Step</h1>
+      <p>Instead of only rewarding a correct final answer, reward each intermediate reasoning step. A Process Reward Model (PRM) catches errors early in the chain — dramatically improving mathematical reasoning in LLMs.</p>
+    </header>
+
+    <div class="paper-cite">
+      <div class="pc-title">Let's Verify Step by Step</div>
+      <div class="pc-authors">Hunter Lightman, Vineet Kosaraju, Yura Burda, Harrison Edwards, Bowen Baker, Teddy Lee, Jan Leike, John Schulman, Ilya Sutskever, Karl Cobbe &nbsp;·&nbsp; arXiv 2023 &nbsp;·&nbsp; OpenAI</div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         1. The Core Problem
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · The Core Problem — Outcome Rewards Are Not Enough</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> What Goes Wrong with Final-Answer Rewards</h2>
+      <ul>
+        <li>Standard RL for reasoning rewards the model only if the <strong>final answer is correct</strong> — this is called an <span class="term">Outcome Reward Model (ORM)</span>.</li>
+        <li>A chain of reasoning can contain many steps. A single early mistake — even a subtle one — propagates forward and corrupts the final answer.</li>
+        <li>With ORM: the entire trajectory gets zero reward even if 9 out of 10 steps were correct. The model gets no signal about <em>which step failed</em>.</li>
+        <li>This creates sparse, noisy gradients — making it very hard for the model to learn to reason reliably.</li>
+      </ul>
+
+      <div class="reasoning-chain">
+        <div class="rc-step correct">
+          <span class="rc-badge">Step 1</span>
+          <div class="rc-text">Let the two numbers be x and y. We're told x + y = 30 and x · y = 221.</div>
+          <span class="rc-score">✓</span>
+        </div>
+        <div class="rc-step correct">
+          <span class="rc-badge">Step 2</span>
+          <div class="rc-text">Using the identity (x − y)² = (x + y)² − 4xy = 900 − 884 = 16, so x − y = 4.</div>
+          <span class="rc-score">✓</span>
+        </div>
+        <div class="rc-step wrong">
+          <span class="rc-badge">Step 3 ✗</span>
+          <div class="rc-text">Solving x + y = 30 and x − y = 4: adding gives 2x = 34, so x = <strong>16</strong>.</div>
+          <span class="rc-score">✗</span>
+        </div>
+        <div class="rc-step wrong">
+          <span class="rc-badge">Step 4</span>
+          <div class="rc-text">Then y = 30 − 16 = 14. The two numbers are <strong>16 and 14</strong>. (Wrong — should be 17 and 13.)</div>
+          <span class="rc-score">✗</span>
+        </div>
+      </div>
+
+      <div class="callout">
+        Under ORM: this entire trajectory gets <strong>reward 0</strong> because the final answer is wrong. But steps 1 and 2 were correct — the error happened in step 3. A process reward model knows exactly where to intervene.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         2. The Key Idea — PRM
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Key Idea — Process Reward Models</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> Reward Every Step, Not Just the Final Answer</h2>
+      <ul>
+        <li>A <span class="term">Process Reward Model (PRM)</span> assigns a reward score to <strong>each individual reasoning step</strong> in the solution.</li>
+        <li>Human annotators label each step as <strong>positive</strong> (correct), <strong>negative</strong> (incorrect), or <strong>neutral</strong> (skip).</li>
+        <li>The PRM is trained to predict these per-step labels, learning to identify where reasoning goes wrong — not just whether the final answer is right.</li>
+      </ul>
+
+      <div class="label-row">
+        <span class="label-pill pos">+ Positive — step is correct</span>
+        <span class="label-pill neg">− Negative — step contains an error</span>
+        <span class="label-pill neu">~ Neutral — step not assessed</span>
+      </div>
+
+      <div class="callout">
+        The PRM score for a full solution can be defined as the <strong>minimum step score</strong> (the weakest link) or the <strong>product of all step scores</strong> — both capturing the idea that a chain is only as strong as its worst step.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         3. ORM vs PRM
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · ORM vs PRM — Full Comparison</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> Outcome vs Process Supervision</h2>
+
+      <div class="orm-prm-grid">
+        <div class="model-card orm">
+          <div class="model-card-header">🎯 Outcome Reward Model (ORM)</div>
+          <div class="model-card-body">
+            <ul>
+              <li>Scores only the <strong>final answer</strong></li>
+              <li>Reward = 1 if correct, 0 otherwise</li>
+              <li>No signal about which step failed</li>
+              <li>Easy to label — just check the answer</li>
+              <li>Reward hacking: model may guess or use illegal shortcuts</li>
+              <li>Cheaper to collect data for</li>
+              <li>Weak signal for long reasoning chains</li>
+            </ul>
+          </div>
+        </div>
+        <div class="model-card prm">
+          <div class="model-card-header">🔬 Process Reward Model (PRM)</div>
+          <div class="model-card-body">
+            <ul>
+              <li>Scores <strong>each reasoning step</strong> individually</li>
+              <li>Reward per step: positive / negative / neutral</li>
+              <li>Pinpoints exactly where reasoning breaks down</li>
+              <li>Expensive to label — requires math expertise</li>
+              <li>Harder to hack — each step must be correct</li>
+              <li>Data-intensive but much stronger signal</li>
+              <li>Enables step-level search and correction</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <table style="margin-top:0.9rem">
+        <thead>
+          <tr><th></th><th>ORM</th><th>PRM</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Supervision granularity</td><td>Solution-level</td><td>Step-level</td></tr>
+          <tr><td>Annotation cost</td><td>Low (check answer)</td><td>High (grade each step)</td></tr>
+          <tr><td>Error localization</td><td>None</td><td>Precise</td></tr>
+          <tr><td>Reward sparsity</td><td>Very sparse</td><td>Dense</td></tr>
+          <tr><td>Search guidance</td><td>End-only</td><td>Step-by-step beam guidance</td></tr>
+          <tr><td>Best-of-N performance</td><td>Good</td><td><strong>Better at large N</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         4. PRM800K Dataset
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · PRM800K — The Dataset</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> Building Ground-Truth Step-Level Labels</h2>
+      <ul>
+        <li>The paper introduces <span class="term">PRM800K</span> — a dataset of <strong>800,000 step-level human labels</strong> on math solutions generated by GPT-4.</li>
+        <li>Problems sourced from <span class="term">MATH</span> — a challenging benchmark of competition-level math problems (algebra, number theory, geometry, etc.).</li>
+        <li>Human annotators — with strong math backgrounds — label each step in a solution as positive, negative, or neutral.</li>
+        <li>Multiple solutions per problem were generated and labeled, providing diverse reasoning paths and error types.</li>
+      </ul>
+
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="sn">800K</span>
+          <div class="sl">Human step-level labels</div>
+        </div>
+        <div class="stat-item">
+          <span class="sn">75K</span>
+          <div class="sl">Labeled solutions</div>
+        </div>
+        <div class="stat-item">
+          <span class="sn">12K</span>
+          <div class="sl">Unique MATH problems covered</div>
+        </div>
+        <div class="stat-item">
+          <span class="sn">5</span>
+          <div class="sl">Difficulty levels (1–5)</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:0.9rem">
+        PRM800K was <strong>open-sourced</strong> by OpenAI, making it a key resource for subsequent research on process supervision and reasoning verification.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         5. Training the PRM
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Training the PRM</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏋️</span> How the Reward Model Is Trained</h2>
+      <ul>
+        <li>The PRM is initialized from a pretrained language model (GPT-4 base in this work).</li>
+        <li>A special <span class="term">step delimiter token</span> is inserted after each reasoning step in the solution.</li>
+        <li>The model learns to predict, at each delimiter, whether the step so far is correct — a binary classification at each step boundary.</li>
+      </ul>
+
+      <div class="formula-block">
+        <div class="formula-label">PRM Training Objective</div>
+        <div class="formula-main">L(ψ) = − Σ<sub>i=1</sub><sup>N</sup> [ y<sub>i</sub> · log p<sub>ψ</sub>(correct | s<sub>1:i</sub>, x) + (1−y<sub>i</sub>) · log(1 − p<sub>ψ</sub>(correct | s<sub>1:i</sub>, x)) ]</div>
+        <div class="formula-legend">
+          <span>x</span> — problem prompt<br/>
+          <span>s<sub>1:i</sub></span> — all reasoning steps from step 1 to step i<br/>
+          <span>y<sub>i</sub></span> — human label for step i (1 = correct, 0 = incorrect)<br/>
+          <span>p<sub>ψ</sub></span> — PRM's predicted probability that step i is correct<br/>
+          Binary cross-entropy at each step delimiter token.
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="formula-label">PRM Score for a Full Solution</div>
+        <div class="formula-main">PRM(x, s<sub>1:N</sub>) = min<sub>i</sub> p<sub>ψ</sub>(correct | s<sub>1:i</sub>, x)</div>
+        <div class="formula-legend">
+          The solution score is the <strong>minimum step probability</strong> — the weakest link in the chain.<br/>
+          Alternative: product of all step probabilities (more sensitive to all errors simultaneously).
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         6. Using PRM at Inference — Best-of-N
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Using the PRM at Inference Time</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔍</span> Selecting the Best Solution via PRM Scoring</h2>
+      <ul>
+        <li>At inference, the generator model produces <span class="term">N candidate solutions</span> to a problem (via temperature sampling).</li>
+        <li>The PRM scores each solution using its minimum (or product) step score.</li>
+        <li>The solution with the <strong>highest PRM score</strong> is selected as the final output — this is called <span class="term">Best-of-N with PRM</span>.</li>
+        <li>Unlike ORM best-of-N (which only checks final answers), PRM best-of-N can distinguish between two solutions that both reach the correct answer but via different quality reasoning chains.</li>
+      </ul>
+
+      <div class="search-grid">
+        <div class="search-item">
+          <div class="si-icon">🎲</div>
+          <div class="si-title">Best-of-N (ORM)</div>
+          <p>Generate N solutions. Score each by final answer correctness. Pick the majority vote or highest ORM score.</p>
+        </div>
+        <div class="search-item">
+          <div class="si-icon">🔬</div>
+          <div class="si-title">Best-of-N (PRM)</div>
+          <p>Generate N solutions. Score each by the minimum step score. Pick the solution with the highest PRM score.</p>
+        </div>
+        <div class="search-item">
+          <div class="si-icon">🌲</div>
+          <div class="si-title">Beam Search (PRM)</div>
+          <p>Generate step-by-step. At each step, use PRM to prune low-scoring paths. Keeps only the K best partial solutions.</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        PRM beam search is the most powerful use case — it <strong>prunes bad reasoning paths early</strong>, preventing error propagation instead of just filtering complete solutions post-hoc.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         7. Full Training & Evaluation Pipeline
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Full Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Step-by-Step</h2>
+      <ol class="algo-steps">
+        <li>Sample a problem from the MATH dataset. Use the generator model (GPT-4) to produce multiple candidate step-by-step solutions.</li>
+        <li>Present solutions to human annotators (math-trained). For each solution, annotators label every step as <span class="term">positive (+)</span>, <span class="term">negative (−)</span>, or <span class="term">neutral (~)</span>. Store in PRM800K dataset.</li>
+        <li>Insert a special delimiter token after each step. Fine-tune the PRM on PRM800K: at each delimiter, predict whether the preceding step is correct (binary cross-entropy loss).</li>
+        <li>At evaluation time, sample N solutions for a test problem. Compute PRM score for each solution as the minimum step probability across all steps.</li>
+        <li>Select the solution with the highest PRM score. Compare against: (a) majority voting, (b) ORM best-of-N, (c) random selection.</li>
+        <li>Evaluate the chosen solution against the ground-truth answer on the MATH benchmark.</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         8. Key Results
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Key Results</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> PRM vs ORM on the MATH Benchmark</h2>
+      <table>
+        <thead>
+          <tr><th>Method</th><th>MATH Score</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GPT-4 (greedy, no verifier)</td><td>~42%</td><td>Baseline — single best solution</td></tr>
+          <tr><td>Best-of-N with majority vote</td><td>~58%</td><td>N=1860; no reward model needed</td></tr>
+          <tr><td>Best-of-N with ORM</td><td>~72%</td><td>N=1860; outcome supervision only</td></tr>
+          <tr><td><strong>Best-of-N with PRM</strong></td><td><strong>~78%</strong></td><td>N=1860; process supervision wins</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout" style="margin-top:0.9rem">
+        At large N (e.g. 1860 samples), <strong>PRM consistently outperforms ORM</strong>. The gap grows as N increases — meaning PRM makes better use of additional compute at inference time.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         9. Why PRM > ORM — The Intuition
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Why PRM Beats ORM — The Deep Intuition</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> What ORM Gets Fooled By</h2>
+      <ul>
+        <li><strong>Lucky correct answers:</strong> A solution can reach the right answer via flawed reasoning (two errors cancel). ORM rewards this; PRM penalizes the bad steps.</li>
+        <li><strong>Answer guessing:</strong> A model can guess the numeric answer correctly without reasoning at all. ORM is blind to this; PRM requires each step to be justified.</li>
+        <li><strong>Error propagation:</strong> ORM can't distinguish a solution that fails at step 2 vs step 9. PRM knows step 2 failed and can prune that path immediately in beam search.</li>
+      </ul>
+      <div class="callout">
+        PRM enforces <strong>faithfulness</strong> — it's not enough to get the right answer, the path to it must also be correct. This is particularly critical for <strong>scalable oversight</strong>: as problems get harder, humans can't check answers but can still check individual steps.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         10. Scalable Oversight Connection
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Connection to Scalable Oversight</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔭</span> Why Process Supervision Matters for AI Safety</h2>
+      <ul>
+        <li><span class="term">Scalable oversight</span> is the problem of supervising AI systems that become smarter than their human evaluators.</li>
+        <li>For a very hard problem, a human may not be able to verify the <em>final answer</em> is correct — but may still be able to verify each <em>reasoning step</em> one at a time.</li>
+        <li>Process supervision provides a path to overseeing super-human AI: <strong>break down the task into verifiable steps</strong>, even when the whole is too complex to evaluate directly.</li>
+        <li>This connects to <span class="term">debate</span> and <span class="term">amplification</span> — other scalable oversight techniques where complex tasks are recursively decomposed.</li>
+      </ul>
+      <div class="callout">
+        The underlying philosophy: <strong>it is easier to verify than to generate</strong>. Even if a human can't solve a hard math problem, they can usually check whether a given algebraic manipulation is valid.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         11. Annotation Challenges
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Annotation Challenges</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> Difficulties in Collecting Process Labels</h2>
+      <ul>
+        <li><strong>Annotator expertise:</strong> Step-level math labels require annotators with strong mathematical background — far more specialized than the labelers in standard RLHF.</li>
+        <li><strong>Ambiguous steps:</strong> Some steps are partially correct — they use a valid technique but with a minor arithmetic error. Labeling these requires judgment.</li>
+        <li><strong>Step granularity:</strong> What constitutes one "step" is not always obvious. Too fine-grained = excessive annotations; too coarse = error localization suffers.</li>
+        <li><strong>Cost:</strong> 800K labels required substantial human effort — significantly more expensive per label than outcome annotation.</li>
+        <li><strong>Neutral labels:</strong> Many steps were labeled neutral (skipped), reducing the effective training signal.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         12. Pros & Cons
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Pros &amp; Cons of Process Supervision</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Strengths &amp; Limitations</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul style="margin-top:0.4rem">
+            <li>Dense reward signal — faster, more stable learning</li>
+            <li>Precise error localization in reasoning</li>
+            <li>Enables powerful step-level beam search</li>
+            <li>More robust to reward hacking</li>
+            <li>Aligns with scalable oversight goals</li>
+            <li>PRM800K publicly released</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul style="margin-top:0.4rem">
+            <li>Expensive expert annotation required</li>
+            <li>Hard to define steps consistently</li>
+            <li>Only evaluated on math — may not generalize</li>
+            <li>Step granularity affects results significantly</li>
+            <li>Requires model outputs to be structured as discrete steps</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         13. Impact & What Came Next
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Impact &amp; What Came Next</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Legacy of Process Supervision</h2>
+      <ul>
+        <li><span class="term">OpenAI o1 / o3 (2024)</span> — "chain-of-thought reasoning models" trained with process-level RL. PRM-style step verification is central to their training pipeline.</li>
+        <li><span class="term">DeepSeek-R1 (2025)</span> — uses GRPO with per-step reward shaping inspired by process supervision. Achieves o1-level reasoning at a fraction of the cost.</li>
+        <li><span class="term">Math-Shepherd (2024)</span> — replaces human step labels with <strong>automated step verification</strong> using the model itself, scaling PRM annotation cheaply.</li>
+        <li><span class="term">OmegaPRM / AutoPRM</span> — use Monte Carlo Tree Search to automatically assign process rewards without human labels at all.</li>
+        <li><span class="term">Critique-based RLVR</span> — extends process supervision beyond math to coding, science, and multi-step tool use.</li>
+      </ul>
+      <div class="callout">
+        This paper established the foundational principle behind all modern "reasoning models": <strong>training the model to produce verifiable intermediate steps, not just correct final answers</strong>. Every reasoning-focused LLM from o1 onward builds on this idea.
+      </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer>
+      <p>Updated March 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RL Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

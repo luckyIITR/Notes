@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeepSeek-R1 — Incentivizing Reasoning via RL</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #475569;
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Paper citation ── */
+    .paper-cite {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-left: 3px solid #6366f1;
+      border-radius: 0 8px 8px 0;
+      padding: 0.9rem 1.1rem;
+      margin: 0.8rem 0 0;
+      font-size: 0.85rem;
+    }
+    .paper-cite .pc-title  { color: #c7d2fe; font-weight: 700; margin-bottom: 0.2rem; }
+    .paper-cite .pc-authors { color: #64748b; font-size: 0.78rem; }
+
+    /* ── Formula block ── */
+    .formula-block {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+      margin: 0.8rem 0;
+    }
+    .formula-block .formula-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+    }
+    .formula-block .formula-main {
+      font-size: 0.96rem;
+      color: #c7d2fe;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      line-height: 2.3;
+    }
+    .formula-block .formula-legend {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 2;
+    }
+    .formula-block .formula-legend span {
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Algorithm steps ── */
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.75rem 0.9rem 0.75rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.85rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Four-stage pipeline ── */
+    .pipeline-v {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 0.9rem 0;
+    }
+    .pv-stage {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid #2d3148;
+    }
+    .pv-stage:last-child { border-bottom: none; }
+    .pv-num {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 3.2rem;
+      flex-shrink: 0;
+      font-size: 1rem;
+      font-weight: 900;
+      background: #1e2130;
+      border-right: 1px solid #2d3148;
+    }
+    .pv-stage.s1 .pv-num { color: #60a5fa; background: #151a2e; }
+    .pv-stage.s2 .pv-num { color: #c084fc; background: #1a1528; }
+    .pv-stage.s3 .pv-num { color: #4ade80; background: #15231a; }
+    .pv-stage.s4 .pv-num { color: #fb923c; background: #2a1a0a; }
+    .pv-content { flex: 1; padding: 0.85rem 1.1rem; }
+    .pv-content .pvc-tag {
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+    .pv-stage.s1 .pvc-tag { color: #60a5fa; }
+    .pv-stage.s2 .pvc-tag { color: #c084fc; }
+    .pv-stage.s3 .pvc-tag { color: #4ade80; }
+    .pv-stage.s4 .pvc-tag { color: #fb923c; }
+    .pv-content .pvc-title { font-size: 0.9rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.3rem; }
+    .pv-content p { font-size: 0.8rem; color: #64748b; line-height: 1.6; }
+    .pv-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.1rem 0;
+      color: #374151;
+      font-size: 1rem;
+      background: #151823;
+      border-bottom: 1px solid #2d3148;
+    }
+
+    /* ── Aha moment quote box ── */
+    .aha-box {
+      background: #1a1528;
+      border: 1px solid #7c3aed;
+      border-radius: 10px;
+      padding: 1.1rem 1.3rem;
+      margin: 0.9rem 0;
+      position: relative;
+    }
+    .aha-box .aha-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #c084fc;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .aha-box .aha-thinking {
+      font-size: 0.85rem;
+      color: #a5b4fc;
+      font-style: italic;
+      line-height: 1.8;
+      border-left: 2px solid #7c3aed;
+      padding-left: 0.9rem;
+    }
+    .aha-box .aha-thinking .think-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #7c3aed;
+      font-style: normal;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    /* ── R1-Zero vs R1 diff ── */
+    .model-diff {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin: 0.8rem 0;
+    }
+    .md-card {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .md-card-header {
+      padding: 0.7rem 1rem;
+      font-size: 0.83rem;
+      font-weight: 700;
+      border-bottom: 1px solid #2d3148;
+    }
+    .md-card.zero .md-card-header { background: #1a1528; color: #c084fc; }
+    .md-card.full  .md-card-header { background: #151a2e; color: #60a5fa; }
+    .md-card-body { padding: 0.85rem 1rem; }
+    .md-card-body ul li { font-size: 0.82rem; }
+
+    /* ── Reward breakdown ── */
+    .reward-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0.7rem 0;
+    }
+    .rb-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+    }
+    .rb-badge {
+      flex-shrink: 0;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .rb-item.acc  .rb-badge { background: #14532d; color: #86efac; }
+    .rb-item.fmt  .rb-badge { background: #1e3a5f; color: #93c5fd; }
+    .rb-item.lang .rb-badge { background: #3b1f1f; color: #fca5a5; }
+    .rb-desc { font-size: 0.83rem; color: #cbd5e1; line-height: 1.55; flex: 1; }
+    .rb-weight {
+      font-family: 'Courier New', monospace;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #64748b;
+      flex-shrink: 0;
+    }
+
+    /* ── Distillation cards ── */
+    .distill-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.6rem;
+      margin-top: 0.6rem;
+    }
+    .distill-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      text-align: center;
+    }
+    .distill-item .di-model { font-size: 0.88rem; font-weight: 700; color: #a5b4fc; margin-bottom: 0.15rem; }
+    .distill-item .di-size  { font-size: 0.72rem; color: #475569; }
+    .distill-item .di-score { font-size: 1rem; font-weight: 800; color: #4ade80; margin-top: 0.3rem; }
+    .distill-item .di-bench { font-size: 0.68rem; color: #374151; }
+
+    /* ── Stat pills ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.7rem;
+      margin-top: 0.6rem;
+    }
+    .stat-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      text-align: center;
+    }
+    .stat-item .sn { font-size: 1.4rem; font-weight: 800; color: #a5b4fc; display: block; margin-bottom: 0.15rem; }
+    .stat-item .sl { font-size: 0.72rem; color: #475569; line-height: 1.4; }
+
+    @media (max-width: 560px) {
+      .model-diff { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Reasoning · GRPO · RL from Scratch · Distillation</p>
+      <h1>DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</h1>
+      <p>The first open-source model to match OpenAI o1 on reasoning benchmarks — trained with pure RL (no SFT cold start in R1-Zero), showing that chain-of-thought reasoning can <em>emerge</em> entirely from reinforcement learning with verifiable rewards.</p>
+    </header>
+
+    <div class="paper-cite">
+      <div class="pc-title">DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning</div>
+      <div class="pc-authors">DeepSeek-AI: Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu, Shirong Ma, Peiyi Wang, Xiao Bi, et al. &nbsp;·&nbsp; arXiv Jan 2025 &nbsp;·&nbsp; DeepSeek-AI</div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         1. Overview & Key Contributions
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Overview &amp; Key Contributions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> What This Paper Does</h2>
+      <ul>
+        <li>Trains <span class="term">DeepSeek-R1-Zero</span> — applies GRPO directly to a base LLM <strong>without any supervised fine-tuning</strong>. Reasoning behaviors emerge purely from RL with verifiable rewards.</li>
+        <li>Trains <span class="term">DeepSeek-R1</span> — a refined 4-stage pipeline (cold-start SFT → reasoning RL → rejection-sampling SFT → alignment RL) that achieves o1-level performance.</li>
+        <li>Demonstrates the <span class="term">"aha moment"</span> — a critical emergent behavior where the model spontaneously learns to re-examine its own steps, backtrack, and self-correct without being taught to do so.</li>
+        <li>Open-sources the model weights and distills reasoning into smaller models (1.5B – 70B), making frontier reasoning accessible to the community.</li>
+      </ul>
+
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="sn">~79%</span>
+          <div class="sl">AIME 2024 (matches o1)</div>
+        </div>
+        <div class="stat-item">
+          <span class="sn">97.3%</span>
+          <div class="sl">MATH-500 benchmark</div>
+        </div>
+        <div class="stat-item">
+          <span class="sn">90.8%</span>
+          <div class="sl">HumanEval (code)</div>
+        </div>
+        <div class="stat-item">
+          <span class="sn">671B</span>
+          <div class="sl">Base model parameters (MoE)</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:0.9rem">
+        DeepSeek-R1 was the first open-source model to <strong>match OpenAI o1</strong> on reasoning and math benchmarks, released with open weights — a pivotal moment for open-source AI.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         2. Two Models: R1-Zero and R1
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · Two Models — R1-Zero vs R1</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> What's the Difference?</h2>
+      <div class="model-diff">
+        <div class="md-card zero">
+          <div class="md-card-header">⚡ DeepSeek-R1-Zero</div>
+          <div class="md-card-body">
+            <ul>
+              <li>GRPO applied <strong>directly to the base model</strong></li>
+              <li>No SFT cold start — zero human demonstrations</li>
+              <li>Proves reasoning emerges from RL alone</li>
+              <li>Achieves strong reasoning but has issues: language mixing, poor readability, occasional repetition</li>
+              <li>A research proof-of-concept</li>
+            </ul>
+          </div>
+        </div>
+        <div class="md-card full">
+          <div class="md-card-header">🌟 DeepSeek-R1 (Full)</div>
+          <div class="md-card-body">
+            <ul>
+              <li><strong>4-stage training pipeline</strong> with cold-start SFT</li>
+              <li>Fixes R1-Zero's language mixing and readability</li>
+              <li>Adds general-domain capabilities (not just math/code)</li>
+              <li>Production-quality reasoning model</li>
+              <li>Matches o1-preview/o1-mini on most benchmarks</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         3. DeepSeek-R1-Zero — Pure RL Reasoning
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · DeepSeek-R1-Zero — Reasoning from Pure RL</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔬</span> What Happens When You Apply GRPO to a Raw Base Model</h2>
+      <ul>
+        <li>Starting point: <span class="term">DeepSeek-V3-Base</span> — a 671B MoE model pretrained on general text (no reasoning-specific SFT).</li>
+        <li>Apply GRPO with <strong>only two rewards</strong>: accuracy (is the answer correct?) and format (is the response inside <code>&lt;think&gt;…&lt;/think&gt;</code> tags?).</li>
+        <li>No demonstrations of chain-of-thought. No human-written reasoning examples. Just: answer questions, get rewarded if correct.</li>
+        <li>Over training, the model <strong>spontaneously develops</strong> longer thinking traces, self-verification, and backtracking.</li>
+      </ul>
+      <div class="callout">
+        This is the paper's most remarkable finding: <strong>reasoning is not taught, it emerges</strong>. Given the right incentive (be correct), a large language model discovers that thinking step-by-step helps it be correct.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         4. The Aha Moment
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · The "Aha Moment" — Emergent Self-Reflection</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✨</span> The Most Striking Emergent Behavior</h2>
+      <ul>
+        <li>During training, the model begins to produce responses where it <strong>re-reads its own reasoning</strong>, catches errors, and restarts its approach — without ever being shown this behavior.</li>
+        <li>The paper calls this an <span class="term">"aha moment"</span> — a point where the model's behavior discretely shifts from linear reasoning to recursive self-correction.</li>
+        <li>The behavior is genuinely emergent — it is not present in early training and gradually appears as the model discovers that rechecking improves reward.</li>
+      </ul>
+
+      <div class="aha-box">
+        <div class="aha-label">✨ Example: R1-Zero Thinking Trace (emergent)</div>
+        <div class="aha-thinking">
+          <span class="think-tag">&lt;think&gt;</span>
+          Let me solve this step by step. The equation is 2x + 5 = 13.<br/><br/>
+          Subtracting 5 from both sides: 2x = 8, so x = 4.<br/><br/>
+          Wait, let me re-examine this. I should verify: 2(4) + 5 = 8 + 5 = 13. ✓<br/><br/>
+          Actually, I realize I should double-check whether the problem is asking for x or something else...
+          Yes, x = 4 is the final answer.
+          <span class="think-tag">&lt;/think&gt;</span>
+        </div>
+      </div>
+
+      <div class="callout">
+        The "wait, let me re-examine" pattern was <strong>never in the training data</strong>. It emerged because the model learned that pausing to verify its work increased its chance of getting reward. This is analogous to a student discovering the habit of checking their work.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         5. R1-Zero Reward Design
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Reward Design for R1-Zero</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏆</span> Two Simple Rewards — No Reward Model Needed</h2>
+      <div class="reward-breakdown">
+        <div class="rb-item acc">
+          <span class="rb-badge">Accuracy</span>
+          <div class="rb-desc">Rule-based verifier checks if the final answer matches ground truth. For math: symbolic equivalence (1/2 = 0.5). For code: execution against test cases. Binary: 1 (correct) or 0 (wrong).</div>
+          <span class="rb-weight">primary</span>
+        </div>
+        <div class="rb-item fmt">
+          <span class="rb-badge">Format</span>
+          <div class="rb-desc">Reward for placing reasoning inside <code>&lt;think&gt;…&lt;/think&gt;</code> tags and the answer inside <code>&lt;answer&gt;…&lt;/answer&gt;</code> tags. Encourages structured, readable outputs.</div>
+          <span class="rb-weight">secondary</span>
+        </div>
+        <div class="rb-item lang">
+          <span class="rb-badge">No Language Penalty</span>
+          <div class="rb-desc">R1-Zero does NOT penalize language mixing. This is intentional — the model is free to reason in whatever language helps. This causes readability issues but is not constrained in Zero.</div>
+          <span class="rb-weight">absent</span>
+        </div>
+      </div>
+      <div class="callout">
+        Crucially, there is <strong>no neural reward model</strong> — all rewards are computed by a deterministic program. This completely eliminates reward hacking against a learned reward model.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         6. R1-Zero's Problems
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · R1-Zero's Limitations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> What Pure RL Gets Wrong</h2>
+      <ul>
+        <li><span class="term">Language mixing</span> — R1-Zero freely mixes Chinese and English mid-reasoning. Technically fine for accuracy, but unreadable for users who only speak one language.</li>
+        <li><span class="term">Poor readability</span> — reasoning traces are often verbose, repetitive, and hard to follow. The model optimizes for correctness, not clarity.</li>
+        <li><span class="term">Repetition loops</span> — occasionally enters degenerate loops of repeated sentences before self-correcting or failing.</li>
+        <li><span class="term">No general-domain capability</span> — the RL training is focused on math and code. The model loses general instruction-following ability developed during pretraining.</li>
+      </ul>
+      <div class="callout">
+        These issues motivated the full <strong>DeepSeek-R1</strong> pipeline — a 4-stage process that fixes these problems while preserving the emergent reasoning capability that R1-Zero discovered.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         7. DeepSeek-R1 — Four-Stage Pipeline
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · DeepSeek-R1 — Four-Stage Training Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> From Base Model to Production Reasoner</h2>
+
+      <div class="pipeline-v">
+        <div class="pv-stage s1">
+          <div class="pv-num">①</div>
+          <div class="pv-content">
+            <div class="pvc-tag">Cold Start · SFT</div>
+            <div class="pvc-title">Cold Start Supervised Fine-Tuning</div>
+            <p>Fine-tune DeepSeek-V3-Base on a small set (~thousands) of high-quality long chain-of-thought examples — including human-written reasoning traces and outputs from R1-Zero. Establishes the <code>&lt;think&gt;</code> format and readable reasoning style before RL begins.</p>
+          </div>
+        </div>
+        <div class="pv-stage s2">
+          <div class="pv-num">②</div>
+          <div class="pv-content">
+            <div class="pvc-tag">Reasoning RL · GRPO</div>
+            <div class="pvc-title">Reasoning-Focused Reinforcement Learning</div>
+            <p>Apply GRPO with accuracy + format rewards on math, science, and code problems. Now that the model has seen good reasoning examples (Stage 1), the RL can refine it further without starting from scratch. Language consistency reward added here.</p>
+          </div>
+        </div>
+        <div class="pv-stage s3">
+          <div class="pv-num">③</div>
+          <div class="pv-content">
+            <div class="pvc-tag">Rejection Sampling · SFT</div>
+            <div class="pvc-title">Rejection Sampling + General SFT</div>
+            <p>Sample many outputs from Stage 2 model. Keep only the correct ones (rejection sampling). Fine-tune on this curated set plus general instruction-following data (writing, QA, summarization). Recovers general-domain capabilities lost during RL.</p>
+          </div>
+        </div>
+        <div class="pv-stage s4">
+          <div class="pv-num">④</div>
+          <div class="pv-content">
+            <div class="pvc-tag">Alignment · GRPO</div>
+            <div class="pvc-title">Final Alignment Reinforcement Learning</div>
+            <p>A final GRPO pass on the full task mix — reasoning + general tasks. Uses a mix of rule-based rewards (math/code) and a learned reward model (for general helpfulness/safety). Produces the final aligned DeepSeek-R1 model.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         8. Why Cold Start Matters
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Why the Cold Start Is Critical</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">❄️</span> Seeding RL with Good Reasoning Format</h2>
+      <ul>
+        <li>R1-Zero proves RL can discover reasoning from scratch — but it's slow and produces messy outputs.</li>
+        <li>The cold-start SFT <strong>seeds the policy with the right format</strong> — structured, readable <code>&lt;think&gt;</code> traces — before RL begins.</li>
+        <li>With this seed, the RL in Stage 2 converges faster and to better local optima — the model already "knows what good reasoning looks like".</li>
+        <li>Cold-start data includes: long CoT examples curated from the web, outputs from R1-Zero filtered for quality, and human-written multi-step reasoning demonstrations.</li>
+      </ul>
+      <div class="callout">
+        Analogy: R1-Zero is a student left alone to figure out how to study. DeepSeek-R1 gives the student one good tutoring session first (cold-start SFT), then leaves them to practice independently (GRPO). The outcome is far better.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         9. GRPO Objective (in R1 context)
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · GRPO in the R1 Context</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> The RL Algorithm Unchanged from DeepSeekMath</h2>
+      <ul>
+        <li>DeepSeek-R1 uses the same <span class="term">GRPO</span> algorithm introduced in DeepSeekMath — the core algorithm is not changed.</li>
+        <li>For each question, sample G outputs from the old policy. Normalize rewards within the group. Update with clipped PPO objective + KL penalty vs reference model.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">GRPO Objective (same as DeepSeekMath)</div>
+        <div class="formula-main">
+          L<sup>GRPO</sup>(θ) = E<sub>q,{o<sub>i</sub>}</sub> [ (1/G) Σ<sub>i</sub> min( r<sub>i</sub>(θ)·Â<sub>i</sub>,  clip(r<sub>i</sub>(θ), 1−ε, 1+ε)·Â<sub>i</sub> ) − β·KL[π<sub>θ</sub> ‖ π<sub>ref</sub>] ]
+        </div>
+        <div class="formula-legend">
+          <span>Â<sub>i</sub> = (r<sub>i</sub> − mean(r)) / std(r)</span> — group-normalized advantage<br/>
+          <span>r<sub>i</sub>(θ) = π<sub>θ</sub>(o<sub>i</sub>|q) / π<sub>θ_old</sub>(o<sub>i</sub>|q)</span> — probability ratio<br/>
+          <span>π<sub>ref</sub></span> — frozen SFT model from Stage 1 (cold-start checkpoint)
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="formula-label">Full Reward in Stage 2 (three components)</div>
+        <div class="formula-main">r(o, q) = r<sub>acc</sub>(o, q) + r<sub>fmt</sub>(o) + r<sub>lang</sub>(o)</div>
+        <div class="formula-legend">
+          <span>r<sub>acc</sub></span> — accuracy reward: 1 if correct, 0 if wrong (rule-based)<br/>
+          <span>r<sub>fmt</sub></span> — format reward: positive for well-structured <code>&lt;think&gt;/&lt;answer&gt;</code> tags<br/>
+          <span>r<sub>lang</sub></span> — language consistency: penalizes mixing Chinese/English mid-reasoning
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         10. Rejection Sampling (Stage 3)
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Rejection Sampling Fine-Tuning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> Curating a High-Quality Training Set from the RL Model</h2>
+      <ul>
+        <li>After Stage 2 GRPO, the model is a strong reasoner but weak on general tasks.</li>
+        <li><strong>Rejection sampling:</strong> sample many (e.g. 8–16) solutions per reasoning problem. Keep only those that are <em>correct</em> and <em>well-formatted</em>. Discard the rest.</li>
+        <li>This produces a curated set of high-quality reasoning traces that can be used for SFT.</li>
+        <li>Combine with a large set of <strong>general instruction-following data</strong> (writing, QA, summarization, code) to restore general-domain capability.</li>
+        <li>Fine-tune the Stage 2 model on this combined dataset → produces a model that is both a strong reasoner <em>and</em> a good general assistant.</li>
+      </ul>
+      <div class="callout">
+        Rejection sampling is like <strong>self-play data curation</strong> — the model generates its own training data, which is then filtered for quality. The RL model improves the SFT data, which then improves the final model.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         11. Knowledge Distillation to Small Models
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Distillation — Spreading Reasoning to Small Models</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌱</span> Teaching Reasoning to 1.5B–70B Models</h2>
+      <ul>
+        <li>The long chain-of-thought traces generated by DeepSeek-R1 are used as <strong>SFT training data for smaller models</strong>.</li>
+        <li>Small models (1.5B–70B) are fine-tuned on ~800K R1 reasoning traces — no RL needed for the distilled models.</li>
+        <li>Surprisingly, this SFT distillation alone transfers much of R1's reasoning ability to tiny models — far better than applying GRPO directly to small models.</li>
+        <li>Models distilled from: Qwen2.5 (1.5B, 7B, 14B, 32B) and Llama-3 (8B, 70B).</li>
+      </ul>
+
+      <div class="distill-grid">
+        <div class="distill-item">
+          <div class="di-model">R1-Distill-Qwen-1.5B</div>
+          <div class="di-size">1.5B params</div>
+          <div class="di-score">28.9%</div>
+          <div class="di-bench">AIME 2024</div>
+        </div>
+        <div class="distill-item">
+          <div class="di-model">R1-Distill-Qwen-7B</div>
+          <div class="di-size">7B params</div>
+          <div class="di-score">55.5%</div>
+          <div class="di-bench">AIME 2024</div>
+        </div>
+        <div class="distill-item">
+          <div class="di-model">R1-Distill-Qwen-14B</div>
+          <div class="di-size">14B params</div>
+          <div class="di-score">69.7%</div>
+          <div class="di-bench">AIME 2024</div>
+        </div>
+        <div class="distill-item">
+          <div class="di-model">R1-Distill-Qwen-32B</div>
+          <div class="di-size">32B params</div>
+          <div class="di-score">72.6%</div>
+          <div class="di-bench">AIME 2024</div>
+        </div>
+        <div class="distill-item">
+          <div class="di-model">R1-Distill-Llama-70B</div>
+          <div class="di-size">70B params</div>
+          <div class="di-score">79.0%</div>
+          <div class="di-bench">AIME 2024</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:0.9rem">
+        R1-Distill-Qwen-7B outperforms <strong>QwQ-32B-Preview</strong> (a 32B reasoning model) — demonstrating that distilled reasoning traces are an extraordinarily efficient way to transfer reasoning capability.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         12. Key Results
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Key Results</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> DeepSeek-R1 vs OpenAI o1</h2>
+      <table>
+        <thead>
+          <tr><th>Benchmark</th><th>OpenAI o1-mini</th><th>OpenAI o1</th><th>DeepSeek-R1</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>AIME 2024 (math olympiad)</td><td>63.6%</td><td>74.4%</td><td><strong>79.8%</strong></td></tr>
+          <tr><td>MATH-500</td><td>90.0%</td><td>96.4%</td><td><strong>97.3%</strong></td></tr>
+          <tr><td>Codeforces (competitive code)</td><td>1820 rating</td><td>1891 rating</td><td><strong>2029 rating</strong></td></tr>
+          <tr><td>LiveCodeBench (code)</td><td>53.8%</td><td>63.4%</td><td><strong>65.9%</strong></td></tr>
+          <tr><td>GPQA Diamond (science)</td><td>60.0%</td><td>75.7%</td><td><strong>71.5%</strong></td></tr>
+          <tr><td>MMLU (general knowledge)</td><td>85.2%</td><td>91.8%</td><td>90.8%</td></tr>
+        </tbody>
+      </table>
+      <div class="callout" style="margin-top:0.9rem">
+        DeepSeek-R1 <strong>matches or surpasses o1 on math and coding</strong> — the hardest reasoning benchmarks — while being fully open-source and at a fraction of the training cost.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         13. Thinking Tokens — The Compute-Accuracy Tradeoff
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Thinking Tokens — Compute at Inference Time</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💭</span> More Thinking = Better Answers</h2>
+      <ul>
+        <li>R1's <code>&lt;think&gt;</code> traces can be <strong>very long</strong> — thousands of tokens — for hard problems. This is intentional.</li>
+        <li>The model trades <strong>inference-time compute</strong> (more tokens generated) for <strong>better accuracy</strong>. This is the "test-time compute" paradigm introduced by o1.</li>
+        <li>For easy problems, the model produces short thinking traces. For hard problems, it self-explores extensively before committing to an answer.</li>
+        <li>This is fundamentally different from training-time scaling — the model dynamically allocates more compute per problem based on difficulty.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Test-Time Compute Scaling</div>
+        <div class="formula-main">Performance ↑ as |thinking tokens| ↑ for hard problems</div>
+        <div class="formula-legend">
+          Unlike model size scaling (more parameters), this scales <strong>inference compute</strong>.<br/>
+          The model learns <em>when</em> to think longer — short traces for easy problems, long for hard ones.<br/>
+          This is emergent: the model was only rewarded for correctness, not for thinking length.
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         14. Pros & Cons
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Pros &amp; Cons</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Strengths &amp; Limitations</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul style="margin-top:0.4rem">
+            <li>Fully open-source with released weights</li>
+            <li>Matches o1 at far lower training cost</li>
+            <li>Emergent reasoning — no process supervision needed</li>
+            <li>Distillation works surprisingly well for small models</li>
+            <li>Rule-based rewards — no reward hacking</li>
+            <li>Dynamic inference-time compute allocation</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul style="margin-top:0.4rem">
+            <li>Long thinking traces — very high inference cost</li>
+            <li>Still weaker on general reasoning vs coding/math</li>
+            <li>Language mixing in R1-Zero (fixed in R1)</li>
+            <li>Distilled models don't match R1 on hardest problems</li>
+            <li>Sensitive to the cold-start data quality</li>
+            <li>Training requires massive GPU clusters</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         15. Full Training Algorithm
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>15 · Full DeepSeek-R1 Training Algorithm</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Step-by-Step</h2>
+      <ol class="algo-steps">
+        <li>Start with <span class="term">DeepSeek-V3-Base</span> (671B MoE, general pretrained LLM).</li>
+        <li><strong>Stage 1 — Cold Start SFT:</strong> Collect thousands of high-quality long CoT examples. Fine-tune the base model on these using standard SFT. This establishes the <code>&lt;think&gt;</code> format and readable reasoning style.</li>
+        <li><strong>Stage 2 — Reasoning RL:</strong> Apply GRPO to the Stage 1 model. Rewards: accuracy (rule-based), format, and language consistency. Train on math, code, and science problems with verifiable answers. Allow emergent behaviors (self-reflection, backtracking) to develop.</li>
+        <li><strong>Stage 3 — Rejection Sampling SFT:</strong> Sample 8–16 outputs from the Stage 2 model per problem. Filter for correct + well-formatted ones. Combine with general instruction-following data. SFT the Stage 2 model on this combined set to restore general capabilities.</li>
+        <li><strong>Stage 4 — Final Alignment RL:</strong> Apply a final GRPO pass with mixed rewards: rule-based for math/code, learned RM for general helpfulness/safety. Produce the final <span class="term">DeepSeek-R1</span> model.</li>
+        <li><strong>Distillation:</strong> Generate ~800K long CoT reasoning traces from R1. SFT smaller models (1.5B–70B) on these traces to produce DeepSeek-R1-Distill variants.</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         16. Legacy
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>16 · Legacy &amp; What Came Next</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Impact on the Field</h2>
+      <ul>
+        <li><span class="term">Open-source o1-level reasoning</span> — R1's open release democratized frontier reasoning models. Any researcher can now fine-tune R1-distill variants.</li>
+        <li><span class="term">DAPO (Apr 2025)</span> — "Decoupled Clip and Dynamic sAmpling" extends GRPO with token-level advantages and clip asymmetry to improve training stability.</li>
+        <li><span class="term">Dr. GRPO / RLOO</span> — variants that further improve group sampling efficiency and reduce variance.</li>
+        <li><span class="term">Qwen-QwQ, Kimi-k1.5, Phi-4-reasoning</span> — subsequent open reasoning models from other labs adopting the same paradigm.</li>
+        <li><span class="term">S1 / Sky-T1</span> — showed that even 1K curated long-CoT SFT examples can produce strong reasoning models — pushing the "budget forcing" approach further.</li>
+        <li><span class="term">OpenAI o3</span> — OpenAI's next generation, hypothesized to use similar RL-based reasoning with verifiable rewards and longer test-time compute.</li>
+      </ul>
+      <div class="callout">
+        DeepSeek-R1 proved three things simultaneously: reasoning <strong>emerges from RL alone</strong>, open-source can <strong>match closed-source frontiers</strong>, and <strong>distillation is more efficient</strong> than training small models from scratch with RL.
+      </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer>
+      <p>Updated March 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RL Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RLHF — Deep RL from Human Preferences</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #475569;
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Paper citation ── */
+    .paper-cite {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-left: 3px solid #6366f1;
+      border-radius: 0 8px 8px 0;
+      padding: 0.9rem 1.1rem;
+      margin: 0.8rem 0;
+      font-size: 0.85rem;
+    }
+    .paper-cite .pc-title { color: #c7d2fe; font-weight: 700; margin-bottom: 0.2rem; }
+    .paper-cite .pc-authors { color: #64748b; font-size: 0.78rem; }
+
+    /* ── Formula block ── */
+    .formula-block {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+      margin: 0.8rem 0;
+    }
+    .formula-block .formula-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+    }
+    .formula-block .formula-main {
+      font-size: 1rem;
+      color: #c7d2fe;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      line-height: 2.2;
+    }
+    .formula-block .formula-legend {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 2;
+    }
+    .formula-block .formula-legend span {
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Pipeline flow ── */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 0.9rem 0;
+    }
+    .pipeline-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+    .pipe-node {
+      flex: 1;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      text-align: center;
+    }
+    .pipe-node .pn-num {
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.2rem;
+    }
+    .pipe-node .pn-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 0.25rem;
+    }
+    .pipe-node .pn-desc {
+      font-size: 0.75rem;
+      color: #475569;
+      line-height: 1.5;
+    }
+    .pipe-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #374151;
+      font-size: 1.4rem;
+      padding: 0.2rem 0;
+    }
+
+    /* ── Three-column comparison (phase grid) ── */
+    .phase-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.7rem;
+      margin-top: 0.7rem;
+    }
+    .phase-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+    }
+    .phase-item .ph-num {
+      display: inline-block;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      margin-bottom: 0.5rem;
+    }
+    .phase-item .ph-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      margin-bottom: 0.4rem;
+    }
+    .phase-item p {
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.65;
+    }
+
+    /* ── Preference query visual ── */
+    .pref-pair {
+      display: flex;
+      gap: 0.8rem;
+      margin: 0.8rem 0;
+      align-items: stretch;
+    }
+    .pref-clip {
+      flex: 1;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      text-align: center;
+    }
+    .pref-clip .pc-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.35rem;
+    }
+    .pref-clip .pc-content {
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      font-style: italic;
+      margin-bottom: 0.5rem;
+    }
+    .pref-clip.preferred {
+      border-color: #4ade80;
+      background: #0f2a1a;
+    }
+    .pref-clip.preferred .pc-label { color: #4ade80; }
+    .pref-vs {
+      display: flex;
+      align-items: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    /* ── Algorithm steps ── */
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.75rem 0.9rem 0.75rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.85rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Modern RLHF timeline ── */
+    .timeline {
+      position: relative;
+      padding-left: 1.8rem;
+      margin-top: 0.5rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0.55rem;
+      top: 0.4rem;
+      bottom: 0.4rem;
+      width: 2px;
+      background: #2d3148;
+      border-radius: 2px;
+    }
+    .tl-item {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .tl-item::before {
+      content: '';
+      position: absolute;
+      left: -1.25rem;
+      top: 0.35rem;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #6366f1;
+      border: 2px solid #1e2130;
+    }
+    .tl-item .tl-year {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      color: #6366f1;
+      text-transform: uppercase;
+      margin-bottom: 0.1rem;
+    }
+    .tl-item .tl-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 0.15rem;
+    }
+    .tl-item .tl-desc {
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 560px) {
+      .phase-grid { grid-template-columns: 1fr; }
+      .pref-pair  { flex-direction: column; }
+      .pref-vs    { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">RLHF · Reward Learning · Human Feedback</p>
+      <h1>Deep RL from Human Preferences</h1>
+      <p>A framework for training RL agents using human preference judgements instead of hand-crafted reward functions — the origin paper of modern RLHF.</p>
+    </header>
+
+    <!-- Paper citation -->
+    <div class="paper-cite">
+      <div class="pc-title">Deep Reinforcement Learning from Human Preferences</div>
+      <div class="pc-authors">Paul Christiano, Jan Leike, Tom Brown, Miljan Martic, Shane Legg, Dario Amodei &nbsp;·&nbsp; NeurIPS 2017 &nbsp;·&nbsp; OpenAI &amp; DeepMind</div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         1. The Core Problem
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · The Core Problem</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> Why Reward Functions Are Hard</h2>
+      <ul>
+        <li>RL requires a <span class="term">reward function</span> that precisely encodes what we want the agent to do. In practice, this is extremely difficult.</li>
+        <li><strong>Hand-crafted rewards</strong> are brittle — small mis-specifications lead to unintended behaviors (<span class="term">reward hacking</span>).</li>
+        <li>For complex tasks like "do a backflip gracefully" or "write a helpful response", it is nearly impossible to write a formula that captures human intent.</li>
+        <li>The ideal signal is <strong>what humans actually prefer</strong> — but querying humans for a scalar reward at every timestep is impractical (thousands of steps per episode).</li>
+      </ul>
+      <div class="callout">
+        Key insight: Humans are much better at <strong>comparing two behaviors</strong> ("which clip is better?") than at assigning a precise numerical reward to a single behavior. This paper exploits that asymmetry.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         2. The Big Idea
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Big Idea</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> Learn the Reward, Then Optimize It</h2>
+      <ul>
+        <li>Instead of specifying a reward, <strong>learn a reward model</strong> <span class="term">r̂(s, a; ψ)</span> from human preference labels.</li>
+        <li>A human is shown pairs of short behavior clips and asked: <em>"Which one do you prefer?"</em></li>
+        <li>These preference labels train the reward model via supervised learning.</li>
+        <li>A standard RL algorithm (e.g. PPO, A2C) then optimizes a policy using the <strong>predicted rewards</strong> from the learned model.</li>
+        <li>The two processes — reward learning and policy optimization — run <strong>simultaneously and interactively</strong>.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         3. Full Pipeline
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Full Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> Three Interleaved Components</h2>
+
+      <div class="pipeline">
+        <div class="pipeline-row">
+          <div class="pipe-node">
+            <div class="pn-num">① Policy</div>
+            <div class="pn-title">RL Agent (π<sub>θ</sub>)</div>
+            <div class="pn-desc">Acts in the environment. Optimized using predicted rewards from r̂. Generates trajectory segments for human review.</div>
+          </div>
+        </div>
+        <div class="pipe-arrow">↕</div>
+        <div class="pipeline-row">
+          <div class="pipe-node">
+            <div class="pn-num">② Selector</div>
+            <div class="pn-title">Clip Selector</div>
+            <div class="pn-desc">Samples pairs of short trajectory segments (σ¹, σ²) from the agent's recent experience and sends them to the human.</div>
+          </div>
+        </div>
+        <div class="pipe-arrow">↕</div>
+        <div class="pipeline-row">
+          <div class="pipe-node">
+            <div class="pn-num">③ Human</div>
+            <div class="pn-title">Human Annotator</div>
+            <div class="pn-desc">Watches both clips and labels which segment is preferred (or marks them equal / incomparable). Labels stored in preference database 𝒟.</div>
+          </div>
+        </div>
+        <div class="pipe-arrow">↕</div>
+        <div class="pipeline-row">
+          <div class="pipe-node">
+            <div class="pn-num">④ Reward Model</div>
+            <div class="pn-title">Reward Model (r̂<sub>ψ</sub>)</div>
+            <div class="pn-desc">Trained on 𝒟 to predict which segment a human would prefer. Outputs per-step reward estimates used by the RL agent.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:0.8rem">
+        The loop is <strong>asynchronous and online</strong>: as the agent improves, new clips are generated from its better behavior, which then refine the reward model further.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         4. Human Preference Queries
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Human Preference Queries</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">👁️</span> What the Human Sees</h2>
+      <ul>
+        <li>A <span class="term">trajectory segment</span> σ = (s<sub>1</sub>, a<sub>1</sub>, s<sub>2</sub>, a<sub>2</sub>, …, s<sub>k</sub>) is a short clip of ~25 timesteps of the agent's behavior.</li>
+        <li>The human watches two clips side-by-side and picks the one that better achieves the intended goal.</li>
+      </ul>
+
+      <div class="pref-pair">
+        <div class="pref-clip">
+          <div class="pc-label">Segment σ¹</div>
+          <div class="pc-content">Agent stumbles and falls trying to walk</div>
+        </div>
+        <div class="pref-vs">vs</div>
+        <div class="pref-clip preferred">
+          <div class="pc-label">Segment σ² ✓ preferred</div>
+          <div class="pc-content">Agent walks smoothly forward</div>
+        </div>
+      </div>
+
+      <ul>
+        <li>The label is stored as a tuple <span class="term">(σ¹, σ², μ)</span> where μ is a distribution over {1, 2, tie, incomparable}.</li>
+        <li>Only <strong>~1,400 preference labels</strong> were needed to teach MuJoCo agents complex locomotion — far fewer than environment reward signals.</li>
+        <li>Labels can come from a human, a synthetic oracle, or a preference model (as in modern RLHF).</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         5. Reward Model Training
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Reward Model Training</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏋️</span> Learning r̂ from Preferences</h2>
+      <ul>
+        <li>The reward model <span class="term">r̂(s, a; ψ)</span> is a neural network that assigns a scalar reward to each <span class="term">(s, a)</span> pair.</li>
+        <li>Training objective: given a preference label (σ¹ ≻ σ²), maximize the probability that the model assigns higher cumulative reward to σ¹.</li>
+      </ul>
+
+      <div class="formula-block">
+        <div class="formula-label">Preference Probability (Bradley-Terry Model)</div>
+        <div class="formula-main">P̂[σ¹ ≻ σ²] = exp(Σ<sub>t</sub> r̂(s¹<sub>t</sub>, a¹<sub>t</sub>)) / ( exp(Σ<sub>t</sub> r̂(s¹<sub>t</sub>, a¹<sub>t</sub>)) + exp(Σ<sub>t</sub> r̂(s²<sub>t</sub>, a²<sub>t</sub>)) )</div>
+        <div class="formula-legend">
+          Models the segment with higher total predicted reward as the preferred one.<br/>
+          This is a <strong>softmax over summed rewards</strong> of the two segments.
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="formula-label">Reward Model Loss (Cross-Entropy)</div>
+        <div class="formula-main">L(ψ) = − E<sub>(σ¹,σ²,μ)∈𝒟</sub> [ μ(1)·log P̂[σ¹≻σ²] + μ(2)·log P̂[σ²≻σ¹] ]</div>
+        <div class="formula-legend">
+          <span>μ(1)</span> — label weight for σ¹ being preferred (0 or 1 for hard labels, 0.5 for ties)<br/>
+          <span>𝒟</span> — database of all collected human preference labels<br/>
+          Standard cross-entropy loss, just like binary classification.
+        </div>
+      </div>
+
+      <ul>
+        <li>An <strong>ensemble of reward models</strong> is trained. Variance across the ensemble can be used to <span class="term">query the most informative clips</span> — active learning.</li>
+        <li>The reward model is <strong>normalized</strong> (zero mean, unit variance) to prevent scale from dominating policy updates.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         6. Policy Optimization
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Policy Optimization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Training the Agent with r̂</h2>
+      <ul>
+        <li>The RL agent receives <span class="term">r̂(s<sub>t</sub>, a<sub>t</sub>; ψ)</span> as its reward signal instead of the environment's true reward.</li>
+        <li>Any standard on-policy algorithm can be used — the paper uses <span class="term">A2C</span> (Advantage Actor-Critic).</li>
+        <li>The policy is optimized to maximize the <strong>cumulative predicted reward</strong>.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Policy Objective</div>
+        <div class="formula-main">J(θ) = E<sub>π<sub>θ</sub></sub>[ Σ<sub>t</sub> γ<sup>t</sup> · r̂(s<sub>t</sub>, a<sub>t</sub>; ψ) ]</div>
+        <div class="formula-legend">
+          Identical to standard RL objective — except the reward comes from the learned model, not the environment.
+        </div>
+      </div>
+      <div class="callout">
+        The agent <strong>never sees the true environment reward</strong> during training — only the predicted reward from the human-trained model. Yet it achieves competitive performance because r̂ learns to approximate what humans care about.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         7. Three-Phase Training
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Three Training Phases</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> How Training Proceeds</h2>
+      <div class="phase-grid">
+        <div class="phase-item">
+          <span class="ph-num">Phase 1</span>
+          <div class="ph-title">Pre-training (optional)</div>
+          <p>Agent pre-trains briefly with true rewards (or random) to generate non-trivial clips. Ensures early human queries aren't completely uninformative.</p>
+        </div>
+        <div class="phase-item">
+          <span class="ph-num">Phase 2</span>
+          <div class="ph-title">Reward Model Bootstrap</div>
+          <p>~400 human labels collected on pre-training clips. Initial reward model r̂ trained. RL training begins using r̂ rewards.</p>
+        </div>
+        <div class="phase-item">
+          <span class="ph-num">Phase 3</span>
+          <div class="ph-title">Online Interleaved Loop</div>
+          <p>New clips generated from improving policy. ~900 more labels collected. r̂ is continuously retrained. Policy keeps optimizing against updated r̂.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         8. Full Algorithm
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Full Algorithm</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> Step-by-Step</h2>
+      <ol class="algo-steps">
+        <li>Initialize policy <span class="term">π<sub>θ</sub></span>, reward model ensemble <span class="term">{r̂<sub>ψ</sub>}</span>, and empty preference database <span class="term">𝒟</span>.</li>
+        <li>Run policy in the environment for a warmup period (random or pre-trained) to collect initial trajectory segments.</li>
+        <li>Sample pairs of segments <span class="term">(σ¹, σ²)</span> and show them to a human annotator. Store label <span class="term">(σ¹, σ², μ)</span> in <span class="term">𝒟</span>.</li>
+        <li>Train reward model ensemble on <span class="term">𝒟</span> using cross-entropy loss over Bradley-Terry preference probabilities.</li>
+        <li>Normalize the reward model outputs (zero mean, unit variance over recent transitions).</li>
+        <li>Run RL (A2C/PPO) with reward <span class="term">r̂(s<sub>t</sub>, a<sub>t</sub>)</span> to improve policy <span class="term">π<sub>θ</sub></span>.</li>
+        <li>Periodically select new trajectory pairs from the improved policy — prioritize pairs where ensemble members <strong>disagree most</strong> (active learning).</li>
+        <li>Collect more human labels for these pairs. Add to <span class="term">𝒟</span>. Retrain reward model.</li>
+        <li>Repeat steps 6–8 until policy converges.</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         9. Active Learning for Query Selection
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Active Learning — Smart Query Selection</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔍</span> Choosing Which Clips to Show</h2>
+      <ul>
+        <li>Human labeling time is expensive — we want each query to be as informative as possible.</li>
+        <li>The reward model <strong>ensemble</strong> (multiple independently trained models) provides a measure of uncertainty.</li>
+        <li>Clip pairs where ensemble members <strong>disagree most</strong> on which is better are the most informative to query.</li>
+        <li>This is a form of <span class="term">uncertainty sampling</span> from active learning.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Query Selection Criterion</div>
+        <div class="formula-main">Select (σ¹, σ²) maximizing Var<sub>i</sub>[ P̂<sub>i</sub>[σ¹ ≻ σ²] ]</div>
+        <div class="formula-legend">
+          <span>P̂<sub>i</sub></span> — preference probability predicted by reward model i in ensemble<br/>
+          High variance → models disagree → label is most informative
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         10. Key Results
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Key Results</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> What the Paper Demonstrated</h2>
+      <table>
+        <thead>
+          <tr><th>Task</th><th>Labels needed</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>MuJoCo Hopper (locomotion)</td><td>~1,400</td><td>Matches performance of true-reward RL</td></tr>
+          <tr><td>MuJoCo Backflip</td><td>~900</td><td>Learned from scratch with 0 env reward</td></tr>
+          <tr><td>Atari games (7 games)</td><td>~5,500</td><td>Exceeds average human score on 4/7</td></tr>
+          <tr><td>Atari (synthetic oracle)</td><td>~350</td><td>Near-optimal with very few labels</td></tr>
+        </tbody>
+      </table>
+      <div class="callout" style="margin-top:0.9rem">
+        The backflip result was particularly striking: the true reward function for "do a backflip" is extremely hard to write by hand. With ~900 human preference labels, the agent learned it from scratch.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         11. Reward Hacking & Limitations
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Reward Hacking &amp; Limitations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> Failure Modes</h2>
+      <ul>
+        <li><span class="term">Reward model overfitting</span> — if the reward model is wrong in a region the policy then exploits, behavior degrades. The agent optimizes for r̂, not the true goal.</li>
+        <li><span class="term">Distribution shift</span> — the reward model was trained on clips from an earlier, worse policy. As the policy improves, clips may go out-of-distribution.</li>
+        <li><span class="term">Human inconsistency</span> — labelers may be noisy, biased, or inconsistent, injecting errors into the reward model.</li>
+        <li><span class="term">Clip length sensitivity</span> — preferences on short 25-step clips may not reflect preferences over full episodes.</li>
+        <li><span class="term">Scalability</span> — in this paper, ~1,400 human labels for one task. This grows with task complexity.</li>
+      </ul>
+      <div class="callout">
+        These limitations motivated subsequent work: <strong>Constitutional AI</strong> (replacing human labels with AI feedback), <strong>DPO</strong> (bypassing the reward model entirely), and <strong>iterated reward modeling</strong>.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         12. Pros & Cons
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Pros &amp; Cons</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Strengths &amp; Limitations</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul style="margin-top:0.4rem">
+            <li>No hand-crafted reward function needed</li>
+            <li>Very few labels required (~hundreds to thousands)</li>
+            <li>Works on tasks where reward is hard to specify</li>
+            <li>Active learning minimizes human burden</li>
+            <li>Framework is algorithm-agnostic (any RL algo)</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul style="margin-top:0.4rem">
+            <li>Reward model can be exploited (reward hacking)</li>
+            <li>Human labels are noisy and inconsistent</li>
+            <li>Distribution shift as policy improves</li>
+            <li>Still requires real human time</li>
+            <li>Hard to scale to very long-horizon tasks</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         13. Modern RLHF — Timeline
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Modern RLHF — From Paper to ChatGPT</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> How This Paper Became the Foundation of LLM Alignment</h2>
+
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-year">2017</div>
+          <div class="tl-title">Christiano et al. — This Paper</div>
+          <div class="tl-desc">Demonstrated RLHF on MuJoCo locomotion and Atari with a small number of human preference labels.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2019–2020</div>
+          <div class="tl-title">OpenAI — Fine-Tuning Language Models</div>
+          <div class="tl-desc">Steerability paper applies RLHF to GPT-2 fine-tuning for summarization and instruction following.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2022</div>
+          <div class="tl-title">InstructGPT (Ouyang et al.)</div>
+          <div class="tl-desc">Full 3-step RLHF pipeline (SFT → Reward Model → PPO) applied to GPT-3. Human labelers prefer InstructGPT outputs over GPT-3 175B despite being 100× smaller.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2022</div>
+          <div class="tl-title">ChatGPT</div>
+          <div class="tl-desc">InstructGPT technique applied at scale. Same 3-step RLHF pipeline. Became the most-adopted AI product in history.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-year">2023–present</div>
+          <div class="tl-title">DPO, GRPO, Constitutional AI</div>
+          <div class="tl-desc">Alternatives and extensions: DPO eliminates the reward model, GRPO eliminates the critic, RLAIF replaces human labels with AI feedback.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         14. Modern RLHF Pipeline (LLMs)
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Modern RLHF Pipeline for LLMs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💬</span> Three-Step LLM Alignment Process</h2>
+      <ol class="algo-steps">
+        <li><strong>Supervised Fine-Tuning (SFT):</strong> Fine-tune the base LLM on high-quality human-written demonstrations of desired behavior. This creates the initial aligned model.</li>
+        <li><strong>Reward Model Training:</strong> Sample pairs of model outputs for the same prompt. Human labelers pick the preferred output. Train a reward model (RM) on these preference pairs using the same Bradley-Terry cross-entropy loss from the original paper.</li>
+        <li><strong>PPO Fine-Tuning:</strong> Further fine-tune the SFT model using PPO, with the RM providing reward signals. A <span class="term">KL penalty</span> is added to prevent the policy from deviating too far from the SFT model: <code>r = r̂(x,y) − β · KL[π<sub>RL</sub> ‖ π<sub>SFT</sub>]</code>.</li>
+      </ol>
+      <div class="callout">
+        The KL penalty against the SFT model is critical — without it, PPO rapidly collapses the policy to output degenerate text that maximally exploits the reward model (reward hacking).
+      </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer>
+      <p>Updated March 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RL Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InstructGPT — Training LMs to Follow Instructions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #475569;
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Paper citation ── */
+    .paper-cite {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-left: 3px solid #6366f1;
+      border-radius: 0 8px 8px 0;
+      padding: 0.9rem 1.1rem;
+      margin: 0.8rem 0 0;
+      font-size: 0.85rem;
+    }
+    .paper-cite .pc-title  { color: #c7d2fe; font-weight: 700; margin-bottom: 0.2rem; }
+    .paper-cite .pc-authors { color: #64748b; font-size: 0.78rem; }
+
+    /* ── Formula block ── */
+    .formula-block {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1.2rem 1.5rem;
+      margin: 0.8rem 0;
+    }
+    .formula-block .formula-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+    }
+    .formula-block .formula-main {
+      font-size: 0.98rem;
+      color: #c7d2fe;
+      font-family: 'Courier New', monospace;
+      text-align: center;
+      line-height: 2.2;
+    }
+    .formula-block .formula-legend {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 2;
+    }
+    .formula-block .formula-legend span {
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Three-step pipeline ── */
+    .pipeline-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #2d3148;
+      margin: 0.9rem 0;
+    }
+    .pipe3-step {
+      padding: 1rem 1.1rem;
+      border-right: 1px solid #2d3148;
+      position: relative;
+    }
+    .pipe3-step:last-child { border-right: none; }
+    .pipe3-step .ps-num {
+      display: inline-block;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.05em;
+    }
+    .pipe3-step .ps-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 0.3rem;
+    }
+    .pipe3-step .ps-sub {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.4rem;
+    }
+    .pipe3-step p {
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.6;
+    }
+    .pipe3-step.s1 { background: #151a2e; }
+    .pipe3-step.s2 { background: #15231a; }
+    .pipe3-step.s3 { background: #1f1528; }
+    .pipe3-step.s1 .ps-sub { color: #60a5fa; }
+    .pipe3-step.s2 .ps-sub { color: #4ade80; }
+    .pipe3-step.s3 .ps-sub { color: #c084fc; }
+    .pipe3-step.s1 .ps-num { background: #1d4ed8; }
+    .pipe3-step.s2 .ps-num { background: #15803d; }
+    .pipe3-step.s3 .ps-num { background: #7c3aed; }
+
+    /* ── Algorithm steps ── */
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.75rem 0.9rem 0.75rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.85rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Labeler task examples ── */
+    .example-box {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin: 0.5rem 0;
+      font-size: 0.85rem;
+    }
+    .example-box .ex-role {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+    .example-box .ex-role.user    { color: #60a5fa; }
+    .example-box .ex-role.base    { color: #f87171; }
+    .example-box .ex-role.aligned { color: #4ade80; }
+    .example-box .ex-text { color: #cbd5e1; line-height: 1.6; }
+
+    /* ── Comparison pair ── */
+    .compare-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.7rem;
+      margin: 0.7rem 0;
+    }
+    .cmp-box {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+    }
+    .cmp-box .cmp-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+    .cmp-box.bad  { border-color: #f87171; background: #2a1515; }
+    .cmp-box.good { border-color: #4ade80; background: #0f2a1a; }
+    .cmp-box.bad  .cmp-label { color: #f87171; }
+    .cmp-box.good .cmp-label { color: #4ade80; }
+    .cmp-box p { font-size: 0.82rem; color: #94a3b8; line-height: 1.6; font-style: italic; }
+
+    /* ── Dataset stats grid ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.7rem;
+      margin-top: 0.6rem;
+    }
+    .stat-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      text-align: center;
+    }
+    .stat-item .si-num {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #a5b4fc;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .stat-item .si-label {
+      font-size: 0.72rem;
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    /* ── Reward formula highlight ── */
+    .reward-formula-box {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-left: 3px solid #c084fc;
+      border-radius: 0 10px 10px 0;
+      padding: 1rem 1.2rem;
+      margin: 0.8rem 0;
+    }
+    .reward-formula-box .rf-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #c084fc;
+      margin-bottom: 0.5rem;
+    }
+    .reward-formula-box .rf-main {
+      font-family: 'Courier New', monospace;
+      font-size: 0.95rem;
+      color: #c7d2fe;
+      line-height: 2;
+    }
+    .reward-formula-box .rf-legend {
+      margin-top: 0.6rem;
+      font-size: 0.79rem;
+      color: #64748b;
+      line-height: 1.9;
+    }
+    .reward-formula-box .rf-legend span { color: #a5b4fc; font-family: 'Courier New', monospace; }
+
+    @media (max-width: 600px) {
+      .pipeline-3   { grid-template-columns: 1fr; }
+      .compare-pair { grid-template-columns: 1fr; }
+      .pipe3-step   { border-right: none; border-bottom: 1px solid #2d3148; }
+      .pipe3-step:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">LLM Alignment · RLHF · Instruction Following</p>
+      <h1>Training Language Models to Follow Instructions with Human Feedback</h1>
+      <p>The paper that created ChatGPT-style models — applying a 3-step RLHF pipeline (SFT → Reward Model → PPO) to align GPT-3 with human intent. The resulting model (InstructGPT) is preferred over GPT-3 175B despite being 100× smaller.</p>
+    </header>
+
+    <div class="paper-cite">
+      <div class="pc-title">Training language models to follow instructions with human feedback (InstructGPT)</div>
+      <div class="pc-authors">Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welinder, Paul Christiano, Jan Leike, Ryan Lowe &nbsp;·&nbsp; NeurIPS 2022 &nbsp;·&nbsp; OpenAI</div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         1. The Problem with Base LLMs
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · The Problem with Base Language Models</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> Why GPT-3 Isn't Helpful by Default</h2>
+      <ul>
+        <li>Base LLMs like GPT-3 are trained on a <span class="term">next-token prediction</span> objective — they learn to predict what text comes next on the internet, not to be helpful, honest, or harmless.</li>
+        <li>The training objective is fundamentally <strong>misaligned</strong> with what users actually want.</li>
+        <li>Base GPT-3 is prone to: ignoring instructions, making up facts, generating toxic content, and producing verbose but unhelpful outputs.</li>
+      </ul>
+
+      <div class="compare-pair">
+        <div class="cmp-box bad">
+          <div class="cmp-label">GPT-3 base (unaligned)</div>
+          <p>"Explain the moon landing." → Continues with more questions, irrelevant trivia, or a different topic entirely — it's continuing text, not answering.</p>
+        </div>
+        <div class="cmp-box good">
+          <div class="cmp-label">InstructGPT (aligned) ✓</div>
+          <p>"Explain the moon landing." → Gives a direct, clear, well-structured explanation of the Apollo 11 mission, addressing what the user actually wanted.</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        The core thesis: making LLMs <strong>"aligned"</strong> means making their behavior match human intent — being helpful, honest, and avoiding harm. This requires a different training signal than next-token prediction.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         2. The Three-Step Pipeline
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Three-Step RLHF Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> Overview of InstructGPT Training</h2>
+
+      <div class="pipeline-3">
+        <div class="pipe3-step s1">
+          <span class="ps-num">Step 1</span>
+          <div class="ps-sub">SFT</div>
+          <div class="ps-title">Supervised Fine-Tuning</div>
+          <p>Fine-tune GPT-3 on ~13K high-quality human-written demonstrations of ideal responses to diverse prompts.</p>
+        </div>
+        <div class="pipe3-step s2">
+          <span class="ps-num">Step 2</span>
+          <div class="ps-sub">RM</div>
+          <div class="ps-title">Reward Model Training</div>
+          <p>Collect ~33K human preference rankings of model outputs. Train a reward model to predict which output humans prefer.</p>
+        </div>
+        <div class="pipe3-step s3">
+          <span class="ps-num">Step 3</span>
+          <div class="ps-sub">PPO-ptx</div>
+          <div class="ps-title">RL Fine-Tuning</div>
+          <p>Use PPO to optimize the SFT model against the reward model, with a KL penalty to prevent it straying too far from the SFT baseline.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         3. Dataset Collection
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Dataset Collection</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> Three Datasets Built by Human Labelers</h2>
+      <ul>
+        <li>Labelers were primarily <strong>contractors</strong> — not OpenAI employees — selected for their sensitivity to diverse human values and good writing quality.</li>
+        <li>Prompts were sourced from real OpenAI API users (anonymized and filtered) plus labeler-written prompts to cover specific task types.</li>
+      </ul>
+
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="si-num">13K</span>
+          <div class="si-label">SFT demonstration prompts with human-written responses</div>
+        </div>
+        <div class="stat-item">
+          <span class="si-num">33K</span>
+          <div class="si-label">RM prompts with 4–9 ranked model outputs each</div>
+        </div>
+        <div class="stat-item">
+          <span class="si-num">31K</span>
+          <div class="si-label">PPO prompts (no human labels — used with RM reward)</div>
+        </div>
+        <div class="stat-item">
+          <span class="si-num">~40</span>
+          <div class="si-label">Human labelers contracted for the project</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:0.9rem">
+        The prompt dataset covered a diverse range of tasks: <strong>generation, Q&amp;A, summarization, brainstorming, classification, extraction, closed-QA, open-QA, chat, rewriting, and code</strong>.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         4. Step 1 — SFT
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Step 1 — Supervised Fine-Tuning (SFT)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✍️</span> Teaching the Model to Be a Good Assistant</h2>
+      <ul>
+        <li>Labelers write <strong>ideal responses</strong> to a sampled prompt — demonstrating what a helpful, honest, and harmless reply looks like.</li>
+        <li>GPT-3 is fine-tuned on these <span class="term">(prompt, demonstration)</span> pairs using standard supervised next-token prediction loss.</li>
+        <li>Training: 16 epochs, cosine LR decay, residual dropout 0.2. Model checkpointed by RM score on validation set.</li>
+        <li>The SFT model becomes the <strong>starting point</strong> for both reward model training and PPO fine-tuning.</li>
+      </ul>
+
+      <div class="example-box">
+        <div class="ex-role user">Prompt (from API user)</div>
+        <div class="ex-text">"Explain the concept of overfitting in machine learning to a 10-year-old."</div>
+      </div>
+      <div class="example-box">
+        <div class="ex-role aligned">Labeler-written ideal response</div>
+        <div class="ex-text">"Imagine you're studying for a spelling test by memorizing only the exact words from last year's test. You do great on those words, but when the teacher gives you new words, you fail — because you memorized instead of learning the pattern. That's overfitting: a model learns the training data too perfectly and can't handle new examples."</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         5. Step 2 — Reward Model
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Step 2 — Reward Model Training</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏆</span> Learning to Score Outputs Like a Human</h2>
+      <ul>
+        <li>For each prompt, the SFT model generates <strong>4–9 output responses</strong>. Labelers rank all of them from best to worst.</li>
+        <li>Each ranking is decomposed into <span class="term">K choose 2</span> pairwise comparisons (e.g. 4 outputs → 6 pairs).</li>
+        <li>A <strong>reward model</strong> — initialized from the 6B SFT model with a scalar head replacing the final unembedding layer — is trained to predict which output is preferred.</li>
+      </ul>
+
+      <div class="formula-block">
+        <div class="formula-label">Reward Model Loss (Pairwise Ranking)</div>
+        <div class="formula-main">L(ψ) = − 1/(K choose 2) · E<sub>(x,y<sub>w</sub>,y<sub>l</sub>)∈𝒟</sub> [ log σ( r<sub>ψ</sub>(x, y<sub>w</sub>) − r<sub>ψ</sub>(x, y<sub>l</sub>) ) ]</div>
+        <div class="formula-legend">
+          <span>x</span> — prompt<br/>
+          <span>y<sub>w</sub></span> — the preferred (winning) response<br/>
+          <span>y<sub>l</sub></span> — the less-preferred (losing) response<br/>
+          <span>r<sub>ψ</sub>(x, y)</span> — scalar reward score from the reward model<br/>
+          <span>σ</span> — sigmoid function<br/>
+          Maximizes the gap between preferred and dispreferred scores.
+        </div>
+      </div>
+
+      <ul>
+        <li>Using K outputs per prompt and all pairwise comparisons is much more <strong>label-efficient</strong> than collecting one comparison per prompt.</li>
+        <li>The 6B parameter RM (not 175B) was found to be more stable and avoid overfitting with the available labels.</li>
+      </ul>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         6. Step 3 — PPO Fine-Tuning
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Step 3 — PPO Fine-Tuning (PPO-ptx)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Optimizing the Policy Against the Reward Model</h2>
+      <ul>
+        <li>The SFT model (now the RL <span class="term">policy π<sub>θ</sub></span>) is further fine-tuned using <strong>PPO</strong>.</li>
+        <li>For each prompt, the policy generates a response. The reward model scores it. PPO updates θ to increase the probability of high-scoring responses.</li>
+        <li>A critical <span class="term">KL penalty</span> term prevents the PPO model from diverging too far from the SFT baseline — preventing reward hacking and mode collapse.</li>
+        <li>A <span class="term">pretraining term</span> (ptx) is added to preserve GPT-3's general capabilities — the "alignment tax" problem.</li>
+      </ul>
+
+      <div class="reward-formula-box">
+        <div class="rf-label">Full PPO-ptx Reward / Objective</div>
+        <div class="rf-main">
+          r(x, y) = r<sub>ψ</sub>(x, y) − β · log [ π<sub>θ</sub>(y|x) / π<sub>SFT</sub>(y|x) ]
+        </div>
+        <div class="rf-legend">
+          <span>r<sub>ψ</sub>(x, y)</span> — score from the reward model (higher = more preferred)<br/>
+          <span>β · KL[ π<sub>θ</sub> ‖ π<sub>SFT</sub> ]</span> — penalty for deviating from SFT model (β ≈ 0.02)<br/>
+          <span>π<sub>SFT</sub></span> — the frozen SFT model used as reference<br/>
+          KL term prevents <strong>reward hacking</strong> — policy can't exploit weaknesses in r<sub>ψ</sub> without being penalized
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="formula-label">Final Training Objective (PPO-ptx)</div>
+        <div class="formula-main">L(θ) = E<sub>(x,y)~π<sub>θ</sub></sub>[ r(x,y) ] + γ · E<sub>x~𝒟<sub>pretrain</sub></sub>[ log π<sub>θ</sub>(x) ]</div>
+        <div class="formula-legend">
+          <span>γ · E[ log π<sub>θ</sub>(x) ]</span> — pretraining loss on original GPT-3 data (preserves general capabilities)<br/>
+          <span>γ</span> — pretraining weight (typically very small, e.g. 27.8)<br/>
+          The "ptx" suffix denotes this additional pretraining gradient mix-in.
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         7. Full Training Pipeline
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Full Training Algorithm</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Step-by-Step</h2>
+      <ol class="algo-steps">
+        <li>Sample a diverse set of prompts from the OpenAI API prompt distribution. Have human labelers write ideal responses. Fine-tune GPT-3 on these <span class="term">(prompt, response)</span> pairs → <span class="term">SFT model</span>.</li>
+        <li>Sample more prompts. For each, generate 4–9 responses from the SFT model. Have labelers rank all responses from best to worst.</li>
+        <li>Decompose each set of K rankings into all <span class="term">K(K-1)/2</span> pairwise comparisons. Train <span class="term">reward model r<sub>ψ</sub></span> (6B params) on these pairs using the ranking loss.</li>
+        <li>Initialize the PPO policy <span class="term">π<sub>θ</sub></span> from the SFT model. Freeze the SFT model as the KL reference <span class="term">π<sub>SFT</sub></span>.</li>
+        <li>For each PPO iteration: sample a prompt from the PPO dataset, generate a response with <span class="term">π<sub>θ</sub></span>, score it with <span class="term">r<sub>ψ</sub></span>, compute the full reward <span class="term">r = r<sub>ψ</sub> − β·KL</span>.</li>
+        <li>Update <span class="term">π<sub>θ</sub></span> with PPO gradient ascent on the full reward plus the pretraining mix-in loss.</li>
+        <li>Repeat steps 5–6 for the full PPO training budget. The final model is <span class="term">InstructGPT</span>.</li>
+      </ol>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         8. Labeler Guidelines — The 3 H's
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Labeler Guidelines — The 3 H's</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> What Labelers Were Instructed to Optimize For</h2>
+
+      <div class="innovation-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.8rem;margin-top:0.6rem;">
+        <div style="background:#151823;border:1px solid #2d3148;border-radius:8px;padding:0.9rem 1rem;">
+          <div style="font-size:0.82rem;font-weight:700;color:#60a5fa;margin-bottom:0.4rem;">🤝 Helpful</div>
+          <p style="font-size:0.8rem;color:#64748b;line-height:1.6">Follow the user's explicit instructions. Infer intent when ambiguous. Be concise, direct, and actually answer the question. Avoid unnecessary caveats or padding.</p>
+        </div>
+        <div style="background:#151823;border:1px solid #2d3148;border-radius:8px;padding:0.9rem 1rem;">
+          <div style="font-size:0.82rem;font-weight:700;color:#4ade80;margin-bottom:0.4rem;">✅ Honest</div>
+          <p style="font-size:0.8rem;color:#64748b;line-height:1.6">Don't fabricate facts or make up citations. Express appropriate uncertainty. Don't say what you think the user wants to hear if it's not true.</p>
+        </div>
+        <div style="background:#151823;border:1px solid #2d3148;border-radius:8px;padding:0.9rem 1rem;">
+          <div style="font-size:0.82rem;font-weight:700;color:#fb923c;margin-bottom:0.4rem;">🛡️ Harmless</div>
+          <p style="font-size:0.8rem;color:#64748b;line-height:1.6">Avoid generating content that is racist, sexist, toxic, or dangerous. Decline requests that would cause real-world harm.</p>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:0.9rem">
+        Helpfulness was ranked first — an <strong>overly cautious</strong> model that refuses too many requests is also considered misaligned. The goal is genuine usefulness, not just safety-washing.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         9. Key Results
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Key Results</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> How InstructGPT Performed</h2>
+      <table>
+        <thead>
+          <tr><th>Comparison</th><th>Finding</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>InstructGPT 1.3B vs GPT-3 175B</td>
+            <td>Labelers <strong>prefer InstructGPT outputs 85% of the time</strong> — despite being 100× smaller in parameters</td>
+          </tr>
+          <tr>
+            <td>Truthfulness (TruthfulQA)</td>
+            <td>InstructGPT is <strong>2× more truthful</strong> than GPT-3 on TruthfulQA benchmark</td>
+          </tr>
+          <tr>
+            <td>Toxicity (RealToxicityPrompts)</td>
+            <td>~25% less toxic output compared to GPT-3 on toxic prompts</td>
+          </tr>
+          <tr>
+            <td>Instruction following</td>
+            <td>Significantly better at following explicit constraints in the prompt (e.g. "answer in 3 bullet points")</td>
+          </tr>
+          <tr>
+            <td>Alignment tax</td>
+            <td>Small regression on some NLP benchmarks (SQuAD, HellaSwag) vs GPT-3 — partially mitigated by the pretraining mix-in</td>
+          </tr>
+          <tr>
+            <td>Hallucination</td>
+            <td>Less likely to make up plausible-sounding but false facts compared to GPT-3</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         10. The Alignment Tax
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · The Alignment Tax</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💸</span> Capability Regression from Alignment</h2>
+      <ul>
+        <li>Fine-tuning with RLHF can cause a model to <strong>forget general capabilities</strong> it had after pretraining — known as the <span class="term">alignment tax</span>.</li>
+        <li>InstructGPT showed small but measurable regression on public NLP benchmarks like SQuAD, HellaSwag, and WMT translation tasks.</li>
+        <li>The <span class="term">PPO-ptx</span> fix — mixing in gradients from the original pretraining data — substantially reduced this regression.</li>
+        <li>This tension between alignment and capability is an open research problem, relevant to all subsequent fine-tuned models.</li>
+      </ul>
+      <div class="callout">
+        The alignment tax motivated continued research into techniques like <strong>DPO</strong> (Direct Preference Optimization) which avoids PPO entirely and shows less capability regression in some settings.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         11. Limitations & Failure Modes
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Limitations &amp; Failure Modes</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> What InstructGPT Still Gets Wrong</h2>
+      <div class="reward-grid">
+        <div class="reward-item bad">
+          <div class="label">Remaining Issues</div>
+          <ul style="margin-top:0.4rem">
+            <li>Still hallucinates facts confidently</li>
+            <li>Gives long answers when short ones are better</li>
+            <li>Assumes false premises in questions</li>
+            <li>Sensitive to prompt wording</li>
+            <li>Can fail on complex reasoning chains</li>
+            <li>Reflects labeler demographic biases</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Systemic Concerns</div>
+          <ul style="margin-top:0.4rem">
+            <li>Labeler values ≠ all of humanity</li>
+            <li>Reward model can be gamed (reward hacking)</li>
+            <li>Model "aligned" to labeler preferences, not ground truth</li>
+            <li>May be overly cautious, refusing benign requests</li>
+            <li>Alignment doesn't transfer across languages well</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         12. Comparison: SFT vs RM vs PPO
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Step Ablation — What Each Phase Contributes</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> How Each Training Step Helps</h2>
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Labeler Preference</th><th>Key Benefit</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GPT-3 (base)</td>
+            <td>Baseline</td>
+            <td>General language understanding</td>
+          </tr>
+          <tr>
+            <td>GPT-3 + prompt</td>
+            <td>Slightly better</td>
+            <td>Few-shot instruction following via context</td>
+          </tr>
+          <tr>
+            <td>SFT only</td>
+            <td>Much better than GPT-3</td>
+            <td>Teaches assistant-style format and tone</td>
+          </tr>
+          <tr>
+            <td>SFT + RM (no PPO)</td>
+            <td>Better than SFT</td>
+            <td>RM identifies which SFT outputs were good</td>
+          </tr>
+          <tr>
+            <td>Full InstructGPT (PPO-ptx)</td>
+            <td><strong>Best overall</strong></td>
+            <td>Actively optimizes toward human preference signal</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         13. vs Christiano et al. 2017
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · InstructGPT vs Christiano et al. 2017</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> How InstructGPT Extends the Original RLHF Paper</h2>
+      <table>
+        <thead>
+          <tr><th></th><th>Christiano et al. (2017)</th><th>InstructGPT (2022)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Domain</td><td>Games &amp; locomotion (Atari, MuJoCo)</td><td>Language generation (LLMs)</td></tr>
+          <tr><td>Policy</td><td>Neural network agent</td><td>GPT-3 language model</td></tr>
+          <tr><td>Feedback type</td><td>Pairwise clip comparisons</td><td>Ranked model outputs (4–9 per prompt)</td></tr>
+          <tr><td>SFT phase</td><td>Not included</td><td>Critical first step</td></tr>
+          <tr><td>Reward model size</td><td>Small MLP</td><td>6B parameter transformer</td></tr>
+          <tr><td>KL penalty</td><td>Not used</td><td>Essential (PPO-ptx)</td></tr>
+          <tr><td>Pretraining mix-in</td><td>Not applicable</td><td>Used to prevent alignment tax</td></tr>
+          <tr><td>Active learning</td><td>Ensemble disagreement</td><td>Not used (fixed prompt distribution)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         14. Legacy & What Came Next
+    ══════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Legacy &amp; What Came Next</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌍</span> Impact on AI Development</h2>
+      <ul>
+        <li><span class="term">ChatGPT (Nov 2022)</span> — same 3-step pipeline applied to GPT-3.5. Became the fastest-growing consumer product in history.</li>
+        <li><span class="term">GPT-4 (Mar 2023)</span> — same RLHF methodology at larger scale with additional safety work.</li>
+        <li><span class="term">Claude (Anthropic, 2023)</span> — extends RLHF with <strong>Constitutional AI (CAI)</strong>, replacing human labels with AI-generated critiques based on a written constitution.</li>
+        <li><span class="term">Llama 2-Chat, Mistral Instruct</span> — open-source models using the same SFT+RLHF pipeline.</li>
+        <li><span class="term">DPO (2023)</span> — Direct Preference Optimization eliminates the reward model entirely, deriving the optimal policy directly from preference data with a simpler loss function.</li>
+        <li><span class="term">GRPO (2024)</span> — Group Relative Policy Optimization removes the critic network, using group-normalized rewards. Used to train DeepSeek-R1.</li>
+      </ul>
+      <div class="callout">
+        Every major instruction-following AI assistant deployed today — ChatGPT, Claude, Gemini, Llama-chat — traces its alignment methodology directly back to this paper.
+      </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer>
+      <p>Updated March 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RL Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
