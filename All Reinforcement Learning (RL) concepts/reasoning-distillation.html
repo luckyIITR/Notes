@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reasoning Distillation — Reinforcement Learning</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula block ── */
+    .formula-block { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.5rem; margin: 0.8rem 0; }
+    .formula-block .formula-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.5rem; }
+    .formula-block .formula-main { font-size: 1rem; color: #c7d2fe; font-family: 'Courier New', monospace; text-align: center; line-height: 2.2; }
+    .formula-block .formula-legend { margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; line-height: 2; }
+    .formula-block .formula-legend span { color: #a5b4fc; font-family: 'Courier New', monospace; }
+
+    /* ── algo steps ── */
+    .algo-steps { list-style: none; padding: 0; counter-reset: step-counter; }
+    .algo-steps li { counter-increment: step-counter; position: relative; padding: 0.75rem 0.9rem 0.75rem 3rem; margin-bottom: 0.5rem; background: #151823; border: 1px solid #2d3148; border-radius: 8px; color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; }
+    .algo-steps li::before { content: counter(step-counter); position: absolute; left: 0.9rem; top: 0.85rem; background: #6366f1; color: #fff; font-size: 0.72rem; font-weight: 800; width: 1.4rem; height: 1.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+    /* ── pipeline diagram ── */
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 0.6rem; margin: 1rem 0; }
+    .pipeline-node { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 0.9rem 1rem; text-align: center; }
+    .pipeline-node .p-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.35rem; }
+    .pipeline-node .p-title { font-size: 0.9rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.25rem; }
+    .pipeline-node .p-sub { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+    .pipeline-arrow { align-self: center; color: #475569; font-size: 1.1rem; }
+
+    /* ── stat pills ── */
+    .stat-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.8rem 0; }
+    .stat-pill { background: #1e2130; border: 1px solid #2d3148; border-radius: 8px; padding: 0.4rem 0.85rem; font-size: 0.8rem; color: #64748b; }
+    .stat-pill span { color: #a5b4fc; font-weight: 700; }
+
+    /* ── example trace ── */
+    .trace-box { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1rem 1.2rem; margin: 0.8rem 0; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.75; color: #c7d2fe; }
+    .trace-box .trace-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.6rem; font-family: inherit; }
+    .trace-box .speaker { color: #a5b4fc; font-weight: 700; }
+    .trace-box .think { color: #94a3b8; }
+    .trace-box .answer { color: #4ade80; }
+
+    /* ── interview Q&A ── */
+    .qa-item { margin: 1rem 0; }
+    .qa-item .q { font-size: 0.92rem; font-weight: 700; color: #a5b4fc; margin-bottom: 0.45rem; line-height: 1.5; }
+    .qa-item .a { background: #151823; border-left: 2px solid #6366f1; border-radius: 0 8px 8px 0; padding: 0.8rem 1.1rem; color: #cbd5e1; font-size: 0.9rem; line-height: 1.7; }
+    .qa-item .a + .a { margin-top: 0.5rem; }
+    .qa-note { font-size: 0.82rem; color: #64748b; margin: 0.5rem 0 0.3rem; font-style: italic; }
+
+    @media (max-width: 540px) {
+      .pipeline { grid-template-columns: 1fr; }
+      .pipeline-arrow { transform: rotate(90deg); justify-self: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Reasoning · Distillation · SFT</p>
+      <h1>Reasoning Distillation</h1>
+      <p>Transferring chain-of-thought reasoning from a large teacher model into a small student via supervised fine-tuning on curated traces.</p>
+    </header>
+
+    <!-- ─────────────────────────────────────── 1 ── -->
+    <div class="section-divider"><span>1 · What Is Reasoning Distillation?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> From Big Reasoner to Small Reasoner</h2>
+      <p>
+        <span class="term">Reasoning distillation</span> is the process of teaching a small model to think like a large reasoning model by training it on the large model's own chain-of-thought traces. The large model — typically trained with expensive RL — acts as the <strong>teacher</strong>. The smaller model — a student — is fine-tuned on (question, full-reasoning, answer) examples produced by the teacher.
+      </p>
+      <p style="margin-top:0.8rem;">
+        Unlike classical knowledge distillation which matches output logits, reasoning distillation transfers the <em>entire reasoning trajectory</em>: the "let me think…", the verification steps, the backtracking, and finally the answer. The student learns both <strong>what to answer</strong> and <strong>how to think</strong>.
+      </p>
+      <div class="callout">
+        The teacher does the hard, expensive work (RL with sparse rewards). The student simply imitates — and inherits most of the reasoning ability at a fraction of the cost.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 2 ── -->
+    <div class="section-divider"><span>2 · Why Distill Instead of Train From Scratch?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> The Motivation</h2>
+      <p>
+        Large-scale RL on a base model is effective but brutal: millions of rollouts, unstable gradients, reward hacking, and enormous compute. DeepSeek-R1 showed that pure RL on a 670B base model produces strong reasoning, but it also showed something more surprising — once that expensive model exists, its traces can be used to SFT a much smaller model up to near-parity.
+      </p>
+      <ul>
+        <li><strong>Compute efficiency.</strong> SFT on a few hundred thousand traces is orders of magnitude cheaper than RL from scratch.</li>
+        <li><strong>Stability.</strong> SFT is just cross-entropy on tokens — no reward model, no PPO, no KL gymnastics.</li>
+        <li><strong>Reproducibility.</strong> A public trace dataset can be re-used by anyone; an RL run cannot.</li>
+        <li><strong>Small-model deployment.</strong> 7B and 14B distilled models run on a single GPU and cover 90%+ of the teacher's reasoning benchmark score.</li>
+      </ul>
+      <div class="callout">
+        Distillation decouples <strong>capability discovery</strong> (expensive, done once by the teacher) from <strong>capability transfer</strong> (cheap, done many times into students).
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 3 ── -->
+    <div class="section-divider"><span>3 · The Core Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Teacher → Traces → Student</h2>
+      <div class="pipeline">
+        <div class="pipeline-node">
+          <div class="p-label">Teacher</div>
+          <div class="p-title">Large Reasoning Model</div>
+          <div class="p-sub">RL-trained, e.g. R1, o1-style</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-node">
+          <div class="p-label">Dataset</div>
+          <div class="p-title">Reasoning Traces</div>
+          <div class="p-sub">Question · CoT · Answer, filtered</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-node">
+          <div class="p-label">Student</div>
+          <div class="p-title">Small Base Model</div>
+          <div class="p-sub">SFT on traces, no RL needed</div>
+        </div>
+      </div>
+
+      <p style="margin-top:0.8rem;"><strong>Full training procedure:</strong></p>
+      <ol class="algo-steps">
+        <li>Assemble a prompt set of reasoning-heavy questions — math, code, logic, science.</li>
+        <li>Sample one or more full responses from the teacher for each prompt, including its visible chain-of-thought.</li>
+        <li>Filter responses: keep only those whose final answer verifies against a ground-truth label or a checker.</li>
+        <li>Apply quality heuristics: remove traces that are too short, too long, degenerate, or contain formatting errors.</li>
+        <li>Format each surviving example into a single training sequence: <code>&lt;prompt&gt; &lt;think&gt; … &lt;/think&gt; &lt;answer&gt; … &lt;/answer&gt;</code>.</li>
+        <li>SFT the student base model on this dataset — standard causal-LM cross-entropy, no reward model.</li>
+        <li>Evaluate on held-out reasoning benchmarks (AIME, MATH, GPQA, LiveCodeBench).</li>
+      </ol>
+    </div>
+
+    <!-- ─────────────────────────────────────── 4 ── -->
+    <div class="section-divider"><span>4 · Data Curation Matters More Than Data Volume</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗄️</span> Fewer, Better Traces</h2>
+      <p>
+        Empirically, the quality of reasoning traces dominates their quantity. Two datasets illustrate the range:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Dataset</th><th>Size</th><th>Curation strategy</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>DeepSeek-R1 distillation set</td><td>~800K</td><td>R1-generated traces, answer-verified, diverse domains</td></tr>
+          <tr><td>s1K</td><td>1,000</td><td>Gemini traces filtered for quality, difficulty, and diversity</td></tr>
+          <tr><td>OpenThoughts</td><td>~114K</td><td>Open reproduction of R1-style traces</td></tr>
+          <tr><td>Bespoke-Stratos</td><td>~17K</td><td>Small, highly curated subset — matches R1-Distill-7B on math</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:0.8rem;">
+        The s1 paper is the clearest ablation of this principle: <strong>1,000 carefully chosen examples beat 59,000 random ones</strong>. Curation criteria that consistently pay off are:
+      </p>
+      <ul>
+        <li><strong>Answer verifiability.</strong> Only keep traces whose final answer is known correct — this cuts hallucinated reasoning at the root.</li>
+        <li><strong>Difficulty filtering.</strong> Drop problems the teacher solves trivially; they teach the student nothing new.</li>
+        <li><strong>Domain diversity.</strong> Mix math, code, logic, and science to avoid overfitting to one style of trace.</li>
+        <li><strong>Length balancing.</strong> Extremely short or extremely long traces are usually failure modes.</li>
+      </ul>
+    </div>
+
+    <!-- ─────────────────────────────────────── 5 ── -->
+    <div class="section-divider"><span>5 · What a Training Example Looks Like</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📄</span> Anatomy of a Trace</h2>
+      <p>
+        A single distillation example is a chat-formatted conversation where the assistant turn contains both the reasoning and the final answer. The student is trained to reproduce the assistant turn token-by-token.
+      </p>
+      <div class="trace-box">
+        <div class="trace-label">Example (math problem, simplified)</div>
+        <div><span class="speaker">user:</span> If <em>3x + 7 = 22</em>, what is <em>x</em>?</div>
+        <div style="margin-top:0.6rem;"><span class="speaker">assistant:</span></div>
+        <div class="think">&lt;think&gt;</div>
+        <div class="think">Subtract 7 from both sides: 3x = 15.</div>
+        <div class="think">Divide both sides by 3: x = 5.</div>
+        <div class="think">Check: 3(5) + 7 = 22. ✓</div>
+        <div class="think">&lt;/think&gt;</div>
+        <div class="answer">&lt;answer&gt; x = 5 &lt;/answer&gt;</div>
+      </div>
+      <p style="margin-top:0.8rem;">
+        The explicit <code>&lt;think&gt;</code>/<code>&lt;answer&gt;</code> tagging gives the student a clean structural signal: thinking tokens go in one region, final answers in another. At inference the student can be asked to hide its thoughts or expose them — the tokens remain the same.
+      </p>
+      <div class="callout">
+        Loss is computed on every assistant token — including the full chain-of-thought. The student is explicitly learning to generate the reasoning, not just the answer.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 6 ── -->
+    <div class="section-divider"><span>6 · Training Loss</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📉</span> The Objective</h2>
+      <p>
+        Reasoning distillation is trained with the same loss as any other SFT run — negative log-likelihood of the assistant tokens, conditioned on the prompt:
+      </p>
+      <div class="formula-block">
+        <div class="formula-label">SFT Objective</div>
+        <div class="formula-main">ℒ(θ) = − Σ<sub>t</sub> log π<sub>θ</sub>(y<sub>t</sub> | x, y<sub>&lt;t</sub>)</div>
+        <div class="formula-legend">
+          <span>x</span> — prompt tokens &nbsp;·&nbsp;
+          <span>y<sub>t</sub></span> — teacher assistant token at step t (think + answer) &nbsp;·&nbsp;
+          <span>π<sub>θ</sub></span> — student policy
+        </div>
+      </div>
+      <p>
+        No reward model, no KL penalty, no rollouts. Every token of the teacher's trace is a hard target, and gradient signal is dense by construction — the opposite of the sparse-reward regime the teacher itself was trained in.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 7 ── -->
+    <div class="section-divider"><span>7 · Results That Made the Technique Famous</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> The Empirical Case</h2>
+      <p>
+        DeepSeek-R1 released a family of distilled checkpoints — the headline result of the paper for most practitioners. They applied the pipeline above to open base models and matched or exceeded much larger closed models on reasoning benchmarks.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Model</th><th>AIME 2024</th><th>MATH-500</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GPT-4o</td><td>9.3</td><td>74.6</td><td>Non-reasoning baseline</td></tr>
+          <tr><td>DeepSeek-R1-Distill-Qwen-7B</td><td>55.5</td><td>92.8</td><td>SFT only, no RL</td></tr>
+          <tr><td>DeepSeek-R1-Distill-Qwen-14B</td><td>69.7</td><td>93.9</td><td>SFT only, no RL</td></tr>
+          <tr><td>DeepSeek-R1-Distill-Qwen-32B</td><td>72.6</td><td>94.3</td><td>SFT only, no RL</td></tr>
+          <tr><td>DeepSeek-R1 (670B, teacher)</td><td>79.8</td><td>97.3</td><td>Full RL pipeline</td></tr>
+        </tbody>
+      </table>
+      <div class="stat-row">
+        <div class="stat-pill">Student cost: <span>~1 day</span> SFT</div>
+        <div class="stat-pill">Teacher cost: <span>multi-month</span> RL</div>
+        <div class="stat-pill">Benchmarks closed: <span>~90%+</span> of teacher</div>
+      </div>
+      <p>
+        The most striking fact is that the 7B distilled model <strong>crushes GPT-4o on reasoning</strong> despite being ~50× smaller — simply because it was trained to imitate a better reasoner.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 8 ── -->
+    <div class="section-divider"><span>8 · Strengths and Limitations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> When to Reach For It</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul>
+            <li>Extremely cheap compared to RL — single-node fine-tuning is enough</li>
+            <li>Stable — no reward hacking, no collapse, no critic</li>
+            <li>Scales down gracefully: 1.5B to 32B all benefit</li>
+            <li>Benchmarks suggest most of the teacher's ability transfers</li>
+            <li>Dataset is reusable: one set of traces, many students</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul>
+            <li>Cannot exceed the teacher — it's imitation, not discovery</li>
+            <li>Inherits the teacher's systematic errors and biases</li>
+            <li>Breaks down on domains absent from the trace set</li>
+            <li>Long chain-of-thoughts bloat context and inference cost</li>
+            <li>Licensing: commercial use of teacher traces is often restricted</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">
+        Use distillation to get a strong small reasoning model <em>fast</em>. Use RL when you actually need capabilities the teacher doesn't have.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 9 ── -->
+    <div class="section-divider"><span>9 · Distillation vs. RL vs. SFT-from-Humans</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Where It Sits</h2>
+      <table>
+        <thead>
+          <tr><th>Property</th><th>Human SFT</th><th>Reasoning Distillation</th><th>RL (GRPO / PPO)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Source of targets</td><td>Human annotators</td><td>Teacher model traces</td><td>Reward signal</td></tr>
+          <tr><td>Loss</td><td>Cross-entropy</td><td>Cross-entropy</td><td>Policy gradient</td></tr>
+          <tr><td>Can exceed source</td><td>No</td><td>No</td><td>Yes</td></tr>
+          <tr><td>Compute cost</td><td>Low</td><td>Low</td><td>High</td></tr>
+          <tr><td>Stability</td><td>High</td><td>High</td><td>Medium</td></tr>
+          <tr><td>Needs verifier</td><td>No</td><td>Optional (for filtering)</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:0.8rem;">
+        In practice teams combine them: a base model is <strong>distilled</strong> to a strong starting point, then <strong>RL-polished</strong> to push past the teacher on a specific domain. This is exactly the pattern DeepSeek-R1 itself follows — distilled cold start, then GRPO.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 10 ── -->
+    <div class="section-divider"><span>10 · Open Questions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔭</span> What's Still Unclear</h2>
+      <ul>
+        <li><strong>How far can distillation alone go?</strong> All distilled students plateau below their teacher. Whether this plateau can be closed with better data or longer training is an open question.</li>
+        <li><strong>Does the student learn to reason, or to paraphrase?</strong> Early analyses suggest distilled models often copy surface-level reasoning patterns without generalising — a failure mode invisible on in-distribution benchmarks.</li>
+        <li><strong>Optimal trace length.</strong> Longer CoTs give the student more supervision but also more room to learn verbosity. No consensus yet on the sweet spot.</li>
+        <li><strong>Teacher selection.</strong> Is one strong teacher better than a mixture? Does ensembling traces from multiple reasoners help?</li>
+        <li><strong>Composability.</strong> Can reasoning distillation stack on top of tool use, retrieval, or multi-turn alignment without interference?</li>
+      </ul>
+    </div>
+
+    <!-- ─────────────────────────────────────── 11 ── -->
+    <div class="section-divider"><span>11 · Case Study — Distilling DeepSeek-R1 into Qwen 32B</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> A Real Pipeline in the Wild</h2>
+      <p>
+        A useful way to ground everything above is to trace through an actual project following this recipe: a team using <span class="term">DeepSeek-R1</span> as the teacher, <span class="term">Qwen 32B</span> as the student, and the <em>s1</em> data strategy as the training recipe. The setup is the s1 paper applied as an internal engineering effort rather than an academic replication.
+      </p>
+      <p style="margin-top:0.8rem;"><strong>The pipeline they actually run:</strong></p>
+      <ol class="algo-steps">
+        <li>Start with <code>(question, options, correct answer)</code> triples — a labeled dataset with no explanation of <em>how</em> to arrive at the answer.</li>
+        <li>Use DeepSeek-R1 as the teacher to generate long chain-of-thought traces leading to the correct answer. R1 exposes its thinking directly, so traces are easy to collect.</li>
+        <li>Fine-tune Qwen 32B on the resulting <code>(question → reasoning trace → answer)</code> examples using plain SFT.</li>
+        <li>Evaluate the student on GPQA and compare against the base Qwen and reported baselines.</li>
+      </ol>
+      <div class="callout">
+        This is the <em>s1</em> recipe applied as production engineering: take a non-reasoning base model and, with roughly <strong>1,000 curated reasoning traces</strong>, teach it to reason — no RL, no reward model, no search.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 12 ── -->
+    <div class="section-divider"><span>12 · Why the Business Cares</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💼</span> Reasoning You Can Self-Host</h2>
+      <p>
+        Frontier reasoning models like R1 or o1 are expensive to run and often impossible to self-host because of size, cost, or data-privacy constraints. Distilling their behaviour into a 32B model the team controls unlocks four concrete wins:
+      </p>
+      <ul>
+        <li><strong>Cost.</strong> A 32B model on a team's own A100s or H100s via vLLM is dramatically cheaper per query than calling an API reasoning model.</li>
+        <li><strong>Data privacy / on-prem.</strong> Reasoning never leaves internal infra — a real driver when the team already runs on their own GPUs (e.g. GCP with dedicated hardware).</li>
+        <li><strong>Domain specialization.</strong> The biggest lever. In one run, s1's 1K generic traces took the model to 38%; adding <strong>500 domain-specific PCMB examples</strong> jumped it to 43%, and 1K PCMB to 46.5%. A generic reasoning recipe can be <em>bent toward an organization's domain</em> with a very small amount of in-domain data.</li>
+        <li><strong>Benchmark credibility.</strong> GPQA is a graduate-level science benchmark designed to be hard to game. A jump from 41.9% → 63.5% on Qwen 32B is a publishable-quality result — internal proof the method works, external proof to customers and leadership.</li>
+      </ul>
+    </div>
+
+    <!-- ─────────────────────────────────────── 13 ── -->
+    <div class="section-divider"><span>13 · The Stack — Why Each Tool Is There</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧰</span> Every Choice Is Intentional</h2>
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ms-swift</td><td>ModelScope's fine-tuning framework — handles full FT of large models with good defaults (DeepSpeed, FSDP).</td></tr>
+          <tr><td>Full fine-tuning (not LoRA)</td><td>The goal is to deeply internalize reasoning patterns; LoRA is often insufficient for teaching new reasoning behaviour at this scale.</td></tr>
+          <tr><td>lm-evaluation-harness</td><td>EleutherAI's standard benchmarking repo — gives comparable, reproducible numbers against published baselines.</td></tr>
+          <tr><td>vLLM</td><td>Fast inference engine for generating long reasoning traces — both when the teacher produces them and when the student is evaluated.</td></tr>
+          <tr><td>A100 / H100 on GCP</td><td>Full FT of a 32B model realistically needs multi-GPU with 80GB cards.</td></tr>
+          <tr><td>GPQA</td><td>The gold-standard "does your model actually reason?" benchmark — hard to game.</td></tr>
+          <tr><td>Qwen 7B first, then 32B</td><td>Sensible engineering: validate the pipeline cheaply on 7B before burning H100 hours on 32B.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        The stack tells the story on its own: an open teacher (R1), an open student (Qwen), a standard trainer (ms-swift), a standard evaluator (lm-eval-harness), and fast inference (vLLM). Nothing bespoke — which is precisely what makes the recipe <strong>reproducible</strong>.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 14 ── -->
+    <div class="section-divider"><span>14 · Reading the Results as a Narrative</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> Replicate → Extend → Scale</h2>
+      <p>
+        The numbers from the run form a clean experimental arc rather than a scatter of data points:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Configuration</th><th>GPQA</th><th>What it proves</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Qwen2.5-7B (baseline)</td><td>33.4%</td><td>Decent small model, not great at hard reasoning</td></tr>
+          <tr><td>Qwen2.5-7B + s1 1K traces</td><td>38.0%</td><td>Pipeline works — s1 replicates</td></tr>
+          <tr><td>Qwen2.5-7B + s1 1K + 500 PCMB</td><td>43.0%</td><td>Domain data adds on top of generic reasoning</td></tr>
+          <tr><td>Qwen2.5-7B + s1 1K + 1K PCMB</td><td>46.5%</td><td>Scales with more domain data</td></tr>
+          <tr><td>Qwen2.5-32B (baseline)</td><td>41.9%</td><td>Bigger base model, still non-reasoning</td></tr>
+          <tr><td>Qwen2.5-32B + s1 1K</td><td>62.0%</td><td>Method scales cleanly to 32B</td></tr>
+          <tr><td>Qwen2.5-32B + s1 1K + 500 PCMB</td><td>63.5%</td><td>Near-frontier on GPQA, on a self-hostable model</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:0.8rem;">
+        The shape of the curve matters more than any individual number. Each row is a deliberate ablation: <strong>replicate</strong> the paper, <strong>extend</strong> it with domain data, <strong>scale</strong> it to a bigger model. This is exactly how an internal capability demo — or an external publication — is structured.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 15 ── -->
+    <div class="section-divider"><span>15 · What This Kind of Project Is Really For</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> The Underlying Goal</h2>
+      <p>
+        A pipeline like this is rarely built for its own sake. Typical motivations, in rough order of commonness:
+      </p>
+      <ol class="algo-steps">
+        <li><strong>Ship an in-house reasoning model</strong> specialized for a specific domain, served cheaply via vLLM, instead of paying API fees to OpenAI / Anthropic / DeepSeek on every query.</li>
+        <li><strong>Publish or present results</strong> showing the team can take SOTA techniques (s1) and adapt them to their own domain — reputational and recruiting value.</li>
+        <li><strong>Prove feasibility</strong> to leadership before investing in a larger effort — scaling to 70B, layering RL on top, or productising the model.</li>
+        <li><strong>Build a reusable recipe.</strong> Once the pipeline exists (DeepSeek → trace generation → ms-swift SFT → lm-eval-harness), it can be pointed at any new domain the organization cares about and produce a specialised reasoning model in weeks.</li>
+      </ol>
+      <p style="margin-top:0.8rem;">
+        The <strong>PCMB detail is the tell</strong>. Pure research projects don't quietly slot in 500 domain-specific examples. A team that does so has a concrete domain in mind and is building infrastructure to produce strong reasoning models for it <em>on demand</em>.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 16 ── -->
+    <div class="section-divider"><span>16 · How to Present This Project — STAR-ish Structure</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎤</span> The Structure (STAR-ish, But for ML Projects)</h2>
+      <p>
+        A clean way to talk through this kind of project in an interview, a demo, or a team review — five steps that move from <em>why</em> to <em>what I learned</em>.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">1️⃣</span> Start With the Problem (Why This Project Existed)</h2>
+      <p>
+        In our organization, we wanted a model that can answer domain-specific questions with good reasoning. Big models like DeepSeek-R1 or GPT-4 work well, but they are expensive, slow, and we cannot always send our data to outside APIs. So our goal was to build a smaller, cheaper model that performs almost as well as these big models on our task.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">2️⃣</span> Explain the Approach in One Line</h2>
+      <p>
+        We used a technique called <span class="term">reasoning distillation</span>. The idea is simple — use a big, smart model as a teacher, and train a smaller model as a student to copy its thinking.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">3️⃣</span> Walk Through the Steps Clearly</h2>
+      <p>
+        "We had a dataset of questions, multiple-choice options, and the correct answers. But just knowing the answer is not enough — we also wanted the model to learn <em>how to reason</em> to reach that answer.
+      </p>
+      <p style="margin-top:0.8rem;">
+        So first, we used DeepSeek to generate a step-by-step reasoning trace for each question. This gave us a rich dataset of question, reasoning steps, and final answer.
+      </p>
+      <p style="margin-top:0.8rem;">
+        Then, we took Qwen-32B, which is a smaller open-source model, and fine-tuned it on this dataset using <span class="term">Supervised Fine-Tuning</span>, or SFT. This means we trained the model to produce the same reasoning and answer when given a question.
+      </p>
+      <p style="margin-top:0.8rem;">
+        Finally, we evaluated the fine-tuned model on standard benchmarks to check how much it improved compared to the base Qwen model."
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">4️⃣</span> Share the Result / Impact</h2>
+      <p>
+        We started small with Qwen 7B to test the pipeline. The base model got <strong>33.4%</strong> on GPQA, which is a hard science benchmark. After fine-tuning on the s1 1k dataset, we got <strong>38%</strong>. When we added 500 examples from our own domain data, called PCMB, it went up to <strong>43%</strong>. With 1000 PCMB examples, it reached <strong>46.5%</strong>. This showed us two things: the s1 method works, and adding in-domain data clearly helps.
+      </p>
+      <p style="margin-top:0.8rem;">
+        After that, we scaled to Qwen 32B. The baseline was <strong>41.9%</strong>. After s1 fine-tuning, it jumped to <strong>62%</strong>. Adding 500 PCMB examples pushed it to <strong>63.5%</strong>. So we got a <strong>20+ point improvement on GPQA</strong>, which is a very strong result.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">5️⃣</span> End With What I Learned or Contributed</h2>
+      <p>
+        "My main contribution was <strong>[X — e.g., building the data pipeline / running the fine-tuning experiments / evaluating on benchmarks]</strong>. I learned how reasoning distillation works in practice, how to handle large fine-tuning jobs, and how to evaluate models properly."
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 17 ── -->
+    <div class="section-divider"><span>17 · The Stack (Talking Points)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧰</span> How to Explain the Tooling</h2>
+      <p>
+        For the stack — we used <strong>ms-swift</strong> for full fine-tuning, because we wanted the model to deeply learn reasoning behavior, not just a small adapter. We used <strong>vLLM</strong> for fast inference, both for generating the traces from DeepSeek and for evaluation. We used <strong>lm-evaluation-harness</strong> for benchmarking so our numbers are comparable with published results. Training ran on <strong>A100 and H100 GPUs on GCP</strong>, and we used <strong>JupyterLab</strong> for the data work and analysis.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 18 ── -->
+    <div class="section-divider"><span>18 · Interview Q&amp;A — Conceptual ("Do You Understand the Basics?")</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📚</span> Foundational Questions</h2>
+      <p>These test whether he actually understands what he did, or just ran scripts.</p>
+
+      <div class="qa-item">
+        <div class="q">Q: What is supervised fine-tuning (SFT)?</div>
+        <div class="a">"SFT means we take a pretrained model and train it further on labeled examples — input and the expected output. The model learns to produce outputs that match our examples. In our case, input was a question, and the expected output was the reasoning trace plus the final answer."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What is knowledge distillation?</div>
+        <div class="a">"It's a way to transfer knowledge from a big, strong model (teacher) to a smaller model (student). Instead of training the student from scratch, we let the teacher generate high-quality outputs, and the student learns from those. In our case, DeepSeek was the teacher and Qwen was the student."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What is a reasoning trace?</div>
+        <div class="a">"It's the step-by-step thinking a model does before giving a final answer. Instead of jumping to the answer, the model writes out its thought process — like 'first let me understand what is being asked, then let me check each option.' This chain of thought helps the model solve harder problems."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why does teaching reasoning traces work?</div>
+        <div class="a">"The base model already learned a lot during pretraining. It has the knowledge, but it doesn't always use it step by step. Training on reasoning traces activates this ability — it teaches the model to slow down and think before answering."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why does s1 work with only ~1,000 examples?</div>
+        <div class="a">"Because we're not teaching new knowledge — the model already knows the facts from pretraining. We're just teaching a behavior: how to think step by step. Behaviors can be taught with a small amount of high-quality data. The s1 paper showed that quality and diversity of traces matter much more than quantity."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What is GPQA?</div>
+        <div class="a">"GPQA stands for Graduate-level Google-Proof QA. It's a benchmark of very hard science questions in physics, chemistry, and biology. Even experts struggle, and you can't just Google the answers. It's the standard test for checking if a model can really reason, not just recall facts."</div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 19 ── -->
+    <div class="section-divider"><span>19 · Interview Q&amp;A — Design Choices ("Why Did You Do It This Way?")</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Defending Decisions</h2>
+      <p>These check if he can defend decisions.</p>
+
+      <div class="qa-item">
+        <div class="q">Q: Why full fine-tuning and not LoRA or QLoRA?</div>
+        <div class="a">"LoRA is good when you want to adapt a model slightly — like changing its tone or adding a small skill. But we wanted the model to internalize a new reasoning behavior. That means deeper changes to the weights. Full fine-tuning gives better results for this kind of behavioral change, and the s1 paper also used full fine-tuning. We had the compute, so we went with it."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why Qwen and not Llama or Mistral?</div>
+        <div class="a">"Qwen 2.5 is a strong open model, especially for math and reasoning. It's well-supported in ms-swift, which is built by the same ModelScope team. And the s1 paper also used Qwen, so we could directly compare our results with the paper."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why DeepSeek as the teacher?</div>
+        <div class="a">"DeepSeek-R1 is open, it's very strong at reasoning, and unlike some closed models, it openly shows its full chain of thought. That made it perfect for generating reasoning traces we could train on."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why GPQA as the benchmark?</div>
+        <div class="a">"Because it's the standard for reasoning. It's hard, it's well-known, and it lets us compare our results with published papers. If we only tested on our own domain data, nobody would know if the improvement is real or just overfitting."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why start with Qwen 7B before 32B?</div>
+        <div class="a">"To validate the pipeline cheaply. A 32B full fine-tune needs many H100 hours and costs a lot. If our data formatting or training setup was wrong, we'd waste money. So we first made sure the whole flow worked on 7B, then scaled up with confidence."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why add PCMB data on top of s1?</div>
+        <div class="a">"The s1 dataset is generic reasoning. Our organization cares about a specific domain, so we wanted to see if adding in-domain examples improves domain performance further. The numbers confirmed it — both on 7B and 32B, adding PCMB helped."</div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 20 ── -->
+    <div class="section-divider"><span>20 · Interview Q&amp;A — Technical Depth ("Can You Explain the Stack?")</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Under the Hood</h2>
+
+      <div class="qa-item">
+        <div class="q">Q: What does ms-swift do?</div>
+        <div class="a">"ms-swift is a fine-tuning framework from ModelScope. It handles distributed training, mixed precision, DeepSpeed or FSDP integration, checkpointing — all the infrastructure. We just provide the data and config. It saved us from writing a lot of boilerplate training code."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why vLLM for inference?</div>
+        <div class="a">"vLLM is one of the fastest inference engines. It uses something called PagedAttention to handle memory efficiently, so you can serve long sequences and batch many requests. Since reasoning traces can be very long — thousands of tokens — we needed fast inference both for generating traces from DeepSeek and for evaluation."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why lm-evaluation-harness?</div>
+        <div class="a">"It's the standard benchmarking library from EleutherAI. Many published papers report numbers using it, so our results are directly comparable. It also handles the tricky parts of evaluation — prompt formatting, answer extraction, scoring — consistently."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What GPU setup did you use?</div>
+        <div class="a">"We used A100 80GB and H100 GPUs on GCP. For Qwen 32B full fine-tuning, we needed multi-GPU with enough memory to hold the model, gradients, and optimizer states. Usually 8x A100 or H100 with DeepSpeed ZeRO stage 3 to shard optimizer states across GPUs."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: How did you format the data?</div>
+        <div class="a">"Each training example had the question, the reasoning trace from DeepSeek, and the final answer. We formatted them in a chat template — user turn with the question, assistant turn with &lt;think&gt; tags around the reasoning and then the final answer. The format matters because the model learns to produce this same structure at inference time."</div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 21 ── -->
+    <div class="section-divider"><span>21 · Interview Q&amp;A — Results ("How Do I Trust Your Numbers?")</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔬</span> Scientific Rigor</h2>
+      <p>These test scientific rigor.</p>
+
+      <div class="qa-item">
+        <div class="q">Q: How do you know the improvement is real and not overfitting?</div>
+        <div class="a">"Two reasons. First, GPQA is a held-out benchmark — none of our training data, s1 or PCMB, has GPQA questions in it. So the model has never seen these questions. Second, we saw consistent improvements across both 7B and 32B with the same recipe, which suggests the method generalizes."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Did you do multiple runs to check variance?</div>
+        <div class="qa-note">[Honest answer] — ideally yes, we'd do 3 seeds and report mean and standard deviation. If we only did one run per setting due to compute cost, he should say so:</div>
+        <div class="a">"We did single runs because of compute cost, but the improvements were large enough — more than 20 points — that variance is unlikely to explain it."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What about contamination? Could GPQA be in Qwen's pretraining data?</div>
+        <div class="a">"That's a real concern for any benchmark. GPQA was designed to be hard to find on the web, but some leakage is possible. However, since we're measuring improvement from fine-tuning, contamination would affect both the baseline and the fine-tuned model equally — so the delta is still meaningful."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Did the model get better at anything else, or worse?</div>
+        <div class="a">"Good question. We mainly measured GPQA, but in general, reasoning fine-tuning can sometimes hurt performance on simple tasks — the model starts 'overthinking' easy questions. If we had more time, we'd evaluate on MMLU, GSM8K, and a few general benchmarks to check for regressions."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why only 500 or 1,000 PCMB samples? Why not more?</div>
+        <div class="a">"The s1 paper's insight was that more data isn't always better — quality and diversity matter more. We wanted to test whether a small amount of in-domain data was enough to see improvement. It was. Scaling PCMB further is a natural next experiment."</div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 22 ── -->
+    <div class="section-divider"><span>22 · Interview Q&amp;A — Challenges ("What Went Wrong and How Did You Fix It?")</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧗</span> War Stories</h2>
+      <p>Interviewers love this question. He should have 2–3 real stories ready.</p>
+
+      <div class="qa-item">
+        <div class="q">Q: What was the hardest part?</div>
+        <div class="qa-note">Pick one real challenge — examples he can adapt:</div>
+        <div class="a"><strong>Option A (data):</strong> "Formatting the reasoning traces correctly. DeepSeek outputs have special tokens and chain-of-thought markers. If the format doesn't match what Qwen expects, training is unstable. We spent time aligning the chat template and making sure &lt;think&gt; tags were handled properly."</div>
+        <div class="a"><strong>Option B (scaling):</strong> "Going from 7B to 32B. On 7B, single-node training was fine. On 32B with full fine-tuning, we needed DeepSpeed ZeRO-3 and had to tune batch size, gradient accumulation, and learning rate carefully to avoid OOM errors while still training efficiently."</div>
+        <div class="a"><strong>Option C (evaluation):</strong> "Getting lm-eval-harness to work with our fine-tuned model took some debugging. The model produced long reasoning traces, and we had to configure the harness to allow longer max generation length and to correctly extract the final answer from the trace."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What would you do differently?</div>
+        <div class="a">"Three things. First, run multiple seeds to measure variance. Second, evaluate on more benchmarks to check for regressions — not just GPQA. Third, try a bigger PCMB dataset to see where the curve flattens."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Any failed experiments?</div>
+        <div class="qa-note">(He should share one if he has it.) Example:</div>
+        <div class="a">"Early on, we tried training without the &lt;think&gt; tags and just let the model generate free-form reasoning. Accuracy was lower. Adding explicit reasoning structure helped the model learn the behavior more reliably."</div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 23 ── -->
+    <div class="section-divider"><span>23 · Interview Q&amp;A — Bigger Picture ("Do You Think Beyond the Code?")</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌍</span> Context &amp; Strategy</h2>
+      <p>These separate strong candidates from great ones.</p>
+
+      <div class="qa-item">
+        <div class="q">Q: Where does this fit in the current LLM landscape?</div>
+        <div class="a">"Reasoning models are the current frontier — OpenAI o1, DeepSeek-R1, Claude's extended thinking. These are expensive and often closed. There's a strong industry push to distill these into smaller open models that organizations can run themselves. Our project is exactly that."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What's the next step for this project?</div>
+        <div class="a">"A few directions. One, add RL on top of SFT — like DeepSeek-R1 itself did — to further improve reasoning. Two, scale to larger base models like Qwen 72B. Three, expand PCMB data to see if domain performance keeps improving. Four, deploy the final model with vLLM and measure real-world inference cost and latency."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: What's a limitation of your approach?</div>
+        <div class="a">"SFT alone plateaus — you can only imitate the teacher, you can't exceed it. To go beyond the teacher, you need RL with a reward model or verifiable rewards. Also, the model might learn to produce reasoning that looks right but isn't always — so it needs careful evaluation, not just benchmark scores."</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="q">Q: Why should the company care about this work?</div>
+        <div class="a">"Because it unlocks self-hosted reasoning AI. Instead of paying API costs and sending data to external providers, organizations can now run strong reasoning models on their own infrastructure, customized to their domain, at a fraction of the cost. That's a meaningful business advantage."</div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 24 ── -->
+    <div class="section-divider"><span>24 · How to Practice</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗣️</span> Getting Interview-Ready</h2>
+      <ul>
+        <li><strong>Do a mock round.</strong> Read the question, close the doc, answer out loud, then check. Don't memorize — understand.</li>
+        <li><strong>For every answer, be able to say "why" one level deeper.</strong> If he says "we used full fine-tuning," the follow-up will be "why not LoRA?" If he says "we used vLLM," the follow-up will be "why vLLM and not TGI or TensorRT-LLM?" He should always have one more layer ready.</li>
+        <li><strong>Have one strong story for each category.</strong> Conceptual, design, technical, results, challenge, big picture — one crisp story each. That covers 80% of interviews.</li>
+        <li><strong>Be honest about gaps.</strong> If he didn't do multi-seed runs or didn't compare with LoRA, it's fine to say "we didn't do that — if I had more time, I would." Interviewers respect honesty far more than made-up answers.</li>
+      </ul>
+      <div class="callout">
+        Want me to now build him a mock interview — I ask the questions one by one, he answers, and I give feedback? Or should I prepare deeper technical explainers for the trickier concepts (DeepSpeed ZeRO, PagedAttention, chat templates, etc.) in case the interviewer goes deep?
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated April 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← RL Concepts Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

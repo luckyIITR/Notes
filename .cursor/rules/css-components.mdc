@@ -1,0 +1,89 @@
+---
+description: CSS class reference — which global classes to use, design tokens, and how to write page-specific styles.
+globs: **/*.html
+alwaysApply: true
+---
+
+# CSS Components & Design Tokens
+
+## Design Tokens (never hardcode other values)
+
+```
+Background:   #0f1117  (body)
+Surface:      #1e2130  (cards, module cards)
+Surface deep: #151823  (formula blocks, inner items)
+Border:       #2d3148
+Accent:       #6366f1  (indigo — primary interactive color)
+Accent light: #a5b4fc  (indigo 300 — labels, symbols)
+Accent text:  #c7d2fe  (indigo 200 — formula text)
+Text primary: #e2e8f0
+Text muted:   #94a3b8
+Text dim:     #64748b
+Text faint:   #475569
+Green:        #4ade80  (positive/good)
+Red:          #f87171  (negative/bad)
+```
+
+## Global Classes (from styles.css — use as-is, don't redefine)
+
+| Class | Use for |
+|-------|---------|
+| `.container` | Single top-level page wrapper — always the direct child of `<body>` |
+| `.card` | Every content section block |
+| `.card h2` | Section heading inside a card; use `<span class="icon">` for emoji |
+| `.callout` | Highlighted insight box with indigo left border |
+| `.term` | Inline key term pill (e.g. `<span class="term">Q-value</span>`) |
+| `.module-list` | Flex column container for index cards |
+| `.module-card` | Clickable card on index pages; add `wip` class if not ready |
+| `.module-icon` | Emoji icon column in module card |
+| `.module-info` | Text column in module card |
+| `.module-tag` | Small uppercase tag inside module card |
+| `.module-arrow` | `›` arrow at end of module card |
+| `.notes-header` | Header with indigo left border — for notes pages only |
+| `.section-divider` | Labeled horizontal rule between sections |
+| `.reward-grid` | 2-col grid for pros/cons (use `.reward-item.good` / `.reward-item.bad`) |
+| `.app-grid` / `.app-item` | Grid of application pills |
+| `ul li` | Bullet list — already styled with `▸` via CSS, never add `list-style` manually |
+| `table`, `th`, `td` | Tables — already fully styled, never add inline table styles |
+
+## Page-Specific Styles — Rules
+
+- **Always define in `<style>` inside `<head>`** — never inline styles except the footer link color (`color:#475569`).
+- Name page-specific classes with descriptive kebab-case (e.g. `.formula-block`, `.algo-steps`, `.clip-viz`).
+- **Never override global classes.** If a variant is needed, add a modifier (e.g. `.reward-item.custom`) or create a new class.
+- Keep `<style>` blocks organized with `/* ── Section Name ── */` comments.
+
+## Recurring Page-Specific Patterns
+
+These components appear in multiple pages — copy the exact CSS when reusing:
+
+### Formula Block
+```css
+.formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+.formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+.formula-block .formula-main  { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+.formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+.formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+```
+
+### Numbered Algorithm Steps
+```css
+.algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+.algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+.algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+```
+
+### Back Link (every notes page)
+```css
+.back-link { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:#475569; text-decoration:none; margin-bottom:2rem; transition:color 0.2s; }
+.back-link:hover { color:#6366f1; }
+```
+
+## Responsive Rule
+
+Always add a `@media (max-width: 540px)` block if you use a multi-column grid:
+```css
+@media (max-width: 540px) {
+  .your-grid { grid-template-columns: 1fr; }
+}
+```

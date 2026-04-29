@@ -1,0 +1,54 @@
+---
+description: Project structure, file naming conventions, and index maintenance rules for the Notes repo.
+globs: **/*.html
+alwaysApply: true
+---
+
+# Project Structure & Conventions
+
+## Folder Layout
+
+```
+Notes/
+├── index.html              ← Global index (links to all course folders)
+├── styles.css              ← SINGLE global stylesheet — never duplicate it
+└── Course Folder Name/
+    ├── index.html          ← Course index (links to all topic pages)
+    └── topic-name.html     ← Individual concept/notes page
+```
+
+- Each **course** lives in its own folder. Folder names are human-readable (e.g. `All Reinforcement Learning (RL) concepts`).
+- Each **topic page** sits directly inside the course folder — no sub-folders.
+- `styles.css` is at the root. **Never copy it into subfolders.**
+
+## File Naming
+
+| Page type | Convention | Example |
+|-----------|-----------|---------|
+| Topic page | kebab-case, descriptive | `q-learning.html`, `deepseek-r1.html` |
+| Course index | always `index.html` | `All Reinforcement Learning (RL) concepts/index.html` |
+| Global index | always `index.html` | `Notes/index.html` |
+
+- Use **lowercase kebab-case** for all new topic files.
+- Never use spaces or underscores in file names.
+
+## CSS Path Rules
+
+- Notes pages (inside a course folder): `<link rel="stylesheet" href="../styles.css" />`
+- Global index: `<link rel="stylesheet" href="styles.css" />`
+
+## Updating the Index — Required Every Time
+
+When a new topic page is added:
+1. Add a `<a href="topic.html" class="module-card">` entry to the **course index**.
+2. If it's a new course, also add a card to the **global index** (`Notes/index.html`) and increment the course count stat.
+3. Place the card under the correct `<div class="section-divider">` group. Create a new section divider if needed.
+4. **Never leave a notes page unlinked from its course index.**
+
+## WIP Cards
+
+If a page is planned but not yet written, add the card with class `wip`:
+```html
+<div class="module-card wip">...</div>
+```
+Switch to `<a href="...">` and remove `wip` once the page exists.

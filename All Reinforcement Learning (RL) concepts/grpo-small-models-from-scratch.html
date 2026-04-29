@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training Small LMs to Reason with GRPO — Reinforcement Learning</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula block ── */
+    .formula-block { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.5rem; margin: 0.8rem 0; }
+    .formula-block .formula-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.5rem; }
+    .formula-block .formula-main { font-size: 1rem; color: #c7d2fe; font-family: 'Courier New', monospace; text-align: center; line-height: 2.2; }
+    .formula-block .formula-legend { margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; line-height: 2; }
+    .formula-block .formula-legend span { color: #a5b4fc; font-family: 'Courier New', monospace; }
+
+    /* ── algo steps ── */
+    .algo-steps { list-style: none; padding: 0; counter-reset: step-counter; }
+    .algo-steps li { counter-increment: step-counter; position: relative; padding: 0.75rem 0.9rem 0.75rem 3rem; margin-bottom: 0.5rem; background: #151823; border: 1px solid #2d3148; border-radius: 8px; color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; }
+    .algo-steps li::before { content: counter(step-counter); position: absolute; left: 0.9rem; top: 0.85rem; background: #6366f1; color: #fff; font-size: 0.72rem; font-weight: 800; width: 1.4rem; height: 1.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+    /* ── code block ── */
+    .code-block { background: #0c0e16; border: 1px solid #2d3148; border-radius: 10px; padding: 1rem 1.1rem; margin: 0.8rem 0; font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.65; color: #cbd5e1; overflow-x: auto; white-space: pre; }
+    .code-block .c-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.6rem; font-family: inherit; }
+    .code-block .kw { color: #c084fc; }
+    .code-block .fn { color: #a5b4fc; }
+    .code-block .str { color: #86efac; }
+    .code-block .num { color: #fbbf24; }
+    .code-block .com { color: #475569; font-style: italic; }
+
+    /* ── trace box (XML/dialogue) ── */
+    .trace-box { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1rem 1.2rem; margin: 0.8rem 0; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.75; color: #c7d2fe; }
+    .trace-box .trace-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.6rem; font-family: inherit; }
+    .trace-box .speaker { color: #a5b4fc; font-weight: 700; }
+    .trace-box .think { color: #94a3b8; }
+    .trace-box .answer { color: #4ade80; }
+    .trace-box .answer-bad { color: #f87171; }
+
+    /* ── pipeline diagram ── */
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 0.6rem; margin: 1rem 0; }
+    .pipeline-node { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 0.9rem 1rem; text-align: center; }
+    .pipeline-node .p-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.35rem; }
+    .pipeline-node .p-title { font-size: 0.9rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.25rem; }
+    .pipeline-node .p-sub { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+    .pipeline-arrow { align-self: center; color: #475569; font-size: 1.1rem; }
+
+    /* ── two-phase loop ── */
+    .phase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
+    .phase-card { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1rem 1.15rem; }
+    .phase-card .p-tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.45rem; }
+    .phase-card h3 { font-size: 0.95rem; color: #e2e8f0; margin: 0 0 0.5rem; }
+    .phase-card ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+    .phase-card li { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+
+    /* ── experience tuple cards ── */
+    .tuple-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; margin: 0.8rem 0; }
+    .tuple-card { background: #151823; border: 1px solid #2d3148; border-radius: 8px; padding: 0.8rem 1rem; }
+    .tuple-card .t-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.3rem; }
+    .tuple-card .t-name { font-size: 0.9rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.3rem; }
+    .tuple-card .t-desc { font-size: 0.82rem; color: #94a3b8; line-height: 1.55; }
+
+    /* ── stat pills ── */
+    .stat-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.8rem 0; }
+    .stat-pill { background: #1e2130; border: 1px solid #2d3148; border-radius: 8px; padding: 0.4rem 0.85rem; font-size: 0.8rem; color: #64748b; }
+    .stat-pill span { color: #a5b4fc; font-weight: 700; }
+
+    /* ── clip viz table ── */
+    .clip-table { width: 100%; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+    .clip-table th { font-family: inherit; font-size: 0.72rem; }
+    .clip-table .pos { color: #4ade80; }
+    .clip-table .neg { color: #f87171; }
+
+    /* ── tip list (10 takeaways) ── */
+    .tip-list { list-style: none; padding: 0; counter-reset: tip-counter; margin-top: 0.5rem; }
+    .tip-list li { counter-increment: tip-counter; position: relative; padding: 0.95rem 1.1rem 0.95rem 3.4rem; margin-bottom: 0.65rem; background: #151823; border: 1px solid #2d3148; border-left: 3px solid #6366f1; border-radius: 8px; color: #cbd5e1; font-size: 0.9rem; line-height: 1.7; }
+    .tip-list li::before { content: counter(tip-counter); position: absolute; left: 1rem; top: 0.95rem; background: #6366f1; color: #fff; font-size: 0.75rem; font-weight: 800; width: 1.6rem; height: 1.6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .tip-list li strong { color: #c7d2fe; }
+    .tip-list li .tip-title { display: block; font-weight: 700; color: #e2e8f0; margin-bottom: 0.3rem; }
+
+    @media (max-width: 540px) {
+      .pipeline { grid-template-columns: 1fr; }
+      .pipeline-arrow { transform: rotate(90deg); justify-self: center; }
+      .phase-grid { grid-template-columns: 1fr; }
+      .tuple-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Reasoning · GRPO · From Scratch · Small LMs</p>
+      <h1>Training Small LMs to Reason with GRPO from Scratch</h1>
+      <p>End-to-end walkthrough — building a GRPO trainer by hand to teach 135M-parameter models step-by-step reasoning, with the policy-gradient math, the code internals, an SFT warm-up, results across model sizes, and ten implementation lessons.</p>
+    </header>
+
+    <!-- ─────────────────────────────────────── 1 ── -->
+    <div class="section-divider"><span>1 · Why This Project Exists</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Reasoning, But Tiny</h2>
+      <p>
+        Every major lab — DeepSeek, Google, OpenAI, Anthropic — is shipping a new <span class="term">reasoning model</span> almost every month. These models first generate a <strong>chain of thought</strong> before producing the final answer, and that single change drastically raises accuracy on math and logic. The question this project answers is whether the same behaviour can be taught to a <strong>135M-parameter</strong> model — roughly <em>1,000× smaller</em> than GPT-3, and many orders of magnitude smaller than GPT-4.
+      </p>
+      <p style="margin-top:0.8rem;">
+        The vehicle is <span class="term">GRPO</span> (Group Relative Policy Optimization) — the exact algorithm DeepSeek used for the seminal R1 models — implemented from scratch instead of through a library. The training budget is roughly <strong>$5–6 of cloud GPU</strong>.
+      </p>
+      <div class="callout">
+        Deep RL is finicky and sensitive to implementation details. Small LMs are <em>even more</em> finicky because they lack the world knowledge of larger ones. The recipe in this page is the result of digging through papers, reading open-source code, and burning through GPU credits until things actually worked.
+      </div>
+      <p style="margin-top:0.8rem;"><strong>Roadmap of this page:</strong></p>
+      <ol class="algo-steps">
+        <li>Set up text-based RL tasks using the <code>reasoning-gym</code> library.</li>
+        <li>Visually unpack how GRPO works and walk through the policy-gradient objective term by term.</li>
+        <li>Implement experience collection, advantages, log-probabilities, and the GRPO loss in code.</li>
+        <li>Add a small <span class="term">supervised fine-tuning</span> warm-up and look at results across model sizes.</li>
+        <li>Ten practical takeaways covering hyperparameters and implementation gotchas.</li>
+      </ol>
+    </div>
+
+    <!-- ─────────────────────────────────────── 2 ── -->
+    <div class="section-divider"><span>2 · The Tasks — Syllogism &amp; Propositional Logic</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> Two Logic Puzzles</h2>
+      <p>
+        Two simple-but-non-trivial reasoning tasks are used to fine-tune and evaluate the models:
+      </p>
+      <ul>
+        <li><strong>Syllogism.</strong> A deductive-reasoning puzzle. The model is given two premises and a candidate conclusion, then must answer <code>Yes</code> or <code>No</code> based on whether the conclusion logically follows.</li>
+        <li><strong>Propositional logic.</strong> A symbolic-reasoning task. The model is given symbols and rules and must <em>generate</em> the correct conclusion. This is harder than syllogism — it is not a binary choice.</li>
+      </ul>
+      <p style="margin-top:0.8rem;">
+        Both tasks come from the <span class="term">reasoning-gym</span> library, which makes generating prompts and validating answers a one-liner:
+      </p>
+      <div class="code-block">
+<span class="c-label">Generate a propositional-logic dataset</span>
+<span class="kw">from</span> reasoning_gym <span class="kw">import</span> create_dataset
+
+dataset = create_dataset(name=<span class="str">"propositional_logic"</span>, size=<span class="num">200</span>)
+</div>
+      <p>
+        Reasoning-gym also provides a scoring function — given the model's response and the ground-truth metadata, it returns a numeric reward. That removes the need for a separately trained reward model.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 3 ── -->
+    <div class="section-divider"><span>3 · The Output Format — Think + Answer Tags</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏷️</span> A Structured Response</h2>
+      <p>
+        To give the model a clean signal of where the reasoning ends and the answer begins, the system prompt asks it to wrap thinking in <code>&lt;think&gt;…&lt;/think&gt;</code> and the final answer in <code>&lt;answer&gt;…&lt;/answer&gt;</code>. The expected output for any task looks like this:
+      </p>
+      <div class="trace-box">
+        <div class="trace-label">Expected response format</div>
+        <div class="think">&lt;think&gt;</div>
+        <div class="think">step-by-step reasoning here…</div>
+        <div class="think">&lt;/think&gt;</div>
+        <div class="answer">&lt;answer&gt; final answer here &lt;/answer&gt;</div>
+      </div>
+      <p style="margin-top:0.8rem;">
+        Pulling the answer out of the response is a tiny regex:
+      </p>
+      <div class="code-block">
+<span class="c-label">Extract answer from XML</span>
+<span class="kw">def</span> <span class="fn">extract_answer</span>(response):
+    answer = re.search(<span class="str">r"&lt;answer&gt;(.*?)&lt;/answer&gt;"</span>, response, re.DOTALL)
+    <span class="kw">if</span> answer <span class="kw">is not None</span>:
+        <span class="kw">return</span> answer.group(<span class="num">1</span>).strip()
+    <span class="kw">return</span> <span class="str">""</span>
+</div>
+      <p>
+        The full reward later combines two things: a small <strong>format reward</strong> (does the response have the four tags?) and a much larger <strong>correctness reward</strong> (is the extracted answer right?).
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 4 ── -->
+    <div class="section-divider"><span>4 · Big Model vs. Small Model — The Gap</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🆚</span> What 4.1 Mini Solves That a 135M Model Cannot</h2>
+      <p>
+        Plugging GPT-4.1-mini into this loop via the OpenAI API works on the first try — it produces a clean think/answer trace and the score function returns a reward of <strong>1.0</strong>. The same prompt fed to <code>SmolLM-135M-Instruct</code> via Hugging Face <code>transformers</code> fails on two dimensions at once:
+      </p>
+      <ul>
+        <li>The reasoning is incorrect.</li>
+        <li>The XML format is broken — the <code>&lt;answer&gt;</code> tags often don't appear, so the regex returns an empty string.</li>
+      </ul>
+      <div class="callout">
+        The second failure is what RL is being asked to fix first. Without correct formatting there is nothing to score, and without something to score there is no learning signal.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 5 ── -->
+    <div class="section-divider"><span>5 · GRPO at a Glance — Two Phases in a Loop</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Collect, Then Train</h2>
+      <p>
+        GRPO alternates between two phases. During <strong>experience collection</strong> the current LLM acts in the environment and records what happened. During <strong>training</strong> the LLM's weights are updated to increase the probability of high-reward behaviour.
+      </p>
+      <div class="phase-grid">
+        <div class="phase-card">
+          <div class="p-tag">Phase 1</div>
+          <h3>Experience Collection</h3>
+          <ul>
+            <li>Sample a batch of questions</li>
+            <li>Generate <code>G</code> diverse responses per question</li>
+            <li>Score each response with the environment</li>
+            <li>Compute group-relative advantages</li>
+            <li>Save (sequence, mask, advantage, log-probs) into a buffer</li>
+          </ul>
+        </div>
+        <div class="phase-card">
+          <div class="p-tag">Phase 2</div>
+          <h3>Training</h3>
+          <ul>
+            <li>Sample a mini-batch of experiences</li>
+            <li>Recompute current log-probs through the LLM</li>
+            <li>Maximize the GRPO policy-gradient objective</li>
+            <li>Backprop, optimizer step, zero grad</li>
+            <li>Refill the buffer and repeat</li>
+          </ul>
+        </div>
+      </div>
+      <p>
+        The <strong>group-relative</strong> bit is what gives GRPO its name. For each question, multiple responses are generated, and the advantage of each response is its reward standardised <em>against the other responses to the same question</em>. There is no learned critic — the group itself acts as the baseline.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 6 ── -->
+    <div class="section-divider"><span>6 · The Experience Tuple</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> What Gets Saved Per Response</h2>
+      <p>
+        Every entry in the experience buffer contains exactly four things:
+      </p>
+      <div class="tuple-grid">
+        <div class="tuple-card">
+          <div class="t-label">Field 1</div>
+          <div class="t-name">Full sequence</div>
+          <div class="t-desc">System prompt + user question + assistant response, as token IDs.</div>
+        </div>
+        <div class="tuple-card">
+          <div class="t-label">Field 2</div>
+          <div class="t-name">Response mask</div>
+          <div class="t-desc">Binary mask marking which tokens were generated by the LLM. Loss is only applied here.</div>
+        </div>
+        <div class="tuple-card">
+          <div class="t-label">Field 3</div>
+          <div class="t-name">Group-relative advantage</div>
+          <div class="t-desc">Standardised reward — positive if better than peers in the same group, negative if worse.</div>
+        </div>
+        <div class="tuple-card">
+          <div class="t-label">Field 4</div>
+          <div class="t-name">Old log-probs</div>
+          <div class="t-desc">Per-token log-probabilities under the policy that produced the response. Used in the importance-sampling ratio.</div>
+        </div>
+      </div>
+      <p>
+        Field 4 is the subtle one: by the time training runs, the LLM has already changed, so its current probabilities differ from the ones at generation time. Saving the old log-probs lets the loss correct for that drift.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 7 ── -->
+    <div class="section-divider"><span>7 · The GRPO Objective — Term by Term</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧮</span> Don't Be Scared of the Equation</h2>
+      <p>
+        The full GRPO objective being maximised, per question <code>q</code> with a group of <code>G</code> sampled responses <code>o<sub>i</sub></code>:
+      </p>
+      <div class="formula-block">
+        <div class="formula-label">GRPO Policy-Gradient Objective</div>
+        <div class="formula-main">
+          𝒥(θ) = (1/G) Σ<sub>i=1</sub><sup>G</sup> (1/|o<sub>i</sub>|) Σ<sub>t=1</sub><sup>|o<sub>i</sub>|</sup>
+          min( r<sub>i,t</sub>(θ) · Â<sub>i,t</sub> ,&nbsp; clip(r<sub>i,t</sub>(θ), 1−ε, 1+ε) · Â<sub>i,t</sub> )
+        </div>
+        <div class="formula-legend">
+          <span>r<sub>i,t</sub>(θ)</span> = π<sub>θ</sub>(o<sub>i,t</sub> | q, o<sub>i,&lt;t</sub>) ÷ π<sub>θ<sub>old</sub></sub>(o<sub>i,t</sub> | q, o<sub>i,&lt;t</sub>) — importance-sampling ratio &nbsp;·&nbsp;
+          <span>Â<sub>i,t</sub></span> — token-level advantage (broadcast from the response advantage) &nbsp;·&nbsp;
+          <span>ε</span> — clip range, typically 0.2 &nbsp;·&nbsp;
+          <span>π<sub>θ</sub></span> / <span>π<sub>θ<sub>old</sub></sub></span> — current vs. data-collection policy
+        </div>
+      </div>
+      <p style="margin-top:0.8rem;"><strong>Reading the equation in pieces:</strong></p>
+      <ul>
+        <li><strong>The two summations</strong> are just a nested loop — outer over the <code>G</code> responses in the group, inner over the tokens in each response. The leading <code>1/G · 1/|o<sub>i</sub>|</code> turns those sums into means.</li>
+        <li><strong>π<sub>θ</sub>(o<sub>i,t</sub> | q, o<sub>i,&lt;t</sub>)</strong> is the current model's probability of token <code>t</code> in response <code>i</code>, given the question and all earlier tokens — exactly what the LLM outputs autoregressively.</li>
+        <li><strong>Â<sub>i,t</sub></strong> is the simplest possible token-level advantage: the response's group-relative advantage, broadcast to every token in that response. Every token is held equally responsible for the final reward.</li>
+        <li><strong>The ratio r<sub>i,t</sub></strong> compares the current policy to the one that collected the data. As the model trains, this ratio drifts away from 1.</li>
+        <li><strong>The clip + min</strong> is a regulariser borrowed from PPO. It refuses to credit changes larger than ±ε in the direction that would help the loss — preventing destructively large updates.</li>
+      </ul>
+      <div class="callout">
+        Maximising 𝒥(θ) means: <strong>raise the log-probabilities of tokens with positive advantage and lower the log-probabilities of tokens with negative advantage</strong> — but only by a clamped amount per step.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 8 ── -->
+    <div class="section-divider"><span>8 · Building Intuition With a Toy Example</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔬</span> Two Sequences, ABC and DEF</h2>
+      <p>
+        Imagine the policy generated two responses, <code>ABC</code> and <code>DEF</code>. The environment scored <code>ABC</code> high (advantage <strong>+1</strong>) and <code>DEF</code> low (advantage <strong>−1</strong>). Each token has some current probability under π<sub>θ</sub>. The objective is the mean of <code>π<sub>θ</sub>(token) · advantage(token)</code> over all tokens.
+      </p>
+      <ul>
+        <li>Tokens in <code>ABC</code> get coefficient <strong>+1</strong>. To <em>maximise</em> the objective, the model wants their probabilities to go <em>up</em>.</li>
+        <li>Tokens in <code>DEF</code> get coefficient <strong>−1</strong>. To maximise, their probabilities must go <em>down</em>.</li>
+      </ul>
+      <p style="margin-top:0.8rem;">
+        Advantages and rewards are <em>fixed</em> — they came from the environment. The only thing the optimiser can change is the policy. So gradient ascent on this objective is exactly: push log-probs of good tokens up, push log-probs of bad tokens down.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 9 ── -->
+    <div class="section-divider"><span>9 · Code — Generating Diverse Responses</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎲</span> Many Rollouts Per Question</h2>
+      <p>
+        Each batch of input prompts is left-padded so the tensors are rectangular, then passed to <code>llm.generate</code> with <code>num_return_sequences = n_rollouts</code> so the model emits multiple diverse responses for the same question.
+      </p>
+      <div class="code-block">
+<span class="c-label">grpo_utils.py — sample G responses per prompt</span>
+<span class="kw">def</span> <span class="fn">generate_responses</span>(llm, input_ids, attention_mask, eos_token_id,
+                       n_rollouts=<span class="num">5</span>, max_new_tokens=<span class="num">100</span>,
+                       top_p=<span class="num">0.95</span>, temperature=<span class="num">1.0</span>):
+    <span class="kw">return</span> llm.generate(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        max_new_tokens=max_new_tokens,
+        do_sample=<span class="kw">True</span>,
+        top_p=top_p,
+        num_return_sequences=n_rollouts,
+        temperature=temperature,
+        eos_token_id=eos_token_id,
+        pad_token_id=eos_token_id,
+    )
+</div>
+      <p><strong>Sampling knobs that shape the diversity of the rollouts:</strong></p>
+      <ul>
+        <li><code>do_sample=True</code> — switch from greedy decoding to probabilistic sampling.</li>
+        <li><code>top_p=0.95</code> — nucleus sampling. Restrict to the smallest set of tokens whose cumulative probability ≥ 0.95. Lower this for safer outputs, raise toward 1.0 for more variety.</li>
+        <li><code>temperature</code> — flattens or sharpens the logits before sampling. High temperature → more diversity; low temperature → near-greedy.</li>
+        <li><code>num_return_sequences</code> — the group size <code>G</code>. Each prompt is duplicated and decoded in parallel.</li>
+      </ul>
+      <p>
+        With <code>batch_size=2</code> and <code>n_rollouts=3</code>, the result tensor has shape <code>(6, prompt_len + max_new_tokens)</code>. The first three rows are responses to question 1, the next three to question 2.
+      </p>
+      <p>
+        The whole rollout runs under <code>torch.no_grad()</code> — no gradients are needed during data collection, and skipping them saves a lot of compute and memory.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 10 ── -->
+    <div class="section-divider"><span>10 · Code — Rewards (Format + Correctness)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏆</span> Two Reward Components</h2>
+      <p>
+        The reward function is a weighted blend: a tiny push for following the XML format and a much larger push for actually getting the answer right. The format reward exists primarily to bootstrap learning when the model can't yet answer correctly — it ensures the gradient signal is non-zero on responses that at least look like reasoning.
+      </p>
+      <div class="code-block">
+<span class="c-label">grpo_utils.py — format reward (shape only)</span>
+FORMAT_REWARD_WEIGHT = <span class="num">0.15</span>
+CORRECTNESS_REWARD_WEIGHT = <span class="num">0.85</span>
+
+<span class="kw">def</span> <span class="fn">calculate_format_reward</span>(response):
+    <span class="kw">if</span> (<span class="str">"&lt;answer&gt;"</span> <span class="kw">not in</span> response <span class="kw">and</span> <span class="str">"&lt;/answer&gt;"</span> <span class="kw">not in</span> response
+        <span class="kw">and</span> <span class="str">"&lt;think&gt;"</span> <span class="kw">not in</span> response <span class="kw">and</span> <span class="str">"&lt;/think&gt;"</span> <span class="kw">not in</span> response):
+        <span class="kw">return</span> -<span class="num">1</span>
+    fr = <span class="num">0</span>
+    <span class="kw">if</span> <span class="str">"&lt;think&gt;"</span> <span class="kw">in</span> response: fr += <span class="num">0.15</span>
+    <span class="kw">if</span> <span class="str">"&lt;/think&gt;"</span> <span class="kw">in</span> response: fr += <span class="num">0.15</span>
+    <span class="kw">if</span> <span class="str">"&lt;answer&gt;"</span> <span class="kw">in</span> response <span class="kw">and</span> <span class="str">"&lt;/answer&gt;"</span> <span class="kw">in</span> response:
+        <span class="kw">return</span> fr + <span class="num">0.7</span>
+    <span class="kw">return</span> fr
+</div>
+      <div class="code-block">
+<span class="c-label">grpo_utils.py — combined reward</span>
+<span class="kw">def</span> <span class="fn">calculate_rewards</span>(batch_responses, validation_objects):
+    format_rewards = np.array([calculate_format_reward(r) <span class="kw">for</span> r <span class="kw">in</span> batch_responses])
+    correctness_rewards = np.array([
+        calculate_correctness_reward(extract_answer(r), v)
+        <span class="kw">for</span> v, r <span class="kw">in</span> zip(validation_objects, batch_responses)
+    ])
+    <span class="kw">return</span> (FORMAT_REWARD_WEIGHT * format_rewards
+            + CORRECTNESS_REWARD_WEIGHT * correctness_rewards)
+</div>
+      <p>
+        For a batch of two questions × three rollouts, the reward tensor reshapes into <code>(2, 3)</code>. A typical row looks like <code>[1.0, 0.15, 1.0]</code> — a wrong answer that <em>did</em> follow the format still receives a small reward, while a totally malformed response gets a strong negative signal.
+      </p>
+      <div class="callout">
+        Correctness uses reasoning-gym's <code>get_score_answer_fn</code>. The validator is case- and format-sensitive — for the syllogism task, exactly <code>"Yes"</code>/<code>"No"</code> scores 1.0; <code>"yes"</code> scores 0.0. Worth knowing when debugging.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 11 ── -->
+    <div class="section-divider"><span>11 · Code — Group-Relative Advantages</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Standardise Within Each Group</h2>
+      <p>
+        Once each response has a scalar reward, the rewards are reshaped to <code>(num_questions, G)</code> and standardised per-row to zero mean and unit variance:
+      </p>
+      <div class="formula-block">
+        <div class="formula-label">Group-Relative Advantage</div>
+        <div class="formula-main">Â<sub>i</sub> = ( r<sub>i</sub> − mean(r<sub>group</sub>) ) ÷ std(r<sub>group</sub>)</div>
+        <div class="formula-legend">
+          <span>r<sub>i</sub></span> — reward for response i in the group &nbsp;·&nbsp;
+          <span>r<sub>group</sub></span> — vector of rewards for all G responses to the same question
+        </div>
+      </div>
+      <p>
+        Two consequences of this design that matter in practice:
+      </p>
+      <ul>
+        <li><strong>The mean across each row is exactly 0 and the std is roughly 1.</strong> No critic is needed — the group itself is the baseline.</li>
+        <li><strong>If every response in a group has the same reward, the advantage is 0 for all of them.</strong> Including the cases "all correct" and "all wrong". Those groups produce no training signal at all.</li>
+      </ul>
+      <div class="callout">
+        That second point is the central failure mode of GRPO on small models. If the model is too weak, every rollout is wrong → all rewards equal → all advantages zero → nothing to learn. The fix (covered in §16) is a supervised warm-up so that <em>some</em> rollouts are correct.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 12 ── -->
+    <div class="section-divider"><span>12 · Code — Per-Token Log-Probabilities</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Picking Out the Tokens That Were Actually Generated</h2>
+      <p>
+        At training time the loss needs the log-probability of <em>each generated token under the current policy</em>. The trick is that <code>logits</code> is a giant tensor of shape <code>(batch, seq_len, vocab_size)</code> — for SmolLM, <code>vocab_size = 49152</code>. Storing every vocabulary entry's log-prob is wasteful; the only ones that matter are the log-probs of the tokens that were actually emitted.
+      </p>
+      <div class="code-block">
+<span class="c-label">grpo_utils.py — selected log-probs via gather</span>
+<span class="kw">def</span> <span class="fn">calculate_logits</span>(llm, full_responses, attention_mask):
+    logits = llm(input_ids=full_responses, attention_mask=attention_mask).logits
+    log_probs = torch.log_softmax(logits, dim=-<span class="num">1</span>)              <span class="com"># (B, T, V)</span>
+    selected = torch.gather(
+        input=log_probs, dim=<span class="num">2</span>,
+        index=full_responses.unsqueeze(-<span class="num">1</span>),                <span class="com"># (B, T, 1)</span>
+    ).squeeze(-<span class="num">1</span>)                                            <span class="com"># (B, T)</span>
+    <span class="kw">return</span> selected
+</div>
+      <p>
+        Step by step:
+      </p>
+      <ol class="algo-steps">
+        <li>Forward pass: get logits of shape <code>(B, T, V)</code>.</li>
+        <li>Apply <code>log_softmax</code> on the last dim → log-probabilities over the entire vocab at every step.</li>
+        <li>Use <code>gather</code> to pick — at each <code>(b, t)</code> — the log-prob corresponding to the token ID that was actually generated at that position. Result shape: <code>(B, T)</code>.</li>
+      </ol>
+      <p>
+        Higher (closer to 0) means the model was more confident about that token. These per-token log-probs are saved during exploration as <code>old_log_probs</code> and recomputed during training as <code>log_probs</code> — the ratio of the two enters the GRPO objective.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 13 ── -->
+    <div class="section-divider"><span>13 · Code — The GRPO Loss</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Clipped Surrogate, Three Reductions</h2>
+      <p>
+        With log-probs old and new, advantages, and a response mask in hand, the loss is short:
+      </p>
+      <div class="code-block">
+<span class="c-label">grpo_utils.py — clipped objective</span>
+<span class="kw">def</span> <span class="fn">calculate_grpo_loss</span>(log_probs, old_log_probs, response_mask,
+                        advantages, clip_epsilon=<span class="num">0.2</span>,
+                        loss_implementation=<span class="str">"grpo"</span>):
+
+    importance_sampling_ratio = torch.exp(log_probs - old_log_probs)
+
+    clipped   = importance_sampling_ratio * advantages
+    unclipped = torch.clamp(importance_sampling_ratio,
+                            <span class="num">1</span> - clip_epsilon, <span class="num">1</span> + clip_epsilon) * advantages
+    loss = -torch.min(clipped, unclipped)
+    loss = loss * response_mask                                <span class="com"># mask out prompt tokens</span>
+
+    <span class="kw">if</span> loss_implementation == <span class="str">"grpo"</span>:
+        rmsum = response_mask.sum(dim=<span class="num">1</span>).clamp(min=<span class="num">1.0</span>)
+        <span class="kw">return</span> (loss.sum(dim=<span class="num">1</span>) / rmsum).mean()             <span class="com"># original GRPO</span>
+    <span class="kw">elif</span> loss_implementation == <span class="str">"dr_grpo"</span>:
+        <span class="kw">return</span> loss.sum() / MAX_TOKENS                          <span class="com"># DAPO/Dr.GRPO</span>
+    <span class="kw">elif</span> loss_implementation == <span class="str">"bnpo"</span>:
+        <span class="kw">return</span> loss.sum() / response_mask.sum().clamp(min=<span class="num">1.0</span>)
+</div>
+      <p>
+        Three things happen here:
+      </p>
+      <ul>
+        <li><strong>Importance ratio.</strong> <code>exp(log_probs − old_log_probs)</code> = π<sub>θ</sub>/π<sub>old</sub>, computed elementwise per token.</li>
+        <li><strong>Clipped surrogate.</strong> Take the elementwise minimum of <code>ratio · A</code> and <code>clip(ratio, 1−ε, 1+ε) · A</code>. The minus sign turns this maximisation into a loss.</li>
+        <li><strong>Reduction.</strong> Three options trade off length-bias differently — the original GRPO mean-over-tokens-then-mean-over-responses, Dr.GRPO's divide-by-MAX_TOKENS, and BNPO's pooled mean over all valid tokens. The default <code>"grpo"</code> just works for these tasks.</li>
+      </ul>
+    </div>
+
+    <!-- ─────────────────────────────────────── 14 ── -->
+    <div class="section-divider"><span>14 · Why Clipping? — A Worked Walk-Through</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✂️</span> Bounding How Much the Network Can Move</h2>
+      <p>
+        Inside a single mini-batch the model's weights are updated several times, so by the third or fourth step its log-probs can drift far from the old policy. Pick the worst-case token where <code>log_probs − old_log_probs</code> is large; the unclipped ratio explodes, the loss blows up, and the gradient is gigantic.
+      </p>
+      <p>
+        The clip term restricts <code>ratio ∈ [1−ε, 1+ε]</code> — typically <code>[0.8, 1.2]</code>. Below is what the loss looks like for two illustrative tokens:
+      </p>
+      <table class="clip-table">
+        <thead>
+          <tr><th>old_lp</th><th>new_lp</th><th>ratio</th><th>clip(ratio)</th><th>Â</th><th>−min(ratio·Â, clip·Â)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>−16.5</td><td>−16.0</td><td>1.65</td><td>1.20</td><td class="pos">+1.0</td><td>−1.20</td></tr>
+          <tr><td>−4.0</td><td>−4.1</td><td>0.90</td><td>0.90</td><td class="pos">+1.0</td><td>−0.90</td></tr>
+          <tr><td>−16.5</td><td>−16.0</td><td>1.65</td><td>1.20</td><td class="neg">−1.0</td><td>+1.65</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:0.8rem;">
+        Read the rows:
+      </p>
+      <ul>
+        <li><strong>Row 1 — positive advantage, ratio explodes.</strong> Without clipping the loss would be −1.65 (pulling new log-prob even further up); clipping caps it at −1.20.</li>
+        <li><strong>Row 2 — small drift.</strong> Clipped and unclipped agree; the loss flows normally.</li>
+        <li><strong>Row 3 — negative advantage, ratio explodes.</strong> Now the <code>min</code> picks the larger (less negative) loss, which is the <em>unclipped</em> term <code>1.65</code> — clipping doesn't protect the model from being pushed in the harmful direction. This asymmetry is intentional: trust-region behaviour where bad updates can still propagate gradient.</li>
+      </ul>
+      <div class="callout">
+        Always remember the sign: <strong>minimising the loss = maximising π·Â</strong>. Positive advantage → push log-prob up. Negative advantage → push it down. Clipping just bounds how aggressive a single step can be.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 15 ── -->
+    <div class="section-divider"><span>15 · Code — The Outer Training Loop</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> Buffer, Train, Empty, Repeat</h2>
+      <p>
+        Stitching it all together, the main loop is just the two-phase rhythm wrapped in a buffer:
+      </p>
+      <ol class="algo-steps">
+        <li>Sample a batch of questions from the dataloader.</li>
+        <li>Call <code>collect_experiences</code> — generate G rollouts per question, score, compute advantages, save log-probs and masks. Append the new experiences to the buffer.</li>
+        <li>If the buffer has reached its target size, call <code>train</code>: shuffle, mini-batch, run <code>train_on_batch</code> several times, then empty the buffer.</li>
+        <li>Loop back to step 1.</li>
+      </ol>
+      <p>
+        Inside <code>train_on_batch</code>:
+      </p>
+      <ul>
+        <li>Left-pad all sequences in the mini-batch to the same length.</li>
+        <li>Run the LLM forward to get <em>current</em> log-probs (<code>log_probs</code>) — the old log-probs were already stored.</li>
+        <li>Call <code>calculate_grpo_loss(log_probs, old_log_probs, response_mask, advantages)</code>.</li>
+        <li><code>accelerator.backward(loss)</code> → <code>optimizer.step()</code> → <code>optimizer.zero_grad()</code>.</li>
+      </ul>
+      <p>
+        Watching the loss across a few consecutive train steps on the same buffer shows the loss steadily decreasing — 1.15 → 0.8 → 0.7 → 0.6 — confirming the policy is moving toward the high-advantage tokens.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 16 ── -->
+    <div class="section-divider"><span>16 · Visualising the Effect on Log-Probs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> Blue = After Training, Orange = Before</h2>
+      <p>
+        Plotting the per-token log-probs of the last 25 generated tokens before and after a few rounds of training on a single buffer makes the optimiser's behaviour visible:
+      </p>
+      <ul>
+        <li>For a response that received a <strong>high advantage</strong> — say one that ended with the correct <code>&lt;answer&gt; Yes &lt;/answer&gt;</code> — the blue (after) bars are <em>shorter</em> than the orange (before) bars on the negative axis. Log-probs have moved closer to zero. The model is more likely to emit the same tokens next time.</li>
+        <li>For a response that received a <strong>negative advantage</strong>, the blue bars are <em>longer</em> than the orange — log-probs went further negative, lowering the chance of regenerating those tokens.</li>
+      </ul>
+      <p>
+        That is gradient ascent on the GRPO objective in action: every passing batch, good-token probabilities rise and bad-token probabilities fall.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 17 ── -->
+    <div class="section-divider"><span>17 · The Cold-Start Problem &amp; SFT Warm-Up</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🥶</span> RL Needs a Non-Zero Signal</h2>
+      <p>
+        On a base 135M model, raw GRPO simply does not work — every rollout is malformed or wrong, every advantage is zero, and there is nothing for the policy gradient to optimise. The fix is a small dose of <span class="term">supervised fine-tuning</span> before RL begins.
+      </p>
+      <div class="pipeline">
+        <div class="pipeline-node">
+          <div class="p-label">Step 1</div>
+          <div class="p-title">Generate SFT data</div>
+          <div class="p-sub">Prompt GPT-4.1-mini for ~200 traces with the exact &lt;think&gt;/&lt;answer&gt; format</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-node">
+          <div class="p-label">Step 2</div>
+          <div class="p-title">LoRA SFT</div>
+          <div class="p-sub">Attach LoRA adapter to the 135M base, train cross-entropy on the traces</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-node">
+          <div class="p-label">Step 3</div>
+          <div class="p-title">GRPO RL</div>
+          <div class="p-sub">Continue training on top of the SFT'd model with the loop in §15</div>
+        </div>
+      </div>
+      <p style="margin-top:0.8rem;">
+        <span class="term">LoRA</span> (Low-Rank Adaptation) keeps the base model frozen and adds small trainable matrices alongside it — cheaper memory, less risk of corrupting the base, and easy to swap on/off. After ~200 SFT examples the 135M model already follows the format and gets the syllogism answer right roughly <strong>45%</strong> of the time. That is enough non-zero signal for GRPO to take over.
+      </p>
+      <div class="callout">
+        SFT teaches the <em>format</em> and a baseline level of competence. RL pushes past that floor by sharpening the reasoning over many rollouts. Doing them in this order is the difference between training and silence.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 18 ── -->
+    <div class="section-divider"><span>18 · Results Across Model Sizes</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> +20 Points Across the Board</h2>
+      <p>
+        With the SFT → GRPO recipe applied across three small models on the syllogism task, the rewards curve trends upward and the final accuracy lifts roughly twenty points on average — a consistent additive improvement regardless of base model size.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Params</th><th>After SFT</th><th>After GRPO</th><th>Δ</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>SmolLM-135M-Instruct</td><td>135M</td><td>~45%</td><td>~61%</td><td>+16</td></tr>
+          <tr><td>SmolLM-360M-Instruct</td><td>360M</td><td>~55%</td><td>~75%</td><td>+20</td></tr>
+          <tr><td>Qwen 3 (0.6B)</td><td>~600M</td><td>~62%</td><td>~81%</td><td>+19</td></tr>
+        </tbody>
+      </table>
+      <div class="stat-row">
+        <div class="stat-pill">Hardware: <span>single rented GPU</span></div>
+        <div class="stat-pill">Cost: <span>$5–6</span></div>
+        <div class="stat-pill">Avg lift: <span>~+20% accuracy</span></div>
+      </div>
+      <p>
+        The propositional-logic task — harder, generative rather than yes/no — shows similar relative gains. Multi-task training (running RL on several tasks simultaneously rather than just one) is a promising next step for pushing the absolute numbers higher and avoiding single-task bottlenecks.
+      </p>
+      <div class="callout">
+        The most interesting fact: at no point does the model receive a direct supervisory signal on <em>how to reason</em>. RL only sees the final answer's correctness. The chain-of-thought structure emerges from policy-gradient updates alone — once SFT has primed the format.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 19 ── -->
+    <div class="section-divider"><span>19 · Loss Variants — Vanilla GRPO vs. Dr.GRPO vs. BNPO</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Three Ways to Aggregate the Loss</h2>
+      <p>
+        The original DeepSeek-Math GRPO paper observed that response lengths grew during training and read this as a sign of evolving intelligence. Follow-up work (DAPO, "Critical Perspectives on R1") argued that this is partly a length bias baked into the loss, and proposed alternative reductions:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Variant</th><th>Reduction</th><th>Length bias</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GRPO (vanilla)</td><td>mean over tokens within a response, then mean over responses</td><td>Implicit upweighting of long responses</td></tr>
+          <tr><td>Dr.GRPO</td><td>sum of (loss · mask) divided by a fixed <code>MAX_TOKENS</code></td><td>Removed — fixed normaliser</td></tr>
+          <tr><td>BNPO</td><td>sum of (loss · mask) divided by total valid tokens in the batch</td><td>Pooled across the batch</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The DAPO paper also recommends <strong>removing the KL penalty</strong> that the original GRPO formulation kept against a reference model. The argument: reasoning policies <em>should</em> drift far from the base policy — the KL term is an unnecessary regulariser on small, simple tasks. The implementation in this page omits it for that reason.
+      </p>
+      <div class="callout">
+        For the syllogism / propositional-logic experiments here, vanilla GRPO worked perfectly. The other variants are worth keeping in the toolbox for harder tasks where length-bias artefacts start to dominate.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 20 ── -->
+    <div class="section-divider"><span>20 · Ten Practical Takeaways</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> Lessons From the Trenches</h2>
+      <p>
+        These are the gotchas that make or break a small-model GRPO run. Skim them before starting, revisit them when training stalls.
+      </p>
+      <ol class="tip-list">
+        <li>
+          <span class="tip-title">Not every task is a fit for every model.</span>
+          Small models lack the world knowledge of 14B+ models. Check the <strong>base accuracy</strong> on the target task first. If it is below 10–20%, the task is too hard — invest in supervised warm-up before any RL.
+        </li>
+        <li>
+          <span class="tip-title">SFT is absurdly sample-efficient on SLMs.</span>
+          A few hundred high-quality examples can move accuracy by 30–40 points. In many practical cases SFT alone is enough and RL is overkill. Measure first.
+        </li>
+        <li>
+          <span class="tip-title">Reasoning research is still in flux.</span>
+          The original GRPO paper interpreted growing response length as emerging intelligence; DAPO and "Critical Perspectives on R1" challenged that and proposed Dr.GRPO and BNPO loss reductions. Be ready to swap losses if length pathologies appear.
+        </li>
+        <li>
+          <span class="tip-title">The KL-against-reference term can be dropped.</span>
+          DAPO argues — and this implementation agrees — that on reasoning tasks the policy <em>should</em> diverge from the base model, so the KL regulariser is an unnecessary brake on intelligence.
+        </li>
+        <li>
+          <span class="tip-title">Diverse responses are the engine of RL.</span>
+          If every rollout in a group has the same reward, advantages collapse to zero and the gradient vanishes. Track the per-batch <strong>standard deviation of rewards</strong>. If it is low, raise temperature, raise <code>num_return_sequences</code>, or add more reward components.
+        </li>
+        <li>
+          <span class="tip-title">Drop zero-advantage experiences.</span>
+          Filtering out experiences whose advantages are near zero saves gradient steps and lets the optimiser focus on the contrastive cases. Several recent papers report consistent gains from this trick.
+        </li>
+        <li>
+          <span class="tip-title">Stability comes from compute, not tricks.</span>
+          The reliable knobs for stabilising training all cost more compute: more rollouts per group, larger replay buffer, smaller learning rate. They almost always work.
+        </li>
+        <li>
+          <span class="tip-title">Audit the SFT dataset's tokenisation.</span>
+          Trivial-looking choices (whitespace inside <code>&lt;answer&gt;</code> tags, trailing newlines, punctuation) change how the tokenizer splits sequences. Consistent formatting between SFT and RL makes the model's life dramatically easier.
+        </li>
+        <li>
+          <span class="tip-title">The system prompt is a first-class lever.</span>
+          Adding stricter format instructions or a couple of few-shot examples in the system prompt itself often beats spending more compute on training. Don't treat the prompt as fixed.
+        </li>
+        <li>
+          <span class="tip-title">Always evaluate during training and snapshot the best checkpoint.</span>
+          Once the model starts solving most questions, advantages flatten and gradients shrink — training can oscillate in place. Periodic eval on a held-out set captures the real best state. Anneal the learning rate, lower the clip ratio, and freeze LoRA params toward the end of training to keep things stable in the final stretch.
+        </li>
+      </ol>
+    </div>
+
+    <!-- ─────────────────────────────────────── 21 ── -->
+    <div class="section-divider"><span>21 · Stack &amp; Source</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧰</span> Files and Libraries Used</h2>
+      <table>
+        <thead>
+          <tr><th>File / Library</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>prompt_utils.py</code></td><td>System prompt that instructs the model to produce the &lt;think&gt;/&lt;answer&gt; format.</td></tr>
+          <tr><td><code>utils.py</code></td><td>Dataset, dataloader, tokeniser, chat-template wiring, and the <code>ReasoningDataset</code> class around <code>reasoning_gym</code>.</td></tr>
+          <tr><td><code>grpo_utils.py</code></td><td>Rollout generation, format/correctness rewards, log-prob calculation, and the GRPO loss.</td></tr>
+          <tr><td><code>data_generation.py</code></td><td>Async script that prompts GPT-4.1-mini to produce SFT traces in the right format.</td></tr>
+          <tr><td><code>train_playground.ipynb</code></td><td>End-to-end notebook with visualisations of rewards, advantages, and log-prob shifts.</td></tr>
+          <tr><td><code>transformers</code> 4.51 · <code>torch</code> 2.7</td><td>Model loading, autoregressive generation, and gradients.</td></tr>
+          <tr><td><code>peft</code> 0.15</td><td>LoRA adapters for the SFT warm-up step.</td></tr>
+          <tr><td><code>reasoning-gym</code> 0.1.22</td><td>Task generation and reward scoring (syllogism, propositional logic, more).</td></tr>
+          <tr><td><code>accelerate</code></td><td>Mixed-precision training and the <code>backward</code>/<code>step</code>/<code>zero_grad</code> dance.</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:0.8rem;">
+        Reference implementation by Aritra Biswas: <a href="https://gist.github.com/avbiswas/275406c7fcb52e11f9ce632065a4f955" style="color:#a5b4fc;">github gist 275406c7</a>. Companion video walks through the same notebook step by step.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 22 ── -->
+    <div class="section-divider"><span>22 · Strengths &amp; Limitations of This Recipe</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> What It Is and Isn't For</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul>
+            <li>Cheap — sub-$10 cloud GPU runs end-to-end</li>
+            <li>From-scratch implementation makes every detail inspectable</li>
+            <li>Pairs cleanly with reasoning-gym for new task types</li>
+            <li>SFT + GRPO recipe transfers across SmolLM and Qwen sizes</li>
+            <li>No critic, no reward model, no KL term — minimal moving parts</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul>
+            <li>Cold start fails without SFT — pure RL is a dead end on 135M</li>
+            <li>Single-task training caps the model's general reasoning</li>
+            <li>Sensitive to tokenisation, prompt format, and sampling temperature</li>
+            <li>Vanilla GRPO has length bias — surfaces on harder tasks</li>
+            <li>Reward design (format vs. correctness weights) needs per-task tuning</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated April 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← RL Concepts Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

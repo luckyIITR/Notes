@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CartPole Problem — Reinforcement Learning</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula block ── */
+    .formula-block { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.5rem; margin: 0.8rem 0; }
+    .formula-block .formula-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.5rem; }
+    .formula-block .formula-main { font-size: 1rem; color: #c7d2fe; font-family: 'Courier New', monospace; text-align: center; line-height: 2.2; }
+    .formula-block .formula-legend { margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; line-height: 2; }
+    .formula-block .formula-legend span { color: #a5b4fc; font-family: 'Courier New', monospace; }
+
+    /* ── algo steps ── */
+    .algo-steps { list-style: none; padding: 0; counter-reset: step-counter; }
+    .algo-steps li { counter-increment: step-counter; position: relative; padding: 0.75rem 0.9rem 0.75rem 3rem; margin-bottom: 0.5rem; background: #151823; border: 1px solid #2d3148; border-radius: 8px; color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; }
+    .algo-steps li::before { content: counter(step-counter); position: absolute; left: 0.9rem; top: 0.85rem; background: #6366f1; color: #fff; font-size: 0.72rem; font-weight: 800; width: 1.4rem; height: 1.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+    /* ── code block ── */
+    .code-block { background: #0d1117; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.4rem; margin: 0.8rem 0; overflow-x: auto; }
+    .code-block .code-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.75rem; }
+    .code-block pre { margin: 0; font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; white-space: pre; }
+    .code-block pre .c { color: #475569; }
+    .code-block pre .k { color: #c084fc; }
+    .code-block pre .f { color: #60a5fa; }
+    .code-block pre .s { color: #4ade80; }
+    .code-block pre .n { color: #f59e0b; }
+    .code-block pre .cl { color: #fbbf24; }
+
+    /* ── simulation canvas wrapper ── */
+    .sim-wrap {
+      background: #0d1117; border: 1px solid #2d3148; border-radius: 12px;
+      overflow: hidden; position: relative;
+    }
+    .sim-wrap canvas { display: block; width: 100%; }
+
+    /* ── sim controls ── */
+    .sim-controls {
+      display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+      margin: 0.75rem 0;
+    }
+    .sim-btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; border: 1px solid #2d3148;
+      background: #1e2130; color: #94a3b8; transition: all 0.18s;
+    }
+    .sim-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+    .sim-btn.active { background: #312e81; border-color: #6366f1; color: #c7d2fe; }
+    .sim-btn.danger { border-color: #374151; }
+    .sim-btn.danger:hover { border-color: #f87171; color: #f87171; }
+
+    /* ── state bars ── */
+    .state-bars { display: flex; flex-direction: column; gap: 0.55rem; margin-top: 0.85rem; }
+    .sbar-row { display: flex; align-items: center; gap: 0.7rem; }
+    .sbar-label { font-family: 'Courier New', monospace; font-size: 0.78rem; color: #a5b4fc; width: 2.4rem; text-align: right; flex-shrink: 0; }
+    .sbar-name { font-size: 0.72rem; color: #64748b; width: 4.5rem; flex-shrink: 0; }
+    .sbar-track {
+      flex: 1; height: 0.55rem; background: #1e2130; border-radius: 4px;
+      position: relative; overflow: hidden;
+    }
+    .sbar-fill {
+      position: absolute; top: 0; height: 100%;
+      border-radius: 4px; transition: all 0.06s linear;
+    }
+    .sbar-fill.pos { background: linear-gradient(90deg, #4f46e5, #6366f1); }
+    .sbar-fill.neg { background: linear-gradient(90deg, #f87171, #ef4444); }
+    .sbar-center-line {
+      position: absolute; left: 50%; top: 0; width: 1px; height: 100%;
+      background: #2d3148;
+    }
+    .sbar-val { font-family: 'Courier New', monospace; font-size: 0.75rem; color: #64748b; width: 4.5rem; text-align: right; flex-shrink: 0; }
+
+    /* ── network SVG ── */
+    .net-wrap {
+      background: #0d1117; border: 1px solid #2d3148; border-radius: 12px;
+      padding: 1rem; margin: 0.8rem 0;
+    }
+    .net-wrap svg { display: block; width: 100%; overflow: visible; }
+
+    /* ── replay buffer grid ── */
+    .buf-grid {
+      display: grid; grid-template-columns: repeat(12, 1fr);
+      gap: 4px; margin: 0.8rem 0;
+      padding: 1rem; background: #0d1117; border: 1px solid #2d3148; border-radius: 12px;
+    }
+    .buf-cell {
+      aspect-ratio: 1; border-radius: 3px;
+      background: #151823; border: 1px solid #1e2130;
+      transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+    .buf-cell.filled  { background: #1e1b4b; border-color: #312e81; }
+    .buf-cell.fresh   { background: #fbbf24; border-color: #f59e0b; box-shadow: 0 0 8px #fbbf24; }
+    .buf-cell.sampled { background: #4ade80; border-color: #22c55e; box-shadow: 0 0 8px #4ade80; }
+
+    .buf-legend {
+      display: flex; gap: 1.2rem; flex-wrap: wrap;
+      font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;
+    }
+    .buf-legend span { display: flex; align-items: center; gap: 0.4rem; }
+    .buf-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* ── epsilon SVG chart ── */
+    .chart-wrap {
+      background: #0d1117; border: 1px solid #2d3148; border-radius: 12px;
+      padding: 1rem; margin: 0.8rem 0;
+    }
+    .chart-wrap svg { display: block; width: 100%; }
+    @keyframes draw-eps { to { stroke-dashoffset: 0; } }
+    @keyframes draw-train { to { stroke-dashoffset: 0; } }
+
+    /* ── explore/exploit bar ── */
+    .ee-bar-wrap { display: flex; border-radius: 6px; overflow: hidden; height: 1.6rem; margin-top: 0.6rem; }
+    .ee-explore { background: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: #e9d5ff; transition: width 1s ease; }
+    .ee-exploit { background: #0f4c75; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: #bae6fd; transition: width 1s ease; flex: 1; }
+
+    /* ── state table ── */
+    .state-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 0; border: 1px solid #2d3148; border-radius: 10px; overflow: hidden; margin: 0.8rem 0; }
+    .state-grid .sg-head, .state-grid .sg-cell { padding: 0.6rem 0.9rem; font-size: 0.85rem; border-bottom: 1px solid #2d3148; }
+    .state-grid .sg-head { background: #1e2130; color: #6366f1; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    .state-grid .sg-cell { background: #151823; color: #cbd5e1; }
+    .state-grid .sg-cell.sym { color: #a5b4fc; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+    .state-grid > *:nth-last-child(-n+3) { border-bottom: none; }
+
+    /* ── tip grid ── */
+    .tip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.75rem; }
+    .tip-item { background: #151823; border: 1px solid #2d3148; border-radius: 8px; padding: 0.85rem 1rem; }
+    .tip-item .tip-head { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.4rem; }
+    .tip-item p { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; margin: 0; }
+
+    /* ── phase annotation badge ── */
+    .phase-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: #1e2130; border: 1px solid #2d3148; border-radius: 5px; padding: 0.2rem 0.55rem; font-size: 0.72rem; color: #94a3b8; margin: 0.1rem; }
+    .phase-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    @media (max-width: 540px) {
+      .tip-grid { grid-template-columns: 1fr; }
+      .state-grid { grid-template-columns: 1fr; }
+      .sim-controls { gap: 0.4rem; }
+      .sim-btn { font-size: 0.75rem; padding: 0.35rem 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <header class="notes-header">
+      <p class="tag">RL Problems · Classic Control</p>
+      <h1>The CartPole Problem</h1>
+      <p>A fully animated walkthrough — see the environment live, watch a trained agent balance the pole, understand the DQN brain firing in real time, and trace every piece of the training pipeline.</p>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Live Simulator</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎮</span> See CartPole in Action</h2>
+      <p>Toggle between a <strong>random agent</strong> (pole falls in ~10 steps) and a <strong>trained agent</strong> (balances indefinitely). Watch the state bars update at every physics step.</p>
+
+      <div class="sim-controls">
+        <button class="sim-btn" id="btn-playpause">⏸ Pause</button>
+        <button class="sim-btn active" id="btn-random" onclick="setMode('random')">🎲 Random Agent</button>
+        <button class="sim-btn" id="btn-trained" onclick="setMode('trained')">🧠 Trained Agent</button>
+        <button class="sim-btn danger" onclick="resetSim()">🔄 Reset</button>
+      </div>
+
+      <div class="sim-wrap">
+        <canvas id="sim-canvas" height="220"></canvas>
+      </div>
+
+      <div class="state-bars">
+        <div class="sbar-row">
+          <div class="sbar-label">x</div>
+          <div class="sbar-name">Position</div>
+          <div class="sbar-track"><div class="sbar-center-line"></div><div class="sbar-fill" id="fill-x"></div></div>
+          <div class="sbar-val" id="val-x">0.000</div>
+        </div>
+        <div class="sbar-row">
+          <div class="sbar-label">ẋ</div>
+          <div class="sbar-name">Cart vel.</div>
+          <div class="sbar-track"><div class="sbar-center-line"></div><div class="sbar-fill" id="fill-xd"></div></div>
+          <div class="sbar-val" id="val-xd">0.000</div>
+        </div>
+        <div class="sbar-row">
+          <div class="sbar-label">θ</div>
+          <div class="sbar-name">Pole angle</div>
+          <div class="sbar-track"><div class="sbar-center-line"></div><div class="sbar-fill" id="fill-th"></div></div>
+          <div class="sbar-val" id="val-th">0.000</div>
+        </div>
+        <div class="sbar-row">
+          <div class="sbar-label">θ̇</div>
+          <div class="sbar-name">Pole ang. vel.</div>
+          <div class="sbar-track"><div class="sbar-center-line"></div><div class="sbar-fill" id="fill-thd"></div></div>
+          <div class="sbar-val" id="val-thd">0.000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Environment (MDP)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌍</span> What the Agent Sees and Does</h2>
+      <p>CartPole is a <span class="term">Markov Decision Process</span>. Every step: the environment gives the agent a <strong>state</strong>, the agent picks an <strong>action</strong>, and the environment returns a <strong>reward</strong> and a new state.</p>
+
+      <h2><span class="icon">📐</span> State — 4 Continuous Numbers</h2>
+      <div class="state-grid">
+        <div class="sg-head">Variable</div>
+        <div class="sg-head">Meaning</div>
+        <div class="sg-head">Range</div>
+        <div class="sg-cell sym">x</div>
+        <div class="sg-cell">Cart position on track</div>
+        <div class="sg-cell">−4.8 → +4.8</div>
+        <div class="sg-cell sym">ẋ</div>
+        <div class="sg-cell">Cart velocity</div>
+        <div class="sg-cell">−∞ → +∞</div>
+        <div class="sg-cell sym">θ</div>
+        <div class="sg-cell">Pole angle from vertical</div>
+        <div class="sg-cell">−0.418 → +0.418 rad</div>
+        <div class="sg-cell sym">θ̇</div>
+        <div class="sg-cell">Pole angular velocity</div>
+        <div class="sg-cell">−∞ → +∞</div>
+      </div>
+
+      <h2><span class="icon">🕹️</span> Actions — 2 Discrete Choices</h2>
+      <ul>
+        <li><strong>0</strong> → Push cart left (−10 N force)</li>
+        <li><strong>1</strong> → Push cart right (+10 N force)</li>
+      </ul>
+
+      <div class="formula-block">
+        <div class="formula-label">Reward & Termination</div>
+        <div class="formula-main">r = +1 per surviving step &nbsp;·&nbsp; max return = 500</div>
+        <div class="formula-legend">
+          Episode ends when: &nbsp;<span>|θ| > 12°</span> (pole falls) &nbsp;or&nbsp; <span>|x| > 2.4</span> (cart off track) &nbsp;or&nbsp; <span>steps = 500</span> (solved!)
+        </div>
+      </div>
+
+      <div class="callout">Because the reward is <strong>+1 every step</strong> that the pole is still up, the agent only needs to learn one thing: <strong>keep the pole vertical as long as possible.</strong></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · DQN — The Decision Network</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Animated Neural Network</h2>
+      <p>The DQN reads the 4-dimensional state and outputs two Q-values — one per action. The action with the higher Q-value is chosen. Watch the forward-pass signal flow from inputs to outputs.</p>
+
+      <div class="net-wrap">
+        <svg id="net-svg" viewBox="0 0 520 260" height="260"></svg>
+      </div>
+
+      <p style="font-size:0.8rem; color:#64748b; text-align:center; margin-top:0.25rem;">
+        Pulses animate every forward pass &nbsp;·&nbsp; <span style="color:#4ade80">●</span> chosen action &nbsp;·&nbsp; <span style="color:#f87171">●</span> rejected action
+      </p>
+
+      <h2><span class="icon">⚙️</span> Why This Works</h2>
+      <ul>
+        <li>The network <strong>approximates Q(s, a)</strong> — the expected total future reward from state s taking action a.</li>
+        <li>A <strong>target network</strong> (frozen copy) provides stable TD targets and prevents the training from chasing a moving goal.</li>
+        <li>CartPole only needs 4 → 128 → 128 → 2. A tiny network that converges in ~250 episodes.</li>
+      </ul>
+
+      <div class="formula-block">
+        <div class="formula-label">Bellman TD Target & Loss</div>
+        <div class="formula-main">y = r + γ · max<sub>a′</sub> Q<sub>θ̄</sub>(s′, a′) · (1 − done)</div>
+        <div class="formula-main">ℒ(θ) = 𝔼 [ (y − Q<sub>θ</sub>(s, a))² ]</div>
+        <div class="formula-legend">
+          <span>θ̄</span> = frozen target network &nbsp;·&nbsp;
+          <span>γ</span> = 0.99 (discount) &nbsp;·&nbsp;
+          <span>done</span> = 1 if terminal
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Experience Replay</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💾</span> Animated Replay Buffer</h2>
+      <p>Every step, the transition (s, a, r, s′, done) is stored in a circular buffer. Periodically, a random mini-batch is sampled for training. Watch the buffer fill up and get sampled:</p>
+
+      <div class="buf-grid" id="buf-grid"></div>
+      <div class="buf-legend">
+        <span><div class="buf-dot" style="background:#151823;border:1px solid #2d3148"></div> Empty</span>
+        <span><div class="buf-dot" style="background:#1e1b4b;border:1px solid #312e81"></div> Stored</span>
+        <span><div class="buf-dot" style="background:#fbbf24"></div> Just added</span>
+        <span><div class="buf-dot" style="background:#4ade80"></div> Sampled (batch)</span>
+      </div>
+
+      <h2><span class="icon">🔀</span> Why Random Sampling Matters</h2>
+      <ul>
+        <li>Sequential experience is <strong>highly correlated</strong> — training on it directly causes the network to overfit to recent behavior and forget earlier lessons.</li>
+        <li>Random sampling breaks this correlation, giving the network a <strong>diverse mix</strong> of early failures and recent successes in every batch.</li>
+        <li>The circular buffer (size 10 000) keeps older, diverse experiences alive — the agent learns from <em>all</em> its history, not just the last few episodes.</li>
+      </ul>
+
+      <div class="callout">Experience replay is why DQN can use standard supervised-learning SGD. Without it, the correlations between consecutive steps make gradient descent <strong>wildly unstable.</strong></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · ε-Greedy Exploration</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎲</span> The Explore–Exploit Tradeoff</h2>
+      <p>Early in training the Q-network outputs garbage — acting greedily would mean repeating the same wrong action. <span class="term">ε-greedy</span> forces random exploration that decays over time as the network improves.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">ε Decay Schedule</div>
+        <div class="formula-main">ε<sub>t</sub> = ε<sub>min</sub> + (1 − ε<sub>min</sub>) · e<sup>−t / τ</sup></div>
+        <div class="formula-legend">
+          <span>ε<sub>min</sub></span> = 0.01 &nbsp;·&nbsp; <span>τ</span> = 500 steps &nbsp;·&nbsp; At step 0: ε=1.0 → fully random. At step 2000: ε≈0.02.
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <svg id="eps-svg" viewBox="0 0 500 180" height="180"></svg>
+      </div>
+
+      <p style="margin-top:0.75rem; font-size:0.85rem; color:#94a3b8;">Current explore/exploit split at training step <strong id="eps-step-label">0</strong>:</p>
+      <div class="ee-bar-wrap">
+        <div class="ee-explore" id="ee-explore" style="width:100%">Explore (random)</div>
+        <div class="ee-exploit" id="ee-exploit" style="width:0%"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:0.3rem;">
+        <span style="font-size:0.72rem;color:#7c3aed;" id="eps-explore-pct">100% random</span>
+        <span style="font-size:0.72rem;color:#0f4c75;" id="eps-exploit-pct">0% greedy</span>
+      </div>
+      <input type="range" id="eps-slider" min="0" max="3000" value="0"
+        style="width:100%; margin-top:0.6rem; accent-color:#6366f1;" />
+      <p style="font-size:0.72rem; color:#475569; text-align:center; margin-top:0.2rem;">← drag to scrub training steps</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Training Progress</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> Animated Learning Curve</h2>
+      <p>Watch the reward per episode animate from left to right. The curve shows all three training phases. Hit <strong>Replay</strong> to watch it again.</p>
+
+      <div class="chart-wrap" style="padding:0.5rem;">
+        <canvas id="train-canvas" height="210" style="display:block;width:100%;"></canvas>
+      </div>
+      <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.5rem; align-items:center;">
+        <div class="phase-badge"><div class="dot" style="background:#f87171"></div> Phase 1: Random (0–80)</div>
+        <div class="phase-badge"><div class="dot" style="background:#fbbf24"></div> Phase 2: Learning (80–230)</div>
+        <div class="phase-badge"><div class="dot" style="background:#4ade80"></div> Phase 3: Solved (230+)</div>
+        <button class="sim-btn" id="btn-replay-curve" style="margin-left:auto;" onclick="replayTrainingCurve()">▶ Replay</button>
+      </div>
+
+      <h2><span class="icon">🛠️</span> Key Hyperparameters</h2>
+      <div class="tip-grid">
+        <div class="tip-item">
+          <div class="tip-head">Learning Rate — 1e-3</div>
+          <p>Adam optimizer. Too high (&gt;5e-3) causes divergence; too low is unnecessarily slow.</p>
+        </div>
+        <div class="tip-item">
+          <div class="tip-head">Replay Buffer — 10 000</div>
+          <p>CartPole episodes are short, so the buffer fills fast and stays diverse.</p>
+        </div>
+        <div class="tip-item">
+          <div class="tip-head">Target Sync — every 10 ep.</div>
+          <p>Syncing too often collapses stability; too rarely makes targets stale.</p>
+        </div>
+        <div class="tip-item">
+          <div class="tip-head">Discount γ = 0.99</div>
+          <p>Episodes can run 500 steps — a high γ correctly values long-horizon survival.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Training Loop</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> The Algorithm, Step by Step</h2>
+
+      <ol class="algo-steps">
+        <li>Reset the environment → receive initial state <strong>s</strong></li>
+        <li>With probability ε pick a random action (explore); otherwise pick <code>argmax Q(s, a)</code> from the network (exploit)</li>
+        <li>Execute action <strong>a</strong> → receive reward <strong>r</strong>, next state <strong>s′</strong>, and done flag</li>
+        <li>Store (s, a, r, s′, done) in the replay buffer</li>
+        <li>If buffer has ≥ 64 transitions: sample a random mini-batch, compute TD targets using the frozen target network, and take a gradient step to minimise the MSE loss</li>
+        <li>Every 10 episodes, copy the online Q-network weights into the target network</li>
+        <li>Repeat until the 100-episode rolling average reward ≥ 475 → <strong>Solved!</strong></li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">Full Implementation (PyTorch + Gymnasium)</div>
+        <pre><span class="k">import</span> torch, torch.nn <span class="k">as</span> nn, torch.optim <span class="k">as</span> optim
+<span class="k">import</span> numpy <span class="k">as</span> np, gymnasium <span class="k">as</span> gym, random
+<span class="k">from</span> collections <span class="k">import</span> deque
+
+<span class="c"># ── Network ────────────────────────────────────────────</span>
+<span class="k">class</span> <span class="cl">QNet</span>(nn.Module):
+    <span class="k">def</span> <span class="f">__init__</span>(self):
+        <span class="f">super</span>().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(<span class="n">4</span>, <span class="n">128</span>), nn.ReLU(),
+            nn.Linear(<span class="n">128</span>, <span class="n">128</span>), nn.ReLU(),
+            nn.Linear(<span class="n">128</span>, <span class="n">2</span>))
+    <span class="k">def</span> <span class="f">forward</span>(self, x): <span class="k">return</span> self.net(x)
+
+<span class="c"># ── Replay Buffer ───────────────────────────────────────</span>
+<span class="k">class</span> <span class="cl">Buffer</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self): self.d = deque(maxlen=<span class="n">10_000</span>)
+    <span class="k">def</span> <span class="f">push</span>(self, *t): self.d.append(t)
+    <span class="k">def</span> <span class="f">sample</span>(self, n):
+        s,a,r,ns,d = zip(*random.sample(self.d, n))
+        <span class="k">return</span> (torch.FloatTensor(np.array(s)),
+                torch.LongTensor(a), torch.FloatTensor(r),
+                torch.FloatTensor(np.array(ns)), torch.FloatTensor(d))
+    <span class="k">def</span> <span class="f">__len__</span>(self): <span class="k">return</span> len(self.d)
+
+<span class="c"># ── Training ────────────────────────────────────────────</span>
+env    = gym.<span class="f">make</span>(<span class="s">"CartPole-v1"</span>)
+q, qt  = <span class="cl">QNet</span>(), <span class="cl">QNet</span>()
+qt.load_state_dict(q.state_dict())
+opt, buf = optim.<span class="f">Adam</span>(q.parameters(), lr=<span class="n">1e-3</span>), <span class="cl">Buffer</span>()
+γ, BATCH, steps = <span class="n">0.99</span>, <span class="n">64</span>, <span class="n">0</span>
+
+<span class="k">for</span> ep <span class="k">in</span> <span class="f">range</span>(<span class="n">600</span>):
+    s, _ = env.<span class="f">reset</span>(); total = <span class="n">0</span>
+    <span class="k">while</span> <span class="k">True</span>:
+        ε = <span class="n">0.01</span> + <span class="n">0.99</span> * np.<span class="f">exp</span>(-steps / <span class="n">500</span>)
+        a = random.<span class="f">randint</span>(<span class="n">0</span>,<span class="n">1</span>) <span class="k">if</span> random.<span class="f">random</span>() < ε <span class="k">else</span> \
+            q(torch.<span class="f">FloatTensor</span>(s).unsqueeze(<span class="n">0</span>)).argmax().item()
+        ns, r, term, trunc, _ = env.<span class="f">step</span>(a)
+        done = term <span class="k">or</span> trunc
+        buf.<span class="f">push</span>(s, a, r, ns, <span class="f">float</span>(done)); steps += <span class="n">1</span>
+        <span class="k">if</span> len(buf) >= BATCH:
+            S,A,R,NS,D = buf.<span class="f">sample</span>(BATCH)
+            tgt = R + γ * qt(NS).max(<span class="n">1</span>).values * (<span class="n">1</span>-D)
+            loss = nn.functional.<span class="f">mse_loss</span>(q(S).gather(<span class="n">1</span>,A.unsqueeze(<span class="n">1</span>)).squeeze(), tgt.detach())
+            opt.<span class="f">zero_grad</span>(); loss.<span class="f">backward</span>(); opt.<span class="f">step</span>()
+        s, total, _ = ns, total + r, done <span class="k">and</span> <span class="f">None</span>
+        <span class="k">if</span> done: <span class="k">break</span>
+    <span class="k">if</span> ep % <span class="n">10</span> == <span class="n">0</span>: qt.load_state_dict(q.state_dict())
+    <span class="k">if</span> ep >= <span class="n">99</span> <span class="k">and</span> np.<span class="f">mean</span>(rewards[-<span class="n">100</span>:]) >= <span class="n">475</span>:
+        <span class="f">print</span>(<span class="s">f"Solved at episode {ep}!"</span>); <span class="k">break</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Install</div>
+        <pre>pip install gymnasium torch numpy</pre>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · What the Agent Actually Learns</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔍</span> The Emergent Policy</h2>
+      <p>The trained Q-network discovers a simple but robust control law entirely from reward signals — no physics equations provided:</p>
+      <ul>
+        <li>If the pole is tilting right (θ > 0), <strong>push right</strong> to chase the hinge back under it.</li>
+        <li>Angular velocity θ̇ matters more than position — the network learns to weight it heavily for anticipatory corrections.</li>
+        <li>When the cart drifts to an edge, it gradually shifts priority from pole correction to cart centering.</li>
+      </ul>
+
+      <div class="callout">The Q-network discovers the <strong>same corrective reflex</strong> a control engineer would derive with PD control — purely from reward signals and gradient descent.</div>
+
+      <h2><span class="icon">🚀</span> After CartPole — Natural Progression</h2>
+      <ul>
+        <li><strong>MountainCar</strong> — sparse rewards; the agent must learn to swing the car back-and-forth to build momentum before it can reach the goal.</li>
+        <li><strong>LunarLander</strong> — more complex 8D state + shaped reward; tests PPO's ability to balance multiple simultaneous objectives.</li>
+        <li><strong>Atari</strong> — pixel observations; requires a CNN encoder + large replay buffer (the original DQN paper, 2015).</li>
+        <li><strong>MuJoCo continuous tasks</strong> — continuous action spaces; switch to SAC or TD3.</li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Updated April 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← RL Concepts Index</a>
+      </p>
+    </footer>
+
+  </div><!-- /container -->
+
+  <!-- ══════════════════════════════════════════════════════════
+       ALL JAVASCRIPT
+  ══════════════════════════════════════════════════════════ -->
+  <script>
+  /* ─────────────────────────────────────────────────────
+     1.  CartPole Physics Engine
+  ───────────────────────────────────────────────────── */
+  const CP = {
+    g: 9.8, mc: 1.0, mp: 0.1, hl: 0.5, F: 10.0, dt: 0.02,
+    step(s, a) {
+      let [x, xd, th, thd] = s;
+      const force = a === 1 ? this.F : -this.F;
+      const c = Math.cos(th), si = Math.sin(th);
+      const tm = this.mc + this.mp;
+      const pl = this.mp * this.hl;
+      const tmp   = (force + pl * thd * thd * si) / tm;
+      const thacc = (this.g * si - c * tmp) / (this.hl * (4/3 - this.mp * c * c / tm));
+      const xacc  = tmp - pl * thacc * c / tm;
+      return [x + this.dt*xd, xd + this.dt*xacc, th + this.dt*thd, thd + this.dt*thacc];
+    },
+    done(s) { return Math.abs(s[0]) > 2.4 || Math.abs(s[2]) > 0.2095; },
+    reset() {
+      return [(Math.random()-.5)*.1, (Math.random()-.5)*.1,
+              (Math.random()-.5)*.05, (Math.random()-.5)*.05];
+    }
+  };
+
+  /* ─────────────────────────────────────────────────────
+     2.  Simulation State
+  ───────────────────────────────────────────────────── */
+  let simState   = CP.reset();
+  let simMode    = 'random';
+  let simRunning = true;
+  let simSteps   = 0;
+  let simEpisode = 0;
+  let lastAction = 0;
+  let flashTimer = 0;
+  let netPulseT  = 0;
+  let netFiring  = false;
+
+  function randomPolicy()              { return Math.floor(Math.random() * 2); }
+  function trainedPolicy([x,xd,th,thd]){ return (th + 0.1*thd + 0.02*x + 0.02*xd) > 0 ? 1 : 0; }
+
+  function setMode(m) {
+    simMode = m;
+    document.getElementById('btn-random').classList.toggle('active', m === 'random');
+    document.getElementById('btn-trained').classList.toggle('active', m === 'trained');
+    resetSim();
+  }
+
+  function resetSim() {
+    simState = CP.reset();
+    simSteps = 0;
+    flashTimer = 0;
+  }
+
+  /* ─────────────────────────────────────────────────────
+     3.  Canvas Rendering
+  ───────────────────────────────────────────────────── */
+  const canvas = document.getElementById('sim-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width  = canvas.parentElement.clientWidth;
+    canvas.height = 220;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x,y,x+r,y,r);
+    ctx.closePath();
+  }
+
+  function renderSim(state, steps, episode, action, flash) {
+    const W = canvas.width, H = canvas.height;
+    const TRACK_HALF = W * 0.41;
+    const scale  = TRACK_HALF / 2.4;
+    const CART_W = 62, CART_H = 28;
+    const WHEEL_R = 9;
+    const POLE_PX = 105;
+    const TRACK_Y = H * 0.63;
+    const cartPx  = W / 2 + state[0] * scale;
+    const cartTop = TRACK_Y - CART_H;
+    const theta   = state[2];
+
+    /* background */
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, W, H);
+
+    /* subtle grid */
+    ctx.strokeStyle = 'rgba(45,49,72,0.35)';
+    ctx.lineWidth = 1;
+    for (let xi = 0; xi < W; xi += 40) { ctx.beginPath(); ctx.moveTo(xi,0); ctx.lineTo(xi,H); ctx.stroke(); }
+    for (let yi = 0; yi < H; yi += 40) { ctx.beginPath(); ctx.moveTo(0,yi); ctx.lineTo(W,yi); ctx.stroke(); }
+
+    /* boundary dashes */
+    const lb = W/2 - 2.4*scale, rb = W/2 + 2.4*scale;
+    ctx.strokeStyle = 'rgba(248,113,113,0.4)';
+    ctx.setLineDash([5,4]); ctx.lineWidth = 1.5;
+    [lb, rb].forEach(bx => { ctx.beginPath(); ctx.moveTo(bx,10); ctx.lineTo(bx,TRACK_Y+22); ctx.stroke(); });
+    ctx.setLineDash([]);
+
+    /* ±12° angle threshold guide lines */
+    const hx = cartPx, hy = cartTop + 4;
+    const ang12 = 12 * Math.PI / 180, gl = POLE_PX * 1.3;
+    ctx.strokeStyle = 'rgba(248,113,113,0.18)';
+    ctx.lineWidth = 1; ctx.setLineDash([3,5]);
+    [ang12, -ang12].forEach(a => {
+      ctx.beginPath(); ctx.moveTo(hx,hy);
+      ctx.lineTo(hx + gl*Math.sin(a), hy - gl*Math.cos(a)); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    /* track */
+    ctx.fillStyle = '#1e2130';
+    drawRoundRect(ctx, lb-10, TRACK_Y + WHEEL_R*2 - 1, rb-lb+20, 7, 3);
+    ctx.fill();
+
+    /* cart shadow */
+    ctx.fillStyle = 'rgba(99,102,241,0.13)';
+    ctx.beginPath();
+    ctx.ellipse(cartPx, TRACK_Y + WHEEL_R*2 + 2, CART_W*0.55, 7, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    /* wheels */
+    [-.32, .32].forEach(d => {
+      const wx = cartPx + d * CART_W;
+      ctx.fillStyle = '#111827'; ctx.strokeStyle = '#374151'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(wx, TRACK_Y + WHEEL_R*.6, WHEEL_R, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(wx-WHEEL_R*.65,TRACK_Y+WHEEL_R*.6); ctx.lineTo(wx+WHEEL_R*.65,TRACK_Y+WHEEL_R*.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(wx,TRACK_Y+WHEEL_R*.6-WHEEL_R*.65); ctx.lineTo(wx,TRACK_Y+WHEEL_R*.6+WHEEL_R*.65); ctx.stroke();
+    });
+
+    /* cart body */
+    ctx.shadowColor = 'rgba(99,102,241,0.5)'; ctx.shadowBlur = 16;
+    ctx.fillStyle = '#6366f1';
+    drawRoundRect(ctx, cartPx - CART_W/2, cartTop, CART_W, CART_H, 5);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    /* cart highlight */
+    ctx.fillStyle = 'rgba(199,210,254,0.15)';
+    drawRoundRect(ctx, cartPx - CART_W/2 + 4, cartTop + 4, CART_W - 8, CART_H/3, 3);
+    ctx.fill();
+
+    /* pole */
+    const pbx = cartPx, pby = cartTop + 5;
+    const ptx = pbx + POLE_PX * Math.sin(theta);
+    const pty = pby - POLE_PX * Math.cos(theta);
+    const poleGrad = ctx.createLinearGradient(pbx, pby, ptx, pty);
+    const dangerColor = Math.abs(theta) > 0.15 ? '#f87171' : '#fbbf24';
+    poleGrad.addColorStop(0, '#f87171');
+    poleGrad.addColorStop(1, dangerColor);
+    ctx.shadowColor = dangerColor; ctx.shadowBlur = 12;
+    ctx.strokeStyle = poleGrad; ctx.lineWidth = 8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(pbx,pby); ctx.lineTo(ptx,pty); ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    /* pole tip */
+    ctx.fillStyle = dangerColor; ctx.shadowColor = dangerColor; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(ptx, pty, 5, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    /* hinge */
+    ctx.fillStyle = '#e2e8f0';
+    ctx.beginPath(); ctx.arc(pbx, pby, 5, 0, Math.PI*2); ctx.fill();
+
+    /* action arrow */
+    const arrowDir = action === 1 ? 1 : -1;
+    const ax = cartPx + arrowDir * (CART_W * 0.6 + 14);
+    const ay = TRACK_Y - CART_H/2;
+    ctx.fillStyle = 'rgba(99,102,241,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(ax + arrowDir*10, ay);
+    ctx.lineTo(ax - arrowDir*4, ay-7);
+    ctx.lineTo(ax - arrowDir*4, ay+7);
+    ctx.closePath(); ctx.fill();
+
+    /* flash overlay on failure */
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(248,113,113,${flash * 0.35})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    /* HUD */
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'left';
+    ctx.fillText(`Steps: ${steps}  |  Ep: ${episode}`, 12, 20);
+    ctx.fillStyle = simMode === 'trained' ? '#4ade80' : '#f87171';
+    ctx.textAlign = 'right';
+    ctx.fillText(simMode === 'trained' ? '● Trained Agent' : '● Random Agent', W-12, 20);
+    const deg = (theta * 180 / Math.PI).toFixed(1);
+    ctx.fillStyle = Math.abs(theta*180/Math.PI) > 8 ? '#f87171' : '#a5b4fc';
+    ctx.textAlign = 'center';
+    ctx.font = '11px monospace';
+    ctx.fillText(`θ = ${deg}°`, pbx + (POLE_PX/2)*Math.sin(theta) + 22*Math.sign(theta||1), pby - (POLE_PX/2)*Math.cos(theta));
+  }
+
+  /* ─────────────────────────────────────────────────────
+     4.  State Bars
+  ───────────────────────────────────────────────────── */
+  const BAR_RANGES = [4.8, 4.0, 0.418, 3.5];
+  const BAR_IDS    = ['x','xd','th','thd'];
+
+  function updateStateBars([x, xd, th, thd]) {
+    [x, xd, th, thd].forEach((v, i) => {
+      const id  = BAR_IDS[i];
+      const pct = Math.min(1, Math.abs(v) / BAR_RANGES[i]);
+      const fill = document.getElementById('fill-' + id);
+      const val  = document.getElementById('val-'  + id);
+      const w    = (pct * 50).toFixed(1) + '%';
+      if (v >= 0) {
+        fill.style.left = '50%'; fill.style.width = w;
+        fill.className = 'sbar-fill pos';
+      } else {
+        fill.style.left = (50 - pct*50).toFixed(1) + '%';
+        fill.style.width = w;
+        fill.className = 'sbar-fill neg';
+      }
+      val.textContent = v.toFixed(3);
+    });
+  }
+
+  /* ─────────────────────────────────────────────────────
+     5.  Main Simulation Loop
+  ───────────────────────────────────────────────────── */
+  let lastStepTime = 0;
+  const STEP_MS = 33; // ~30 physics steps/sec
+
+  document.getElementById('btn-playpause').addEventListener('click', () => {
+    simRunning = !simRunning;
+    document.getElementById('btn-playpause').textContent = simRunning ? '⏸ Pause' : '▶ Play';
+    if (simRunning) requestAnimationFrame(mainLoop);
+  });
+
+  function mainLoop(ts) {
+    if (!simRunning) return;
+    if (ts - lastStepTime >= STEP_MS) {
+      lastStepTime = ts;
+      if (flashTimer > 0) { flashTimer -= 0.12; }
+
+      const action = simMode === 'trained' ? trainedPolicy(simState) : randomPolicy();
+      lastAction = action;
+      simState = CP.step(simState, action);
+      simSteps++;
+
+      if (CP.done(simState)) {
+        flashTimer = 1.0;
+        simState = CP.reset();
+        simSteps = 0;
+        simEpisode++;
+      }
+
+      updateStateBars(simState);
+      fireNetworkPulse(simState, action);
+    }
+
+    renderSim(simState, simSteps, simEpisode, lastAction, flashTimer);
+    animateNetwork(ts);
+    requestAnimationFrame(mainLoop);
+  }
+  requestAnimationFrame(mainLoop);
+
+  /* ─────────────────────────────────────────────────────
+     6.  Neural Network Visualization (SVG)
+  ───────────────────────────────────────────────────── */
+  (function buildNetwork() {
+    const svg  = document.getElementById('net-svg');
+    const W = 520, H = 260;
+    const NS   = 'http://www.w3.org/2000/svg';
+
+    const layers = [
+      { x: 55,  n: 4, labels: ['x','ẋ','θ','θ̇'], side:'left'  },
+      { x: 185, n: 5, labels: null, side:null },
+      { x: 315, n: 5, labels: null, side:null },
+      { x: 455, n: 2, labels: ['Q(←)','Q(→)'], side:'right' },
+    ];
+
+    function nodeY(i, total) { return H * (i + 1) / (total + 1); }
+
+    /* ── layer labels ── */
+    const lNames = ['Input\n(state)','Hidden\n128','Hidden\n128','Output\n(Q-vals)'];
+    lNames.forEach((name, li) => {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', layers[li].x);
+      t.setAttribute('y', H - 4);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('fill', '#475569');
+      t.setAttribute('font-size', '9');
+      t.setAttribute('font-family', 'monospace');
+      name.split('\n').forEach((line, row) => {
+        const ts = document.createElementNS(NS, 'tspan');
+        ts.setAttribute('x', layers[li].x);
+        ts.setAttribute('dy', row === 0 ? '-1.1em' : '1.1em');
+        ts.textContent = line;
+        t.appendChild(ts);
+      });
+      svg.appendChild(t);
+    });
+
+    /* ── connections ── */
+    const connEls = [];
+    for (let li = 0; li < layers.length - 1; li++) {
+      const from = layers[li], to = layers[li+1];
+      for (let fi = 0; fi < from.n; fi++) {
+        for (let ti = 0; ti < to.n; ti++) {
+          const line = document.createElementNS(NS, 'line');
+          line.setAttribute('x1', from.x);
+          line.setAttribute('y1', nodeY(fi, from.n));
+          line.setAttribute('x2', to.x);
+          line.setAttribute('y2', nodeY(ti, to.n));
+          line.setAttribute('stroke', '#1e2130');
+          line.setAttribute('stroke-width', '1');
+          line.dataset.layer = li;
+          svg.appendChild(line);
+          connEls.push(line);
+        }
+      }
+    }
+
+    /* ── nodes ── */
+    const nodeEls = [];
+    layers.forEach((layer, li) => {
+      layer.circleEls = [];
+      layer.glowEls   = [];
+      for (let i = 0; i < layer.n; i++) {
+        const cy = nodeY(i, layer.n);
+
+        const glow = document.createElementNS(NS, 'circle');
+        glow.setAttribute('cx', layer.x); glow.setAttribute('cy', cy);
+        glow.setAttribute('r', 16); glow.setAttribute('fill', 'rgba(99,102,241,0)');
+        svg.appendChild(glow);
+
+        const circle = document.createElementNS(NS, 'circle');
+        circle.setAttribute('cx', layer.x); circle.setAttribute('cy', cy);
+        circle.setAttribute('r', 10);
+        circle.setAttribute('fill', '#151823');
+        circle.setAttribute('stroke', '#2d3148');
+        circle.setAttribute('stroke-width', '1.5');
+        svg.appendChild(circle);
+
+        if (layer.labels) {
+          const txt = document.createElementNS(NS, 'text');
+          const lx  = li === 0 ? layer.x - 17 : layer.x + 17;
+          txt.setAttribute('x', lx); txt.setAttribute('y', cy + 4);
+          txt.setAttribute('text-anchor', li === 0 ? 'end' : 'start');
+          txt.setAttribute('fill', '#94a3b8');
+          txt.setAttribute('font-family', 'Courier New');
+          txt.setAttribute('font-size', '10');
+          txt.textContent = layer.labels[i];
+          svg.appendChild(txt);
+        }
+
+        layer.circleEls.push(circle);
+        layer.glowEls.push(glow);
+      }
+    });
+
+    /* ── pulse objects ── */
+    window._netPulses = [];
+    window._netLayers = layers;
+    window._netConns  = connEls;
+    window._netSvg    = svg;
+
+    /* Dots for pulses */
+    for (let k = 0; k < 30; k++) {
+      const dot = document.createElementNS(NS, 'circle');
+      dot.setAttribute('r', 3.5);
+      dot.setAttribute('fill', '#6366f1');
+      dot.setAttribute('opacity', '0');
+      svg.appendChild(dot);
+      window._netPulses.push({ el: dot, active: false });
+    }
+  })();
+
+  /* ─────────────────────────────────────────────────────
+     Network pulse animation helpers
+  ───────────────────────────────────────────────────── */
+  let _pulseQueue = [];
+  let _chosenAction = 0;
+
+  function fireNetworkPulse(state, action) {
+    _chosenAction = action;
+    const t = performance.now();
+    const layers = window._netLayers;
+    // For each connection, queue a pulse
+    for (let li = 0; li < layers.length - 1; li++) {
+      const from = layers[li], to = layers[li+1];
+      const delay = li * 180;
+      for (let fi = 0; fi < from.n; fi++) {
+        for (let ti = 0; ti < to.n; ti++) {
+          const x1 = from.x, y1 = (260*(fi+1)/(from.n+1));
+          const x2 = to.x,   y2 = (260*(ti+1)/(to.n+1));
+          const pulse = { x1,y1,x2,y2, startT: t+delay, dur: 140, active: true, layer: li };
+          _pulseQueue.push(pulse);
+        }
+      }
+    }
+    // Trim queue
+    if (_pulseQueue.length > 500) _pulseQueue = _pulseQueue.slice(-400);
+  }
+
+  function animateNetwork(ts) {
+    const now = ts;
+    const layers = window._netLayers;
+    const svg    = window._netSvg;
+    const dots   = window._netPulses;
+    const NS     = 'http://www.w3.org/2000/svg';
+
+    // Reset all node glows
+    layers.forEach(layer => {
+      layer.circleEls.forEach((c,i) => {
+        c.setAttribute('fill', '#151823');
+        c.setAttribute('stroke', '#2d3148');
+        layer.glowEls[i].setAttribute('fill', 'rgba(99,102,241,0)');
+      });
+    });
+
+    // Reset all connections
+    window._netConns.forEach(l => l.setAttribute('stroke', '#1e2130'));
+
+    // Animate active pulses
+    let dotIdx = 0;
+    _pulseQueue.forEach(p => {
+      if (!p.active) return;
+      const elapsed = now - p.startT;
+      if (elapsed < 0) return;
+      if (elapsed > p.dur) { p.active = false; return; }
+      const progress = elapsed / p.dur;
+      const x = p.x1 + (p.x2 - p.x1) * progress;
+      const y = p.y1 + (p.y2 - p.y1) * progress;
+
+      if (dotIdx < dots.length) {
+        const dot = dots[dotIdx++];
+        dot.el.setAttribute('cx', x); dot.el.setAttribute('cy', y);
+        dot.el.setAttribute('opacity', (Math.sin(progress * Math.PI) * 0.9).toFixed(2));
+        dot.el.setAttribute('fill', p.layer >= 2 ? '#a5b4fc' : '#6366f1');
+      }
+
+      // Light up target node
+      if (progress > 0.85 && p.layer + 1 < layers.length) {
+        const toLay = layers[p.layer + 1];
+        // approximate which node
+        const toIdx = Math.round((p.y2 / 260) * (toLay.n + 1) - 1);
+        if (toIdx >= 0 && toIdx < toLay.n) {
+          const isOutput = p.layer + 1 === layers.length - 1;
+          const isChosen = isOutput && toIdx === _chosenAction;
+          const isRejected = isOutput && toIdx !== _chosenAction;
+          const col = isChosen ? '#4ade80' : isRejected ? '#f87171' : '#6366f1';
+          toLay.circleEls[toIdx].setAttribute('fill', col);
+          toLay.circleEls[toIdx].setAttribute('stroke', col);
+          toLay.glowEls[toIdx].setAttribute('fill', isChosen ? 'rgba(74,222,128,0.15)' : 'rgba(99,102,241,0.12)');
+        }
+      }
+    });
+
+    // Hide unused dots
+    for (let i = dotIdx; i < dots.length; i++) {
+      dots[i].el.setAttribute('opacity', '0');
+    }
+
+    // Clean up inactive pulses periodically
+    if (_pulseQueue.length > 200) _pulseQueue = _pulseQueue.filter(p => p.active);
+  }
+
+  /* ─────────────────────────────────────────────────────
+     7.  Replay Buffer Animation
+  ───────────────────────────────────────────────────── */
+  (function initBuffer() {
+    const grid  = document.getElementById('buf-grid');
+    const TOTAL = 72;
+    const cells = [];
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = 'buf-cell';
+      grid.appendChild(d);
+      cells.push(d);
+    }
+
+    let head = 0;
+    // Add transition every 200ms
+    setInterval(() => {
+      const idx = head % TOTAL;
+      cells[idx].className = 'buf-cell fresh';
+      setTimeout(() => { cells[idx].className = 'buf-cell filled'; }, 280);
+      head++;
+    }, 200);
+
+    // Sample a batch every 2.5 seconds
+    setInterval(() => {
+      const filled = Math.min(head, TOTAL);
+      if (filled < 8) return;
+      const indices = [];
+      while (indices.length < 8) {
+        const r = Math.floor(Math.random() * filled);
+        if (!indices.includes(r)) indices.push(r);
+      }
+      indices.forEach((idx, i) => {
+        setTimeout(() => {
+          cells[idx].className = 'buf-cell sampled';
+          setTimeout(() => { cells[idx].className = 'buf-cell filled'; }, 500);
+        }, i * 55);
+      });
+    }, 2500);
+  })();
+
+  /* ─────────────────────────────────────────────────────
+     8.  ε-Decay SVG Chart
+  ───────────────────────────────────────────────────── */
+  (function initEpsChart() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.getElementById('eps-svg');
+    const W = 500, H = 180;
+    const PAD = { l:40, r:20, t:15, b:35 };
+    const IW = W - PAD.l - PAD.r, IH = H - PAD.t - PAD.b;
+
+    function px(step) { return PAD.l + (step / 3000) * IW; }
+    function py(eps)  { return PAD.t + IH - eps * IH; }
+
+    /* grid lines */
+    [0, 0.25, 0.5, 0.75, 1.0].forEach(v => {
+      const line = document.createElementNS(NS, 'line');
+      line.setAttribute('x1', PAD.l); line.setAttribute('x2', W - PAD.r);
+      line.setAttribute('y1', py(v)); line.setAttribute('y2', py(v));
+      line.setAttribute('stroke', '#1e2130'); line.setAttribute('stroke-width', '1');
+      svg.appendChild(line);
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', PAD.l - 6); t.setAttribute('y', py(v) + 4);
+      t.setAttribute('text-anchor', 'end'); t.setAttribute('fill', '#475569');
+      t.setAttribute('font-size', '9'); t.setAttribute('font-family', 'monospace');
+      t.textContent = v.toFixed(2);
+      svg.appendChild(t);
+    });
+
+    /* x-axis labels */
+    [0, 500, 1000, 1500, 2000, 2500, 3000].forEach(s => {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', px(s)); t.setAttribute('y', H - PAD.b + 14);
+      t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', '#475569');
+      t.setAttribute('font-size', '9'); t.setAttribute('font-family', 'monospace');
+      t.textContent = s === 0 ? '0' : (s/1000).toFixed(1)+'k';
+      svg.appendChild(t);
+    });
+
+    /* axis labels */
+    const yl = document.createElementNS(NS, 'text');
+    yl.setAttribute('x', 10); yl.setAttribute('y', H/2);
+    yl.setAttribute('text-anchor', 'middle'); yl.setAttribute('fill', '#64748b');
+    yl.setAttribute('font-size', '9'); yl.setAttribute('font-family', 'monospace');
+    yl.setAttribute('transform', `rotate(-90, 10, ${H/2})`);
+    yl.textContent = 'ε (epsilon)';
+    svg.appendChild(yl);
+
+    const xl = document.createElementNS(NS, 'text');
+    xl.setAttribute('x', W/2); xl.setAttribute('y', H - 2);
+    xl.setAttribute('text-anchor', 'middle'); xl.setAttribute('fill', '#64748b');
+    xl.setAttribute('font-size', '9'); xl.setAttribute('font-family', 'monospace');
+    xl.textContent = 'Training Steps';
+    svg.appendChild(xl);
+
+    /* path */
+    const pts = [];
+    for (let s = 0; s <= 3000; s += 20) {
+      pts.push(`${px(s).toFixed(1)},${py(0.01 + 0.99*Math.exp(-s/500)).toFixed(1)}`);
+    }
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M ' + pts.join(' L '));
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', '#6366f1');
+    path.setAttribute('stroke-width', '2.5');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.insertBefore(path, svg.firstChild);
+
+    /* fill area under curve */
+    const fillPath = document.createElementNS(NS, 'path');
+    fillPath.setAttribute('d', 'M ' + pts.join(' L ') + ` L ${px(3000)},${py(0)} L ${px(0)},${py(0)} Z`);
+    fillPath.setAttribute('fill', 'rgba(99,102,241,0.08)');
+    svg.insertBefore(fillPath, svg.firstChild);
+
+    /* animate draw */
+    const totalLen = path.getTotalLength();
+    path.style.strokeDasharray  = totalLen;
+    path.style.strokeDashoffset = totalLen;
+
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        path.style.transition = 'stroke-dashoffset 2.2s ease-out';
+        path.style.strokeDashoffset = 0;
+        obs.disconnect();
+      }
+    }, { threshold: 0.3 });
+    obs.observe(svg);
+
+    /* scrubber dot */
+    const dot = document.createElementNS(NS, 'circle');
+    dot.setAttribute('r', 5); dot.setAttribute('fill', '#a5b4fc');
+    svg.appendChild(dot);
+
+    const vline = document.createElementNS(NS, 'line');
+    vline.setAttribute('stroke', '#4b5563'); vline.setAttribute('stroke-width', '1');
+    vline.setAttribute('stroke-dasharray', '3,3');
+    svg.appendChild(vline);
+
+    function updateEpsScrubber(step) {
+      const eps = 0.01 + 0.99 * Math.exp(-step / 500);
+      const dpx = px(step), dpy = py(eps);
+      dot.setAttribute('cx', dpx); dot.setAttribute('cy', dpy);
+      vline.setAttribute('x1', dpx); vline.setAttribute('y1', dpy);
+      vline.setAttribute('x2', dpx); vline.setAttribute('y2', py(0));
+
+      const explorePct  = Math.round(eps * 100);
+      const exploitPct  = 100 - explorePct;
+      document.getElementById('eps-step-label').textContent = step;
+      document.getElementById('ee-explore').style.width    = explorePct + '%';
+      document.getElementById('ee-exploit').style.width    = exploitPct + '%';
+      document.getElementById('ee-explore').textContent    = explorePct > 12 ? `Explore (${explorePct}%)` : '';
+      document.getElementById('ee-exploit').textContent    = exploitPct > 12 ? `Exploit (${exploitPct}%)` : '';
+      document.getElementById('eps-explore-pct').textContent = `${explorePct}% random`;
+      document.getElementById('eps-exploit-pct').textContent = `${exploitPct}% greedy`;
+    }
+
+    document.getElementById('eps-slider').addEventListener('input', e => {
+      updateEpsScrubber(Number(e.target.value));
+    });
+
+    /* auto-play scrubber */
+    let autoStep = 0;
+    const auto = setInterval(() => {
+      if (autoStep > 3000) { clearInterval(auto); return; }
+      document.getElementById('eps-slider').value = autoStep;
+      updateEpsScrubber(autoStep);
+      autoStep += 30;
+    }, 40);
+    updateEpsScrubber(0);
+  })();
+
+  /* ─────────────────────────────────────────────────────
+     9.  Training Curve (Canvas)
+  ───────────────────────────────────────────────────── */
+  const trainCanvas = document.getElementById('train-canvas');
+  const tctx = trainCanvas.getContext('2d');
+  let trainData = [];
+  let trainAnimFrame = 0;
+  let trainAnimId = null;
+
+  function genTrainingData() {
+    const d = [];
+    let s = 17;
+    function rng() { s = (s * 1664525 + 1013904223) & 0x7FFFFFFF; return s / 0x7FFFFFFF; }
+    for (let i = 0; i < 350; i++) {
+      const noise = (rng() - 0.5) * 2;
+      let base;
+      if      (i < 65)  base = 10  + i * 0.35 + noise * 14;
+      else if (i < 130) base = 33  + Math.pow((i-65)/65,1.6)*110 + noise * 35;
+      else if (i < 230) base = 143 + (i-130)*3.3 + noise * 45;
+      else if (i < 285) base = 473 + (i-230)*0.4 + noise * 18;
+      else              base = 493 + noise * 6;
+      d.push(Math.max(4, Math.min(500, base)));
+    }
+    return d;
+  }
+
+  function resizeTrainCanvas() {
+    trainCanvas.width  = trainCanvas.parentElement.clientWidth;
+    trainCanvas.height = 210;
+  }
+
+  function drawTrainingCurve(upto) {
+    const W = trainCanvas.width, H = trainCanvas.height;
+    if (W === 0) return;
+    const PAD = { l:44, r:16, t:18, b:36 };
+    const IW = W - PAD.l - PAD.r, IH = H - PAD.t - PAD.b;
+    const N = trainData.length;
+
+    function px(i)   { return PAD.l + (i / (N-1)) * IW; }
+    function py(val) { return PAD.t + IH - (val / 500) * IH; }
+
+    tctx.clearRect(0, 0, W, H);
+
+    /* background */
+    tctx.fillStyle = '#0d1117';
+    tctx.fillRect(0, 0, W, H);
+
+    /* grid */
+    [0, 100, 200, 300, 400, 500].forEach(v => {
+      tctx.strokeStyle = '#1e2130'; tctx.lineWidth = 1;
+      tctx.beginPath(); tctx.moveTo(PAD.l, py(v)); tctx.lineTo(W-PAD.r, py(v)); tctx.stroke();
+      tctx.fillStyle = '#475569'; tctx.font = '9px monospace'; tctx.textAlign = 'right';
+      tctx.fillText(v, PAD.l-5, py(v)+3);
+    });
+    [0, 50, 100, 150, 200, 250, 300, 350].forEach(ep => {
+      const x = px(Math.min(ep, N-1));
+      tctx.strokeStyle = '#1e2130'; tctx.lineWidth = 1;
+      tctx.beginPath(); tctx.moveTo(x, PAD.t); tctx.lineTo(x, H-PAD.b); tctx.stroke();
+      tctx.fillStyle = '#475569'; tctx.font = '9px monospace'; tctx.textAlign = 'center';
+      tctx.fillText(ep, x, H-PAD.b+12);
+    });
+
+    /* solved threshold */
+    tctx.strokeStyle = 'rgba(74,222,128,0.4)'; tctx.lineWidth = 1.5;
+    tctx.setLineDash([5,4]);
+    tctx.beginPath(); tctx.moveTo(PAD.l, py(475)); tctx.lineTo(W-PAD.r, py(475)); tctx.stroke();
+    tctx.setLineDash([]);
+    tctx.fillStyle = '#4ade80'; tctx.font = '9px monospace'; tctx.textAlign = 'left';
+    tctx.fillText('Solved (475)', PAD.l+4, py(475)-4);
+
+    /* phase regions */
+    const phaseColors = [
+      [0, 64,  'rgba(248,113,113,0.05)'],
+      [64, 230, 'rgba(251,191,36,0.04)'],
+      [230, 349, 'rgba(74,222,128,0.05)'],
+    ];
+    phaseColors.forEach(([a, b, col]) => {
+      tctx.fillStyle = col;
+      tctx.fillRect(px(a), PAD.t, px(b)-px(a), IH);
+    });
+
+    /* area under curve */
+    const shown = Math.min(upto, trainData.length - 1);
+    if (shown > 0) {
+      tctx.beginPath();
+      tctx.moveTo(px(0), py(trainData[0]));
+      for (let i = 1; i <= shown; i++) tctx.lineTo(px(i), py(trainData[i]));
+      tctx.lineTo(px(shown), H - PAD.b);
+      tctx.lineTo(px(0), H - PAD.b);
+      tctx.closePath();
+      tctx.fillStyle = 'rgba(99,102,241,0.1)';
+      tctx.fill();
+
+      /* main line */
+      tctx.beginPath();
+      tctx.moveTo(px(0), py(trainData[0]));
+      for (let i = 1; i <= shown; i++) {
+        const ep = i / N;
+        const r = ep < 0.18 ? 248 : ep < 0.65 ? 251 : 74;
+        const g = ep < 0.18 ? 113 : ep < 0.65 ? 191 : 222;
+        const b2 = ep < 0.18 ? 113 : ep < 0.65 ? 36  : 128;
+        tctx.strokeStyle = `rgb(${r},${g},${b2})`;
+        tctx.lineWidth = 2;
+        tctx.lineTo(px(i), py(trainData[i]));
+        tctx.stroke();
+        tctx.beginPath(); tctx.moveTo(px(i), py(trainData[i]));
+      }
+
+      /* rolling average */
+      const window100 = [];
+      tctx.beginPath(); let started = false;
+      for (let i = 0; i <= shown; i++) {
+        window100.push(trainData[i]);
+        if (window100.length > 100) window100.shift();
+        const avg = window100.reduce((a,v)=>a+v,0)/window100.length;
+        if (i >= 20) {
+          if (!started) { tctx.moveTo(px(i), py(avg)); started = true; }
+          else tctx.lineTo(px(i), py(avg));
+        }
+      }
+      tctx.strokeStyle = 'rgba(165,180,252,0.85)'; tctx.lineWidth = 1.8;
+      tctx.stroke();
+
+      /* current dot */
+      const last = trainData[shown];
+      tctx.fillStyle = '#6366f1'; tctx.shadowColor = '#6366f1'; tctx.shadowBlur = 8;
+      tctx.beginPath(); tctx.arc(px(shown), py(last), 5, 0, Math.PI*2); tctx.fill();
+      tctx.shadowBlur = 0;
+    }
+
+    /* axis labels */
+    tctx.fillStyle = '#64748b'; tctx.font = '9px monospace'; tctx.textAlign = 'center';
+    tctx.fillText('Episode', W/2, H-2);
+    tctx.save(); tctx.translate(11, H/2); tctx.rotate(-Math.PI/2);
+    tctx.fillText('Reward per Episode', 0, 0); tctx.restore();
+
+    /* legend */
+    tctx.fillStyle = 'rgba(165,180,252,0.85)';
+    tctx.fillRect(W-PAD.r-80, PAD.t+2, 18, 3);
+    tctx.fillStyle = '#64748b'; tctx.font = '9px monospace'; tctx.textAlign = 'left';
+    tctx.fillText('100-ep avg', W-PAD.r-58, PAD.t+6);
+  }
+
+  function replayTrainingCurve() {
+    if (trainAnimId) cancelAnimationFrame(trainAnimId);
+    trainAnimFrame = 0;
+    runTrainingAnim();
+  }
+
+  function runTrainingAnim() {
+    drawTrainingCurve(trainAnimFrame);
+    if (trainAnimFrame < trainData.length - 1) {
+      trainAnimFrame++;
+      trainAnimId = requestAnimationFrame(runTrainingAnim);
+    }
+  }
+
+  window.addEventListener('load', () => {
+    resizeTrainCanvas();
+    trainData = genTrainingData();
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) { replayTrainingCurve(); obs.disconnect(); }
+    }, { threshold: 0.3 });
+    obs.observe(trainCanvas);
+  });
+  window.addEventListener('resize', () => {
+    resizeTrainCanvas();
+    drawTrainingCurve(trainAnimFrame);
+  });
+
+  /* expose for button */
+  window.setMode       = setMode;
+  window.resetSim      = resetSim;
+  window.replayTrainingCurve = replayTrainingCurve;
+  </script>
+
+</body>
+</html>

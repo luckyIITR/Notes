@@ -1,0 +1,119 @@
+---
+description: Standard HTML structure every notes page and index page must follow.
+globs: **/*.html
+alwaysApply: true
+---
+
+# HTML Page Templates
+
+## Notes Page — Required Skeleton
+
+Every topic notes page (`topic-name.html`) must follow this exact skeleton:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Topic Name — Course Name</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* page-specific component styles go here */
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Course Index Name</a>
+
+    <header class="notes-header">
+      <p class="tag">Category · Sub-category</p>
+      <h1>Topic Title</h1>
+      <p>One-sentence description of what this page covers.</p>
+    </header>
+
+    <!-- sections go here -->
+
+    <footer>
+      <p>Updated Month Year &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← Course Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
+```
+
+## Section Pattern — Required for Every Section
+
+Each section of content inside a notes page uses this two-part pattern:
+
+```html
+<div class="section-divider"><span>N · Section Title</span><hr /></div>
+<div class="card">
+  <h2><span class="icon">EMOJI</span> Card Heading</h2>
+  <!-- content -->
+</div>
+```
+
+- Number sections sequentially: `1 ·`, `2 ·`, `3 ·` …
+- Every `<div class="section-divider">` is immediately followed by a `<div class="card">`.
+- Never put bare text directly inside `.container` — always wrap in a `.card`.
+
+## Course Index Page — Required Skeleton
+
+```html
+<header class="notes-header">
+  <p class="tag">Course Name</p>
+  <h1>Index Title</h1>
+  <p>Short description.</p>
+</header>
+
+<div class="section-divider"><span>Section Name</span><hr /></div>
+<nav class="module-list">
+
+  <a href="topic.html" class="module-card">
+    <div class="module-icon">EMOJI</div>
+    <div class="module-info">
+      <p class="module-tag">Tag1 · Tag2</p>
+      <h2>Topic Title</h2>
+      <p>One-line description.</p>
+    </div>
+    <span class="module-arrow">›</span>
+  </a>
+
+</nav>
+```
+
+## Header Rules
+
+| Context | Class to use |
+|---------|-------------|
+| Notes page header | `<header class="notes-header">` (indigo left border) |
+| Global / course index header | `<header>` (no class) |
+
+- `<p class="tag">` — always the first child of header; uppercase label, indigo color.
+- `<h1>` — always the second child; the page title.
+- `<p>` — subtitle/description; muted gray.
+
+## Footer — Identical on Every Page
+
+```html
+<footer>
+  <p>Updated Month Year &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+    <a href="index.html" style="color:#475569;text-decoration:none;">← Index Name</a>
+  </p>
+</footer>
+```
+
+Never omit the footer. Never change its inline style — it intentionally uses `color:#475569`.

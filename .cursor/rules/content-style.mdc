@@ -1,0 +1,83 @@
+---
+description: Content writing conventions — tone, section structure, formulas, tables, and what NOT to do.
+globs: **/*.html
+alwaysApply: true
+---
+
+# Content & Writing Conventions
+
+## Notes Page Content Rules
+
+### Section Numbering
+- Always number sections: `1 · Title`, `2 · Title`, etc.
+- Sections should flow logically: motivation → definition → mechanics → algorithm → results → extensions.
+
+### Text Prose
+- Write in **second or third person** — match the tone of existing pages.
+- Keep sentences direct. Avoid padding like "It is important to note that…"
+- Use `<span class="term">keyword</span>` for the **first introduction** of a key concept on the page.
+- Use `<strong>` for emphasis on critical words — sparingly.
+- Use `<em>` for book titles or light emphasis.
+
+### Lists (`<ul>`)
+- Use bullet lists (`<ul><li>`) for facts, properties, and comparisons.
+- Global CSS already adds `▸` bullets — **never add `list-style` or custom bullets manually**.
+- Avoid lists longer than 8 items — split into subsections instead.
+
+### Callouts
+Use `.callout` for the single most important insight in a section:
+```html
+<div class="callout">Key insight text. Use <strong> for the punchline.</div>
+```
+- One callout per card maximum.
+- Never use `.callout` for warnings — it's for positive insights only.
+
+### Formulas
+- Every formula must have a `.formula-label` (what it is) and `.formula-main` (the expression).
+- Add `.formula-legend` whenever the formula contains symbols a reader might not know.
+- Use `<sub>` and `<sup>` for subscripts/superscripts — never Unicode lookalikes.
+
+### Tables
+- Use for comparisons (e.g. Algorithm A vs Algorithm B) and hyperparameter reference.
+- Every table needs a `<thead>` with `<th>` columns.
+- Keep tables to ≤ 8 rows before considering splitting.
+
+### Pros & Cons
+Always use the `.reward-grid` pattern from `styles.css`:
+```html
+<div class="reward-grid">
+  <div class="reward-item good"><div class="label">Strengths</div><ul>…</ul></div>
+  <div class="reward-item bad"><div class="label">Limitations</div><ul>…</ul></div>
+</div>
+```
+
+## Module Card on Index Pages
+
+Every card must have all four parts:
+```html
+<a href="file.html" class="module-card">
+  <div class="module-icon">EMOJI</div>       <!-- single emoji, relevant to topic -->
+  <div class="module-info">
+    <p class="module-tag">Tag · Tag</p>      <!-- 2–4 short tags, · separated -->
+    <h2>Topic Title</h2>                     <!-- matches the <h1> of the target page -->
+    <p>One sentence. What it covers.</p>     <!-- max 2 lines -->
+  </div>
+  <span class="module-arrow">›</span>
+</a>
+```
+- `module-tag` content: matches the `<p class="tag">` content of the linked page.
+- `<h2>` in the card: identical to (or a shortened form of) the `<h1>` of the target page.
+- Description: one sentence, plain English, no jargon without context.
+
+## What NOT to Do
+
+| ❌ Don't | ✅ Do instead |
+|---------|--------------|
+| Create a new `.css` file | Add page-specific styles in `<style>` in `<head>` |
+| Copy `styles.css` into a subfolder | Always use `../styles.css` relative path |
+| Add a notes page without updating the index | Always update course `index.html` |
+| Use inline `style=""` attributes (except footer link) | Use a class in `<style>` block |
+| Override a global class (e.g. redefine `.card`) | Add a new modifier class |
+| Use `<br>` for spacing | Use margin/padding in CSS |
+| Use emoji in `<h1>` or `<h2>` headings | Use `<span class="icon">EMOJI</span>` inside `<h2>` only |
+| Leave a `<div class="section-divider">` without a `.card` after it | Always pair them |

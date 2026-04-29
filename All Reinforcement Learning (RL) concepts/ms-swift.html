@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fine-tuning with ms-swift — Reinforcement Learning</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula block ── */
+    .formula-block { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.5rem; margin: 0.8rem 0; }
+    .formula-block .formula-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.5rem; }
+    .formula-block .formula-main { font-size: 1rem; color: #c7d2fe; font-family: 'Courier New', monospace; text-align: center; line-height: 2.2; }
+    .formula-block .formula-legend { margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; line-height: 2; }
+    .formula-block .formula-legend span { color: #a5b4fc; font-family: 'Courier New', monospace; }
+
+    /* ── algo steps ── */
+    .algo-steps { list-style: none; padding: 0; counter-reset: step-counter; }
+    .algo-steps li { counter-increment: step-counter; position: relative; padding: 0.75rem 0.9rem 0.75rem 3rem; margin-bottom: 0.5rem; background: #151823; border: 1px solid #2d3148; border-radius: 8px; color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; }
+    .algo-steps li::before { content: counter(step-counter); position: absolute; left: 0.9rem; top: 0.85rem; background: #6366f1; color: #fff; font-size: 0.72rem; font-weight: 800; width: 1.4rem; height: 1.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+    /* ── code block ── */
+    .code-block { background: #0d1117; border: 1px solid #2d3148; border-radius: 10px; padding: 1.1rem 1.4rem; margin: 0.8rem 0; overflow-x: auto; }
+    .code-block .code-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.6rem; }
+    .code-block pre { margin: 0; font-size: 0.85rem; color: #a5b4fc; font-family: 'Courier New', monospace; line-height: 1.7; white-space: pre-wrap; }
+    .code-block pre .comment { color: #475569; }
+    .code-block pre .flag { color: #4ade80; }
+    .code-block pre .value { color: #fbbf24; }
+
+    /* ── method pill grid ── */
+    .method-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.8rem 0; }
+    .method-pill { background: #1e2130; border: 1px solid #2d3148; border-radius: 20px; padding: 0.3rem 0.8rem; font-size: 0.78rem; color: #a5b4fc; font-weight: 600; }
+    .method-pill.rlhf { border-color: #6366f1; color: #c7d2fe; }
+    .method-pill.lora { border-color: #4ade80; color: #86efac; }
+
+    /* ── capability matrix ── */
+    .matrix-note { font-size: 0.78rem; color: #64748b; margin-top: 0.5rem; }
+
+    /* ── pipeline diagram ── */
+    .pipeline { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 1rem 0; }
+    .pipe-step { background: #1e2130; border: 1px solid #2d3148; border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.82rem; color: #e2e8f0; text-align: center; }
+    .pipe-step strong { display: block; color: #a5b4fc; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.2rem; }
+    .pipe-arrow { color: #6366f1; font-size: 1.2rem; font-weight: 700; }
+
+    @media (max-width: 540px) {
+      .pipeline { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Fine-tuning · Training Framework · LLM</p>
+      <h1>Fine-tuning with ms-swift</h1>
+      <p>A complete ground-up guide to ms-swift — what it is, how it works, and how to go from a base model to a fine-tuned, deployed LLM.</p>
+    </header>
+
+    <!-- ─────────────────────────────────────── 1 ── -->
+    <div class="section-divider"><span>1 · What Is ms-swift?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> The One-Stop LLM Training Framework</h2>
+      <p>
+        <span class="term">ms-swift</span> (SWIFT — <strong>S</strong>calable light<strong>W</strong>eight <strong>I</strong>nfrastructure for <strong>F</strong>ine-<strong>T</strong>uning) is an open-source framework from the <strong>ModelScope</strong> community (Alibaba) for fine-tuning, aligning, and deploying large language models and multimodal models. It was published at AAAI 2025.
+      </p>
+      <p style="margin-top:0.8rem;">
+        The core promise is a <strong>single unified framework</strong> that handles the entire lifecycle: pre-training continuation → supervised fine-tuning → human alignment → inference → deployment — without needing to wire together separate libraries for each stage.
+      </p>
+
+      <div class="callout">
+        ms-swift supports <strong>600+ LLMs</strong> (Qwen3, DeepSeek-R1, LLaMA 4, GLM-5, InternLM3…) and <strong>300+ multimodal models</strong> (Qwen3-VL, InternVL, LLaVA, Phi-4…) out of the box, with a single consistent CLI.
+      </div>
+
+      <p style="margin-top:0.8rem;"><strong>Install it:</strong></p>
+      <div class="code-block">
+        <div class="code-label">Installation</div>
+        <pre><span class="comment"># Standard install (recommended)</span>
+pip install ms-swift -U
+
+<span class="comment"># Full install with all optional extras</span>
+pip install 'ms-swift[all]' -U
+
+<span class="comment"># Add DeepSpeed for multi-GPU ZeRO training</span>
+pip install deepspeed -U</pre>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 2 ── -->
+    <div class="section-divider"><span>2 · Why ms-swift Exists</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> The Problem It Solves</h2>
+      <p>
+        Before frameworks like ms-swift, fine-tuning an LLM meant cobbling together a stack of separate tools: Hugging Face Transformers for the model, PEFT for LoRA, TRL for DPO/PPO, DeepSpeed or FSDP for distributed training, vLLM for inference, and a custom evaluation pipeline on top. Each had its own API, data format, and configuration quirks.
+      </p>
+      <p style="margin-top:0.8rem;">
+        The friction is especially bad for <strong>multimodal models</strong> (images + text), where there was previously no unified training standard across model families.
+      </p>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">What ms-swift provides</div>
+          <ul>
+            <li>One CLI, one data format, every training method</li>
+            <li>First framework with <strong>systematic multimodal fine-tuning support</strong></li>
+            <li>Consistent model templates so you never worry about chat format mismatches</li>
+            <li>Post-training (inference, evaluation, quantization, deployment) built in</li>
+            <li>Web-UI for those who prefer no-code fine-tuning</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">What you still need to know</div>
+          <ul>
+            <li>GPU hardware — ms-swift doesn't abstract away VRAM constraints</li>
+            <li>Dataset preparation — you curate and format your own training data</li>
+            <li>Hyperparameter choices — the framework runs what you tell it to</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 3 ── -->
+    <div class="section-divider"><span>3 · The Three-Stage Training Ladder</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪜</span> Pre-training → SFT → Alignment</h2>
+      <p>
+        Most production LLM pipelines follow a three-stage ladder. ms-swift supports all three with a matching CLI command for each:
+      </p>
+
+      <div class="pipeline">
+        <div class="pipe-step"><strong>Stage 1</strong>swift pt</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><strong>Stage 2</strong>swift sft</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><strong>Stage 3</strong>swift rlhf</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><strong>Deploy</strong>swift deploy</div>
+      </div>
+
+      <p style="margin-top:0.8rem;"><strong>Stage 1 — Continued Pre-training (<code>swift pt</code>)</strong></p>
+      <p>
+        You have a general base model (e.g. Qwen2.5-7B) but want it to absorb domain-specific text — medical literature, legal documents, code in a new language. <code>swift pt</code> runs a standard causal language modelling objective on your corpus, updating all (or a subset of) weights. No chat template is applied; the model just learns to predict next tokens.
+      </p>
+
+      <p style="margin-top:0.8rem;"><strong>Stage 2 — Supervised Fine-tuning (<code>swift sft</code>)</strong></p>
+      <p>
+        You have labelled (instruction, response) pairs and want the model to follow instructions. <code>swift sft</code> applies the model's chat template, formats the conversation correctly, and trains on your dataset — with LoRA, full parameters, or anything in between.
+      </p>
+
+      <p style="margin-top:0.8rem;"><strong>Stage 3 — RLHF / Alignment (<code>swift rlhf</code>)</strong></p>
+      <p>
+        You have an SFT checkpoint and want to improve its responses using human preference data or a reward signal. <code>swift rlhf</code> dispatches to the alignment method you choose — DPO, GRPO, PPO, KTO, and more.
+      </p>
+
+      <div class="callout">
+        <strong>Important order:</strong> always do SFT first on a base model before running RLHF. A base model has no concept of conversation; asking it to do DPO without SFT will produce garbage.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 4 ── -->
+    <div class="section-divider"><span>4 · Lightweight Tuning Methods</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪶</span> Training Without Touching Every Weight</h2>
+      <p>
+        Full fine-tuning updates every parameter in the model. For a 70B model that is tens of gigabytes of gradients and optimizer state per step — impractical on consumer hardware. <span class="term">Parameter-efficient fine-tuning (PEFT)</span> methods solve this by training only a small subset of new parameters.
+      </p>
+
+      <p style="margin-top:0.8rem;"><strong>LoRA — Low-Rank Adaptation</strong></p>
+      <p>
+        LoRA is the most widely used PEFT method. Instead of updating the original weight matrix <strong>W</strong>, it learns two small low-rank matrices <strong>A</strong> and <strong>B</strong> and adds their product as a residual:
+      </p>
+      <div class="formula-block">
+        <div class="formula-label">LoRA Weight Update</div>
+        <div class="formula-main">W' = W + α · (B · A)</div>
+        <div class="formula-legend">
+          <span>W</span> — frozen original weight matrix &nbsp;·&nbsp;
+          <span>A</span> — low-rank matrix (r × d<sub>in</sub>), randomly initialised &nbsp;·&nbsp;
+          <span>B</span> — low-rank matrix (d<sub>out</sub> × r), zero-initialised &nbsp;·&nbsp;
+          <span>α</span> — scaling factor (lora_alpha / rank) &nbsp;·&nbsp;
+          <span>r</span> — rank (typical: 8–64)
+        </div>
+      </div>
+      <p>
+        Since <strong>r ≪ d</strong>, the number of trainable parameters drops dramatically. A 7B model with rank 8 LoRA trains ~0.1% of the total parameters instead of 100%.
+      </p>
+
+      <p style="margin-top:1rem;"><strong>QLoRA — Quantised LoRA</strong></p>
+      <p>
+        QLoRA takes LoRA further: the base model weights are <strong>quantised to 4-bit</strong> (using NF4 or other quantisation formats) before training begins, then LoRA adapters are trained in full precision on top. This lets you fine-tune a 7B model on a single GPU with just <strong>9 GB of VRAM</strong>.
+      </p>
+
+      <p style="margin-top:1rem;"><strong>Other PEFT variants in ms-swift</strong></p>
+      <div class="method-grid">
+        <span class="method-pill lora">LoRA</span>
+        <span class="method-pill lora">QLoRA</span>
+        <span class="method-pill lora">DoRA</span>
+        <span class="method-pill lora">LoRA+</span>
+        <span class="method-pill lora">LoRA-GA</span>
+        <span class="method-pill lora">RS-LoRA</span>
+        <span class="method-pill lora">LLaMAPro</span>
+        <span class="method-pill lora">LongLoRA</span>
+        <span class="method-pill lora">ReFT</span>
+        <span class="method-pill lora">Adapter</span>
+        <span class="method-pill lora">LISA</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Key idea</th><th>When to pick it</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>LoRA</td><td>Low-rank residual adapters on attention/MLP layers</td><td>Default choice — fast, mergeable, works everywhere</td></tr>
+          <tr><td>QLoRA</td><td>4-bit quantised base + LoRA adapters</td><td>Very limited VRAM; note: cannot merge into full weights</td></tr>
+          <tr><td>DoRA</td><td>Decomposes weight into magnitude + direction; updates both</td><td>When LoRA underfits; slightly higher cost</td></tr>
+          <tr><td>Full Parameter</td><td>Update every weight</td><td>Enough VRAM; maximum expressivity</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>Rule of thumb:</strong> use LoRA by default. Only switch to QLoRA when VRAM is the hard constraint, and avoid QLoRA if you plan to serve the model with vLLM (QLoRA adapters can't be merged).
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 5 ── -->
+    <div class="section-divider"><span>5 · RLHF & Alignment Methods</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧑‍🏫</span> Moving Beyond SFT</h2>
+      <p>
+        SFT teaches a model to imitate a dataset. <span class="term">RLHF</span> methods go further: they use preference signals — either from human raters or from a reward model — to pull the model towards outputs humans actually prefer, not just outputs that appeared in training data.
+      </p>
+
+      <p style="margin-top:0.8rem;"><strong>The full menu of alignment methods in ms-swift:</strong></p>
+      <div class="method-grid">
+        <span class="method-pill rlhf">PPO</span>
+        <span class="method-pill rlhf">DPO</span>
+        <span class="method-pill rlhf">GRPO</span>
+        <span class="method-pill rlhf">KTO</span>
+        <span class="method-pill rlhf">SimPO</span>
+        <span class="method-pill rlhf">CPO</span>
+        <span class="method-pill rlhf">ORPO</span>
+        <span class="method-pill rlhf">Reward Model</span>
+        <span class="method-pill rlhf">GKD</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Data needed</th><th>What it optimises</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>PPO</strong></td><td>Reward model + prompts</td><td>Policy gradient with a learned reward; the classic RLHF pipeline</td></tr>
+          <tr><td><strong>DPO</strong></td><td>Preference pairs (chosen, rejected)</td><td>Directly trains on preference pairs — no reward model needed</td></tr>
+          <tr><td><strong>GRPO</strong></td><td>Prompts + verifiable rewards</td><td>Group-normalised reward baseline; DeepSeek-R1's training algorithm</td></tr>
+          <tr><td><strong>KTO</strong></td><td>Binary good/bad labels</td><td>Kahneman-Tversky optimisation; works without paired comparisons</td></tr>
+          <tr><td><strong>SimPO</strong></td><td>Preference pairs</td><td>Length-normalised DPO — avoids the need for a reference model</td></tr>
+          <tr><td><strong>ORPO</strong></td><td>Preference pairs</td><td>Fuses SFT and preference tuning into one loss — no reference model</td></tr>
+          <tr><td><strong>CPO</strong></td><td>Preference pairs</td><td>Contrastive preference optimisation</td></tr>
+          <tr><td><strong>GKD</strong></td><td>Teacher model outputs</td><td>Generalised knowledge distillation — align student to teacher</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:1rem;"><strong>Choosing an alignment method:</strong></p>
+      <ul>
+        <li>Have <strong>human preference data</strong> (chosen/rejected pairs)? → Start with <strong>DPO</strong>. It's simple, no reward model to train.</li>
+        <li>Want <strong>reasoning/thinking</strong> to emerge (like DeepSeek-R1)? → Use <strong>GRPO</strong> with a verifiable reward (e.g. math answer correctness).</li>
+        <li>Only have <strong>thumbs-up/thumbs-down</strong> labels, not pairs? → Use <strong>KTO</strong>.</li>
+        <li>Need a <strong>single-stage</strong> SFT + preference training? → Try <strong>ORPO</strong>.</li>
+        <li>Full <strong>classic RLHF</strong> pipeline? → <strong>PPO</strong> (but it's the most complex to set up).</li>
+      </ul>
+    </div>
+
+    <!-- ─────────────────────────────────────── 6 ── -->
+    <div class="section-divider"><span>6 · Distributed Training</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🖥️</span> Scaling Across Multiple GPUs</h2>
+      <p>
+        Large models don't fit in a single GPU's memory. ms-swift supports four distributed strategies that trade memory savings against training speed:
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>What it shards</th><th>Best for</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>DDP</strong></td><td>Nothing — each GPU holds the full model</td><td>Models that fit in one GPU; fastest throughput</td></tr>
+          <tr><td><strong>device_map</strong></td><td>Model layers split across GPUs sequentially</td><td>Model is too big for one GPU; simplest to enable (automatic)</td></tr>
+          <tr><td><strong>DeepSpeed ZeRO-2</strong></td><td>Optimizer states + gradients</td><td>Reduces memory ~4× vs DDP; modest speed cost</td></tr>
+          <tr><td><strong>DeepSpeed ZeRO-3</strong></td><td>Optimizer states + gradients + model parameters</td><td>Maximum memory savings; significant speed cost</td></tr>
+          <tr><td><strong>FSDP + QLoRA</strong></td><td>Full model sharded + quantised adapters</td><td>70B models on consumer GPUs (e.g. two 3090s)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">Example — ZeRO-3 on 4 GPUs</div>
+        <pre>NPROC_PER_NODE=4 \
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+swift sft \
+    <span class="flag">--model</span> <span class="value">Qwen/Qwen2.5-7B-Instruct</span> \
+    <span class="flag">--dataset</span> <span class="value">your-dataset</span> \
+    <span class="flag">--deepspeed</span> <span class="value">default-zero3</span> \
+    <span class="flag">--output_dir</span> <span class="value">output</span></pre>
+      </div>
+
+      <p>
+        <strong>Megatron support</strong> is also available for very large scale — tensor parallelism, pipeline parallelism, sequence parallelism — via the <code>swift megatron</code> sub-commands. This is the approach used to train 70B+ parameter models across hundreds of GPUs.
+      </p>
+
+      <div class="callout">
+        For a single machine with multiple GPUs and a model that fits in one GPU: use <strong>DDP</strong>. If the model doesn't fit: enable <strong>device_map</strong> (happens automatically). If you still run out: add <strong>DeepSpeed ZeRO-3</strong>.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 7 ── -->
+    <div class="section-divider"><span>7 · CLI Workflow: Start to Finish</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⌨️</span> The Four Commands You Actually Use</h2>
+      <p>
+        The entire ms-swift workflow maps to four CLI entry-points. Every command shares the same argument style and the same output directory structure.
+      </p>
+
+      <p style="margin-top:0.8rem;"><strong>Train — SFT with LoRA on a single GPU</strong></p>
+      <div class="code-block">
+        <div class="code-label">swift sft (LoRA, single GPU)</div>
+        <pre>CUDA_VISIBLE_DEVICES=0 \
+swift sft \
+    <span class="flag">--model</span>              <span class="value">Qwen/Qwen2.5-7B-Instruct</span> \
+    <span class="flag">--dataset</span>            <span class="value">AI-ModelScope/alpaca-gpt4-data-en</span> \
+    <span class="flag">--tuner_type</span>         <span class="value">lora</span> \
+    <span class="flag">--lora_rank</span>          <span class="value">8</span> \
+    <span class="flag">--lora_alpha</span>         <span class="value">32</span> \
+    <span class="flag">--num_train_epochs</span>   <span class="value">3</span> \
+    <span class="flag">--output_dir</span>         <span class="value">output/</span></pre>
+      </div>
+
+      <p style="margin-top:1rem;"><strong>Train — RLHF with DPO</strong></p>
+      <div class="code-block">
+        <div class="code-label">swift rlhf (DPO)</div>
+        <pre>CUDA_VISIBLE_DEVICES=0 \
+swift rlhf \
+    <span class="flag">--rlhf_type</span>          <span class="value">dpo</span> \
+    <span class="flag">--model</span>              <span class="value">Qwen/Qwen2.5-7B-Instruct</span> \
+    <span class="flag">--dataset</span>            <span class="value">your-preference-dataset</span> \
+    <span class="flag">--tuner_type</span>         <span class="value">lora</span> \
+    <span class="flag">--output_dir</span>         <span class="value">output/</span></pre>
+      </div>
+
+      <p style="margin-top:1rem;"><strong>Train — GRPO (reasoning-style RL)</strong></p>
+      <div class="code-block">
+        <div class="code-label">swift rlhf (GRPO)</div>
+        <pre>CUDA_VISIBLE_DEVICES=0,1,2,3 \
+swift rlhf \
+    <span class="flag">--rlhf_type</span>          <span class="value">grpo</span> \
+    <span class="flag">--model</span>              <span class="value">Qwen/Qwen2.5-7B-Instruct</span> \
+    <span class="flag">--dataset</span>            <span class="value">your-math-dataset</span> \
+    <span class="flag">--reward_funcs</span>       <span class="value">accuracy format</span> \
+    <span class="flag">--deepspeed</span>          <span class="value">default-zero3</span> \
+    <span class="flag">--output_dir</span>         <span class="value">output/</span></pre>
+      </div>
+
+      <p style="margin-top:1rem;"><strong>Inference — test your checkpoint</strong></p>
+      <div class="code-block">
+        <div class="code-label">swift infer</div>
+        <pre>CUDA_VISIBLE_DEVICES=0 \
+swift infer \
+    <span class="flag">--adapters</span>           <span class="value">output/vx-xxx/checkpoint-xxx</span> \
+    <span class="flag">--infer_backend</span>      <span class="value">transformers</span> \
+    <span class="flag">--stream</span>             <span class="value">true</span> \
+    <span class="flag">--temperature</span>        <span class="value">0</span> \
+    <span class="flag">--max_new_tokens</span>     <span class="value">2048</span>
+
+<span class="comment"># For full-parameter checkpoints, use --model instead of --adapters</span></pre>
+      </div>
+
+      <p style="margin-top:1rem;"><strong>Deploy — OpenAI-compatible server</strong></p>
+      <div class="code-block">
+        <div class="code-label">swift deploy</div>
+        <pre>CUDA_VISIBLE_DEVICES=0 \
+swift deploy \
+    <span class="flag">--adapters</span>           <span class="value">output/vx-xxx/checkpoint-xxx</span> \
+    <span class="flag">--infer_backend</span>      <span class="value">vllm</span> \
+    <span class="flag">--served_model_name</span>  <span class="value">my-model</span>
+
+<span class="comment"># Now call it just like OpenAI's API:</span>
+<span class="comment"># POST http://localhost:8000/v1/chat/completions</span></pre>
+      </div>
+
+      <div class="callout">
+        The <code>--adapters</code> folder contains a saved <code>args.json</code> with all training config. Swift reads it automatically — you never have to re-specify <code>--model</code> or <code>--system</code> when doing inference or deployment.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 8 ── -->
+    <div class="section-divider"><span>8 · Key Hyperparameters</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎛️</span> What to Tune and Why</h2>
+
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Default / Typical</th><th>What it controls</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>tuner_type</code></td><td><code>lora</code></td><td>Which PEFT method to use: <code>lora</code>, <code>full</code>, <code>qlora</code>, <code>dora</code>, …</td></tr>
+          <tr><td><code>lora_rank</code></td><td>8</td><td>Rank of the low-rank matrices. Higher = more capacity, more params. Common: 8, 16, 32, 64.</td></tr>
+          <tr><td><code>lora_alpha</code></td><td>32</td><td>Scaling factor. Effective learning rate scale = alpha / rank. Usually set to 2× rank.</td></tr>
+          <tr><td><code>lora_dropout</code></td><td>0.0–0.05</td><td>Dropout on LoRA layers. Small regularisation for short training runs.</td></tr>
+          <tr><td><code>learning_rate</code></td><td>1e-4 (LoRA), 1e-5 (full)</td><td>Step size. LoRA tolerates higher LR than full fine-tuning.</td></tr>
+          <tr><td><code>num_train_epochs</code></td><td>2–5</td><td>Number of passes through the dataset. Overfitting is common beyond 3 epochs on small datasets.</td></tr>
+          <tr><td><code>max_length</code></td><td>2048</td><td>Max token sequence length. Longer = more memory. Match to your data's average length.</td></tr>
+          <tr><td><code>gradient_checkpointing</code></td><td>true</td><td>Recompute activations during backward pass — saves memory at ~20% speed cost.</td></tr>
+          <tr><td><code>torch_dtype</code></td><td>bfloat16</td><td>Training precision. <code>bfloat16</code> is standard on A100/H100. Use <code>float16</code> on older GPUs.</td></tr>
+          <tr><td><code>rlhf_type</code></td><td>—</td><td>For <code>swift rlhf</code>: <code>dpo</code>, <code>ppo</code>, <code>grpo</code>, <code>kto</code>, <code>simpo</code>, <code>orpo</code>, <code>cpo</code></td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:0.8rem;">
+        ms-swift sets <code>--gradient_checkpointing true</code> by default to save memory. For maximum speed when VRAM is not the bottleneck, you can disable it with <code>--gradient_checkpointing false</code>.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 9 ── -->
+    <div class="section-divider"><span>9 · The Full Capability Matrix</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> What Works With What</h2>
+      <p>Every training method in ms-swift can be combined with different tuner types, hardware setups, and modalities:</p>
+
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Full Params</th><th>LoRA</th><th>QLoRA</th><th>DeepSpeed</th><th>Multi-Node</th><th>Multimodal</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Pre-training</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>SFT</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>GRPO</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>DPO</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>PPO</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+          <tr><td>KTO</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>SimPO / ORPO / CPO</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          <tr><td>Reward Model</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        </tbody>
+      </table>
+      <p class="matrix-note">PPO multimodal is not yet supported as of the current release.</p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 10 ── -->
+    <div class="section-divider"><span>10 · Multimodal Fine-tuning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🖼️</span> Images, Video, and Audio</h2>
+      <p>
+        ms-swift is the first open-source framework to provide <strong>systematic support</strong> for fine-tuning multimodal large language models (MLLMs). It supports three modalities — images, video, and audio — and handles the messy engineering (aligning tokenisers, managing visual encoders, balancing learning rates between the visual aligner and the language backbone).
+      </p>
+
+      <p style="margin-top:0.8rem;"><strong>Supported multimodal tasks:</strong></p>
+      <ul>
+        <li><strong>Captioning</strong> — describe an image or video in natural language</li>
+        <li><strong>VQA</strong> — visual question answering ("What object is in the red circle?")</li>
+        <li><strong>OCR</strong> — extract text from images/documents</li>
+        <li><strong>Grounding</strong> — localise objects mentioned in text (output bounding boxes)</li>
+      </ul>
+
+      <p style="margin-top:0.8rem;"><strong>A typical multimodal LoRA setup</strong> uses:</p>
+      <ul>
+        <li>Full-parameter training for the <strong>visual encoder and aligner</strong> (few parameters, high impact)</li>
+        <li>LoRA for the <strong>language backbone</strong> (billions of parameters, keep frozen with adapters)</li>
+        <li>Separate, higher learning rate for the visual components</li>
+      </ul>
+
+      <div class="callout">
+        Fine-tuning multimodal models on custom data (e.g. your company's diagrams or medical scans) is one of the highest-leverage applications of ms-swift — the visual understanding transfers, you just teach it your domain's output format.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 11 ── -->
+    <div class="section-divider"><span>11 · Post-Training: Merging, Inference & Export</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> What Happens After Training</h2>
+      <p>
+        Training produces a checkpoint directory. Here's the typical post-training flow:
+      </p>
+      <ol class="algo-steps">
+        <li><strong>Merge LoRA adapters into the base model</strong> (if using LoRA, not QLoRA) so you have a single clean weight file. Use <code>swift export --merge_lora true</code>.</li>
+        <li><strong>Evaluate</strong> the merged model on your held-out test set using <code>swift infer --val_dataset ...</code>. Check quality before deploying.</li>
+        <li><strong>Quantise</strong> (optional) the merged model to GPTQ or AWQ 4-bit to cut serving memory in half with minimal quality loss. Use <code>swift export --quant_method gptq</code>.</li>
+        <li><strong>Deploy</strong> via <code>swift deploy</code> with <code>--infer_backend vllm</code> for high-throughput serving. This exposes an OpenAI-compatible REST API at <code>localhost:8000/v1</code>.</li>
+      </ol>
+
+      <p style="margin-top:0.8rem;">
+        The deployed server supports the full OpenAI Chat Completions API format, so any existing code that calls OpenAI can point to your local model with no other changes.
+      </p>
+
+      <div class="callout">
+        <strong>QLoRA trap:</strong> QLoRA adapters cannot be merged back into a full-precision model. If you want to use vLLM or export the model, use regular LoRA (not QLoRA) even if it requires slightly more VRAM during training.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 12 ── -->
+    <div class="section-divider"><span>12 · Strengths & Limitations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> When to Use ms-swift</h2>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Strengths</div>
+          <ul>
+            <li>The broadest model coverage of any open-source fine-tuning framework (600+ LLMs, 300+ MLLMs)</li>
+            <li>Single CLI for the entire lifecycle — no glue code between stages</li>
+            <li>First-class multimodal training support with correct template handling per model family</li>
+            <li>Every alignment method (DPO, GRPO, PPO, KTO…) in one place</li>
+            <li>Web-UI available for quick experiments without writing any code</li>
+            <li>Active development — new models and methods land within days of paper release</li>
+            <li>AAAI 2025 peer-reviewed; used in dozens of published research papers</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Limitations</div>
+          <ul>
+            <li>Documentation is primarily in Chinese; English docs lag behind occasionally</li>
+            <li>QLoRA adapters cannot be merged — limits deployment options</li>
+            <li>PPO multimodal not yet supported</li>
+            <li>Large API surface can be overwhelming; fewer examples vs Hugging Face TRL for common cases</li>
+            <li>ModelScope ecosystem focus — some integrations assume ModelScope Hub over Hugging Face Hub</li>
+          </ul>
+        </div>
+      </div>
+
+      <table style="margin-top:1rem;">
+        <thead>
+          <tr><th>Use case</th><th>Recommended approach</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Fine-tune a 7B chat model on a custom dataset</td><td><code>swift sft</code> + LoRA on a single A100/3090</td></tr>
+          <tr><td>Reproduce DeepSeek-R1 style reasoning training</td><td><code>swift rlhf --rlhf_type grpo</code> with a verifiable reward function</td></tr>
+          <tr><td>Fine-tune a vision-language model on your images</td><td><code>swift sft</code> with multimodal dataset format</td></tr>
+          <tr><td>Align a model to preferences without a reward model</td><td><code>swift rlhf --rlhf_type dpo</code></td></tr>
+          <tr><td>Fit a 70B model on consumer GPUs</td><td>FSDP + QLoRA or DeepSpeed ZeRO-3 + LoRA</td></tr>
+          <tr><td>No-code training experiment</td><td><code>swift web-ui</code> browser interface</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <p>Updated April 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← RL Concepts Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

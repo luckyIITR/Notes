@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s1: Simple Test-Time Scaling — Reinforcement Learning</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── filter pipeline ── */
+    .filter-pipeline { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0; }
+    .filter-step { display: flex; align-items: baseline; gap: 0.75rem; background: #151823; border: 1px solid #2d3148; border-radius: 8px; padding: 0.75rem 1rem; }
+    .filter-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; white-space: nowrap; min-width: 5rem; }
+    .filter-count { font-size: 0.8rem; font-weight: 700; color: #a5b4fc; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .filter-desc { font-size: 0.88rem; color: #94a3b8; line-height: 1.55; }
+
+    /* ── budget forcing example ── */
+    .bf-example { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.5rem; margin: 0.8rem 0; }
+    .bf-example .bf-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.75rem; }
+    .bf-turn { margin-bottom: 0.6rem; font-size: 0.88rem; line-height: 1.6; }
+    .bf-turn .speaker { font-weight: 700; color: #a5b4fc; margin-right: 0.4rem; }
+    .bf-turn .wrong { color: #f87171; }
+    .bf-turn .inject { background: #2d1f3f; border: 1px solid #7c3aed; color: #c4b5fd; border-radius: 4px; padding: 0.1rem 0.4rem; font-family: 'Courier New', monospace; font-size: 0.82rem; }
+    .bf-turn .correct { color: #4ade80; }
+
+    /* ── training stat pills ── */
+    .stat-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.8rem 0; }
+    .stat-pill { background: #1e2130; border: 1px solid #2d3148; border-radius: 8px; padding: 0.4rem 0.85rem; font-size: 0.8rem; color: #64748b; }
+    .stat-pill span { color: #a5b4fc; font-weight: 700; }
+
+    /* ── scaling type cards ── */
+    .scaling-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin: 0.8rem 0; }
+    .scaling-card { background: #151823; border: 1px solid #2d3148; border-radius: 8px; padding: 0.9rem 1rem; }
+    .scaling-card .s-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.4rem; }
+    .scaling-card .s-title { font-size: 0.9rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.3rem; }
+    .scaling-card .s-desc { font-size: 0.83rem; color: #94a3b8; line-height: 1.55; }
+
+    @media (max-width: 540px) {
+      .scaling-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Test-Time Scaling · Reasoning · SFT</p>
+      <h1>s1: Simple Test-Time Scaling</h1>
+      <p>How 1,000 carefully curated examples and a decoding trick called budget forcing match o1-preview on reasoning benchmarks.</p>
+    </header>
+
+    <!-- ─────────────────────────────────────── 1 ── -->
+    <div class="section-divider"><span>1 · The Problem</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> What Problem Are They Solving?</h2>
+      <p>
+        Language models have traditionally gotten better by training on more data with more compute — what's called <span class="term">train-time scaling</span>. OpenAI's o1 introduced a new paradigm: <span class="term">test-time scaling</span>, where the model uses extra compute at inference time to think longer and reason better. But OpenAI didn't publish their method, sparking a wave of replication attempts using complex techniques like Reinforcement Learning (RL), Monte Carlo Tree Search, and multi-agent systems.
+      </p>
+      <p style="margin-top:0.8rem;">
+        The authors ask a pointed question: <strong>what is the simplest possible approach to achieve test-time scaling and strong reasoning?</strong>
+      </p>
+      <div class="callout">
+        Their answer: just <strong>1,000 carefully chosen training examples</strong> and a trick called <strong>budget forcing</strong>.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 2 ── -->
+    <div class="section-divider"><span>2 · Data Curation — The s1K Dataset</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗄️</span> Starting Pool (59K Samples)</h2>
+      <p>
+        They collect 59,029 questions from 16 sources following three guiding principles:
+      </p>
+      <ul>
+        <li><strong>Quality:</strong> Only well-formatted, clean datasets</li>
+        <li><strong>Difficulty:</strong> Hard problems that require significant reasoning</li>
+        <li><strong>Diversity:</strong> Questions from many different fields (math Olympiads, biology, CS, physics, economics, etc.)</li>
+      </ul>
+      <p style="margin-top:0.8rem;">
+        For each question, they use the Gemini Flash Thinking API to generate a long reasoning trace and a solution — producing 59K (question, reasoning trace, answer) triplets.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔽</span> Filtering Down to 1K</h2>
+      <p>They apply three filtering stages:</p>
+
+      <div class="filter-pipeline">
+        <div class="filter-step">
+          <span class="filter-label">Quality</span>
+          <span class="filter-count">59K → 51K</span>
+          <span class="filter-desc">Remove questions with formatting issues — ASCII art, broken image references, numbering errors.</span>
+        </div>
+        <div class="filter-step">
+          <span class="filter-label">Difficulty</span>
+          <span class="filter-count">51K → 24K</span>
+          <span class="filter-desc">Evaluate Qwen2.5-7B and Qwen2.5-32B on each question. Remove any question either model gets right — keeping only the genuinely hard ones. Reasoning trace length also serves as a difficulty proxy: harder problems require more thinking tokens.</span>
+        </div>
+        <div class="filter-step">
+          <span class="filter-label">Diversity</span>
+          <span class="filter-count">24K → 1K</span>
+          <span class="filter-desc">Classify questions into domains using the Mathematics Subject Classification (MSC) system. Sample one domain at a time (uniformly at random), pick one problem from that domain (favoring longer traces), repeat until exactly 1,000 samples spanning 50 domains.</span>
+        </div>
+      </div>
+
+      <div class="callout">
+        A key finding: <strong>~46% of the answers in s1K are actually wrong</strong>, but the model still learns well from them — suggesting the reasoning <em>process</em> matters more than the correct answer.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 3 ── -->
+    <div class="section-divider"><span>3 · Budget Forcing — The Core Technique</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⏱️</span> Controlling How Long the Model Thinks</h2>
+      <p>
+        <span class="term">Budget forcing</span> is a simple decoding-time trick to control how much the model "thinks." No retraining required.
+      </p>
+      <ul>
+        <li><strong>To make the model think less:</strong> Append the end-of-thinking delimiter token early, forcing the model to stop reasoning and give its best current answer.</li>
+        <li><strong>To make the model think more:</strong> Suppress the end-of-thinking token and instead append the word "Wait" to the model's current reasoning trace, encouraging more exploration. This can lead the model to double-check its answer, often fixing incorrect reasoning steps.</li>
+      </ul>
+
+      <div class="bf-example">
+        <div class="bf-label">Figure 3 Example — "How many r's in raspberry?"</div>
+        <div class="bf-turn"><span class="speaker">Model (first pass):</span> <span class="wrong">…the answer is 2.</span> <em style="color:#64748b;">[attempts to emit stop token]</em></div>
+        <div class="bf-turn"><span class="speaker">Budget forcing:</span> Suppresses stop token → appends <span class="inject">Wait</span></div>
+        <div class="bf-turn"><span class="speaker">Model (second pass):</span> Let me re-examine… r-a-s-p-b-<strong>e-r-r</strong>-y… <span class="correct">the answer is 3.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">💡</span> Why "Wait" Works</h2>
+      <p>
+        Appending "Wait" triggers the model's trained pattern of self-reflection. It's not magic — the model has seen patterns like this in its training data where a second look yields a better answer. The key insight is that this is <strong>controllable</strong>: you can force the model to think more without retraining.
+      </p>
+      <div class="callout">
+        Budget forcing separates <strong>how long to think</strong> from the model's weights entirely — it's a pure inference-time intervention with no gradient required.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 4 ── -->
+    <div class="section-divider"><span>4 · Training Setup</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> A Remarkably Cheap Training Run</h2>
+      <div class="stat-row">
+        <div class="stat-pill">Base model <span>Qwen2.5-32B-Instruct</span></div>
+        <div class="stat-pill">Method <span>Supervised Fine-Tuning (SFT)</span></div>
+        <div class="stat-pill">Training examples <span>1,000</span></div>
+        <div class="stat-pill">Hardware <span>16× NVIDIA H100</span></div>
+        <div class="stat-pill">Wall-clock time <span>26 minutes</span></div>
+        <div class="stat-pill">GPU hours <span>7 H100-hours</span></div>
+        <div class="stat-pill">Output model <span>s1-32B</span></div>
+      </div>
+      <p>
+        Standard supervised fine-tuning on the 1K examples — no RL, no reward model, no special training objective. The resulting model is called <strong>s1-32B</strong>.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 5 ── -->
+    <div class="section-divider"><span>5 · Results</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Benchmarks</h2>
+      <p>They test on three reasoning benchmarks:</p>
+      <ul>
+        <li><strong>AIME24:</strong> 30 competition math problems (very hard)</li>
+        <li><strong>MATH500:</strong> 500 competition math problems of varying difficulty</li>
+        <li><strong>GPQA Diamond:</strong> 198 PhD-level science questions in biology, chemistry, and physics</li>
+      </ul>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Training Examples</th>
+            <th>AIME24</th>
+            <th>MATH500</th>
+            <th>GPQA Diamond</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>o1-preview</td><td>N/A (closed)</td><td>44.6%</td><td>85.5%</td><td>73.3%</td></tr>
+          <tr><td>s1-32B (no budget forcing)</td><td>1K</td><td>50.0%</td><td>92.6%</td><td>56.6%</td></tr>
+          <tr><td>s1-32B (with budget forcing)</td><td>1K</td><td>56.7%</td><td>93.0%</td><td>59.6%</td></tr>
+          <tr><td>r1-distill</td><td>800K</td><td>72.6%</td><td>94.3%</td><td>62.1%</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        s1-32B <strong>exceeds o1-preview on AIME24 by up to 27%</strong> and is the most sample-efficient open data reasoning model — performing dramatically better than models trained on 800× more data.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔀</span> Sequential vs. Parallel Scaling</h2>
+      <div class="scaling-grid">
+        <div class="scaling-card">
+          <div class="s-label">Sequential</div>
+          <div class="s-title">Budget Forcing</div>
+          <div class="s-desc">Later steps build on earlier ones — longer reasoning traces. Each "Wait" extends the chain of thought, allowing self-correction.</div>
+        </div>
+        <div class="scaling-card">
+          <div class="s-label">Parallel</div>
+          <div class="s-title">Majority Voting</div>
+          <div class="s-desc">Run multiple independent attempts and take the most common answer. Scales compute without extending any single reasoning chain.</div>
+        </div>
+      </div>
+      <p>
+        After training on 1,000 samples and equipping s1-32B with budget forcing, scaling test-time compute on the base model via majority voting <strong>does not catch up</strong> with s1-32B's performance — validating that sequential scaling is more efficient.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 6 ── -->
+    <div class="section-divider"><span>6 · Ablations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔬</span> Why All Three Data Criteria Matter</h2>
+      <p>They test what happens if you use only one criterion at a time:</p>
+
+      <table>
+        <thead>
+          <tr><th>Dataset</th><th>Selection Strategy</th><th>AIME24 vs s1K</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>s1K</td><td>Quality + Difficulty + Diversity</td><td>Baseline</td></tr>
+          <tr><td>1K-random</td><td>Quality only (random sample)</td><td>−27%</td></tr>
+          <tr><td>1K-diverse</td><td>Diversity only</td><td>−40%</td></tr>
+          <tr><td>1K-longest</td><td>Difficulty only (longest traces)</td><td>−37%</td></tr>
+          <tr><td>All 59K</td><td>No filtering</td><td>Competitive, but 56× more GPU hours</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:0.8rem;">
+        Fine-tuning on all 59K samples requires <strong>394 H100 GPU hours</strong>, while s1-32B only required <strong>7 H100 GPU hours</strong> — and 59K doesn't meaningfully outperform 1K. <strong>Data selection is everything.</strong>
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Budget Forcing vs. Other Methods</h2>
+
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Control</th><th>Scaling Effect</th><th>AIME24</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Budget Forcing</strong></td><td>100%</td><td>+15</td><td>56.7%</td></tr>
+          <tr><td>Token-conditional control</td><td>40%</td><td>−24</td><td>40.0%</td></tr>
+          <tr><td>Step-conditional control</td><td>60%</td><td>+3</td><td>36.7%</td></tr>
+          <tr><td>Rejection sampling</td><td>100%</td><td>−35</td><td>40.0%</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:0.8rem;">Budget forcing wins on all metrics. Other methods fail in interesting ways:</p>
+      <ul>
+        <li><strong>Token-conditional control:</strong> The model can't reliably count tokens in its own output.</li>
+        <li><strong>Step-conditional control:</strong> The model "hacks" the constraint by adjusting token count per step.</li>
+        <li><strong>Rejection sampling:</strong> Shows <em>inverse</em> scaling — shorter generations tend to be where the model was on the right track from the start, so filtering for short outputs actually selects better answers paradoxically.</li>
+      </ul>
+    </div>
+
+    <!-- ─────────────────────────────────────── 7 ── -->
+    <div class="section-divider"><span>7 · Limitations &amp; Future Directions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> Where the Method Falls Short</h2>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Promising Extensions</div>
+          <ul>
+            <li>Combining budget forcing with tree search (REBASE) scales even further — hybrid sequential + parallel approaches are promising</li>
+            <li>Human experts could theoretically replace the Gemini teacher model for trace generation</li>
+            <li>Works well for any problem with a definite, verifiable answer</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Current Limitations</div>
+          <ul>
+            <li><strong>Flattening:</strong> Budget forcing eventually plateaus; the context window constrains further scaling. Too many "Wait" appends leads to repetitive loops</li>
+            <li><strong>Abstract tasks:</strong> Unclear how to apply to creative writing or open-ended tasks without a ground truth</li>
+            <li><strong>Distillation dependency:</strong> Reasoning traces come from a powerful teacher (Gemini Flash Thinking) — access to a strong model is assumed</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 8 ── -->
+    <div class="section-divider"><span>8 · The Big Picture</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌐</span> A Direct Challenge to RL-Heavy Pipelines</h2>
+      <p>
+        The paper's central thesis is elegantly simple: you don't need RL, you don't need millions of samples, you don't need complex search algorithms. <span class="term">Careful data curation</span> (1K examples selected for quality, difficulty, and diversity) plus a trivial decoding intervention ("Wait") is enough to match or beat much more expensive approaches.
+      </p>
+      <p style="margin-top:0.8rem;">
+        This is a direct challenge to the prevailing assumption that o1-level reasoning requires massive RL pipelines.
+      </p>
+      <div class="callout">
+        The fact that <strong>~half the training answers are wrong</strong> and the model still learns is a profound insight — the model is learning <em>how to think</em>, not <em>what to answer</em>.
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated April 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← RL Concepts Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
