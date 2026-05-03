@@ -6,12 +6,62 @@
   <title>RAG Continued — RAG</title>
   <link rel="stylesheet" href="../styles.css" />
   <style>
+    /* ── back-link ── */
     .back-link {
       display: inline-flex; align-items: center; gap: 0.4rem;
       font-size: 0.8rem; color: #475569; text-decoration: none;
       margin-bottom: 2rem; transition: color 0.2s;
     }
     .back-link:hover { color: #6366f1; }
+
+    /* ── Formula block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Code block ── */
+    .code-block { background:#0d1117; border:1px solid #2d3148; border-radius:10px; padding:1.1rem 1.3rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block .code-label { font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.7rem; }
+    .code-block pre { margin:0; font-family:'Courier New',monospace; font-size:0.82rem; line-height:1.7; color:#e2e8f0; white-space:pre; }
+    .code-block pre .c  { color:#475569; }
+    .code-block pre .k  { color:#c084fc; }
+    .code-block pre .f  { color:#60a5fa; }
+    .code-block pre .s  { color:#4ade80; }
+    .code-block pre .n  { color:#f59e0b; }
+    .code-block pre .cl { color:#fbbf24; }
+
+    /* ── RAG flow diagram ── */
+    .rag-flow { display:grid; grid-template-columns: repeat(5, 1fr); gap:0.6rem; margin:1rem 0; }
+    .rag-step { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:0.85rem 0.6rem; text-align:center; font-size:0.8rem; color:#cbd5e1; }
+    .rag-step .num { display:block; font-size:0.65rem; font-weight:700; letter-spacing:0.1em; color:#6366f1; margin-bottom:0.35rem; text-transform:uppercase; }
+    .rag-step strong { color:#a5b4fc; display:block; margin-bottom:0.25rem; }
+
+    /* ── Comparison cards (without/with context) ── */
+    .compare-grid { display:grid; grid-template-columns: 1fr 1fr; gap:0.9rem; margin-top:0.5rem; }
+    .compare-card { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .compare-card .label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#a5b4fc; margin-bottom:0.5rem; }
+    .compare-card.bad  .label { color:#f87171; }
+    .compare-card.good .label { color:#4ade80; }
+    .compare-card p { margin:0.35rem 0; color:#cbd5e1; font-size:0.86rem; line-height:1.55; }
+
+    /* ── Provider list ── */
+    .providers { display:grid; grid-template-columns: repeat(3, 1fr); gap:0.6rem; margin-top:0.5rem; }
+    .provider { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.7rem 0.8rem; }
+    .provider strong { color:#a5b4fc; display:block; font-size:0.86rem; margin-bottom:0.2rem; }
+    .provider span { color:#94a3b8; font-size:0.78rem; }
+
+    @media (max-width: 540px) {
+      .rag-flow    { grid-template-columns: 1fr 1fr; }
+      .compare-grid{ grid-template-columns: 1fr; }
+      .providers   { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -19,11 +69,485 @@
 
     <a href="index.html" class="back-link">‹ RAG Project Index</a>
 
+    <!-- ── Header ── -->
     <header class="notes-header">
-      <p class="tag">RAG · Continued</p>
-      <h1>RAG Continued</h1>
-      <p>Notes coming soon.</p>
+      <p class="tag">RAG · Generation · Elasticsearch · Modular Pipeline</p>
+      <h1>RAG Continued — From Retrieval to Generation</h1>
+      <p>Plug an LLM into the search results to build a real Retrieval-Augmented Generation pipeline — modular Python functions, OpenAI alternatives, and swapping minsearch for Elasticsearch.</p>
     </header>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Recap — Where Generation Fits In</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> The Full RAG Loop</h2>
+      <p>In the previous notes we built a search engine that returns relevant FAQ documents for a user query. That covered the <strong>R</strong> and the <strong>A</strong> in RAG — retrieval and augmentation. Now we wire in the <strong>G</strong>: pass the retrieved documents to a Large Language Model so it can <em>generate</em> an answer grounded in our data.</p>
+
+      <div class="rag-flow">
+        <div class="rag-step"><span class="num">1</span><strong>Query</strong>"can I still enroll?"</div>
+        <div class="rag-step"><span class="num">2</span><strong>Search</strong>minsearch / Elasticsearch</div>
+        <div class="rag-step"><span class="num">3</span><strong>Build Prompt</strong>question + context</div>
+        <div class="rag-step"><span class="num">4</span><strong>LLM</strong>GPT-4o, Mistral, Bedrock…</div>
+        <div class="rag-step"><span class="num">5</span><strong>Answer</strong>grounded reply</div>
+      </div>
+
+      <p>The data setup is identical to the search-engine notes — load the FAQ JSON, fit a <code>minsearch.Index</code> with three text fields and one keyword field:</p>
+
+      <div class="code-block">
+        <div class="code-label">Loading the data &amp; building the toy index</div>
+        <pre><span class="k">import</span> json, minsearch
+<span class="k">from</span> openai <span class="k">import</span> OpenAI
+
+<span class="k">with</span> <span class="f">open</span>(<span class="s">'documents.json'</span>, <span class="s">'rt'</span>) <span class="k">as</span> f_in:
+    docs_raw = json.<span class="f">load</span>(f_in)
+
+documents = []
+<span class="k">for</span> course_dict <span class="k">in</span> docs_raw:
+    <span class="k">for</span> doc <span class="k">in</span> course_dict[<span class="s">'documents'</span>]:
+        doc[<span class="s">'course'</span>] = course_dict[<span class="s">'course'</span>]
+        documents.<span class="f">append</span>(doc)
+
+index = minsearch.<span class="cl">Index</span>(
+    text_fields=[<span class="s">"question"</span>, <span class="s">"text"</span>, <span class="s">"section"</span>],
+    keyword_fields=[<span class="s">"course"</span>],
+)
+index.<span class="f">fit</span>(documents)
+
+client = <span class="cl">OpenAI</span>()                    <span class="c"># reads OPENAI_API_KEY from env</span></pre>
+      </div>
+
+      <div class="callout">The key API-key tip: put it in an environment variable (<code>OPENAI_API_KEY</code>) so <code>OpenAI()</code> picks it up automatically — never hardcode it in a notebook you'll share.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Naïve Baseline — LLM Without Context</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🤷</span> What Happens If We Just Ask GPT-4o Directly?</h2>
+      <p>Before adding RAG, it's worth seeing what a plain LLM call returns — that's the baseline RAG has to beat.</p>
+
+      <div class="code-block">
+        <div class="code-label">Bare LLM call — no retrieved context</div>
+        <pre>q = <span class="s">'the course has already started, can I still enroll?'</span>
+
+response = client.chat.completions.<span class="f">create</span>(
+    model=<span class="s">'gpt-4o'</span>,
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: q}],
+)
+response.choices[<span class="n">0</span>].message.content</pre>
+      </div>
+
+      <div class="compare-grid">
+        <div class="compare-card bad">
+          <div class="label">Without context (raw GPT-4o)</div>
+          <p><em>"It's not uncommon for courses to accept enrollments even after they have started, but policies vary widely… check the course platform, contact the instructor, reach out to administrative offices…"</em></p>
+          <p style="color:#94a3b8;"><strong>Generic.</strong> The model has no idea what <em>this</em> course's policy is, so it falls back to advice that could apply to any course on Earth.</p>
+        </div>
+        <div class="compare-card good">
+          <div class="label">With FAQ context (RAG)</div>
+          <p><em>"Yes, you can still enroll in the course even after it has started. You are eligible to submit homework assignments, but please be mindful of the deadlines for the final projects."</em></p>
+          <p style="color:#94a3b8;"><strong>Specific and correct.</strong> The model quotes facts straight from the FAQ — exactly what the student needed.</p>
+        </div>
+      </div>
+
+      <div class="callout">RAG's job is to <strong>turn a generic model into a domain expert</strong> by feeding it the right facts at inference time — no fine-tuning required.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Building the Prompt</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📝</span> Anatomy of a Good RAG Prompt</h2>
+      <p>The prompt is where retrieval meets generation. A well-formed RAG prompt has three ingredients:</p>
+
+      <ol class="algo-steps">
+        <li><strong>A role</strong> — tell the model who it is (<em>"You're a course teaching assistant"</em>). Especially useful for stronger models like GPT-4o; tiny open-source models may need stricter instructions.</li>
+        <li><strong>A grounding rule</strong> — instruct the model to use <em>only</em> the supplied context. This is what reduces hallucinations.</li>
+        <li><strong>The context block</strong> — the retrieved documents pasted in verbatim, with field labels (<code>section</code>, <code>question</code>, <code>answer</code>) so the model knows what each chunk represents.</li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">Prompt template</div>
+        <pre>prompt_template = <span class="s">"""
+You're a course teaching assistant. Answer the QUESTION based on the CONTEXT from the FAQ database.
+Use only the facts from the CONTEXT when answering the QUESTION.
+
+QUESTION: {question}
+
+CONTEXT:
+{context}
+"""</span>.<span class="f">strip</span>()</pre>
+      </div>
+
+      <p>The context is built by walking the search results and formatting each hit into a small block:</p>
+
+      <div class="code-block">
+        <div class="code-label">Building the context string</div>
+        <pre><span class="k">def</span> <span class="f">build_prompt</span>(query, search_results):
+    context = <span class="s">""</span>
+    <span class="k">for</span> doc <span class="k">in</span> search_results:
+        context += <span class="s">f"section: {doc['section']}\n"</span> \
+                   <span class="s">f"question: {doc['question']}\n"</span> \
+                   <span class="s">f"answer: {doc['text']}\n\n"</span>
+
+    prompt = prompt_template.<span class="f">format</span>(question=query, context=context).<span class="f">strip</span>()
+    <span class="k">return</span> prompt</pre>
+      </div>
+
+      <div class="callout">Prompt engineering is part <strong>art</strong>, part <strong>science</strong>. Start with a simple template, iterate by trial and error, and later swap intuition for numbers using the evaluation metrics introduced later in the course.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · The Modular RAG Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> Four Functions, One Flow</h2>
+      <p>Putting everything into named functions makes the pipeline easy to read, test, and modify. Each function corresponds to one box in the RAG diagram, so swapping a search engine or an LLM later is a one-line change.</p>
+
+      <div class="code-block">
+        <div class="code-label">search() — retrieval step</div>
+        <pre><span class="k">def</span> <span class="f">search</span>(query):
+    boost = {<span class="s">'question'</span>: <span class="n">3.0</span>, <span class="s">'section'</span>: <span class="n">0.5</span>}
+
+    results = index.<span class="f">search</span>(
+        query=query,
+        filter_dict={<span class="s">'course'</span>: <span class="s">'data-engineering-zoomcamp'</span>},
+        boost_dict=boost,
+        num_results=<span class="n">5</span>,
+    )
+    <span class="k">return</span> results</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">build_prompt() — augmentation step</div>
+        <pre><span class="k">def</span> <span class="f">build_prompt</span>(query, search_results):
+    prompt_template = <span class="s">"""
+You're a course teaching assistant. Answer the QUESTION based on the CONTEXT from the FAQ database.
+Use only the facts from the CONTEXT when answering the QUESTION.
+
+QUESTION: {question}
+
+CONTEXT:
+{context}
+"""</span>.<span class="f">strip</span>()
+
+    context = <span class="s">""</span>
+    <span class="k">for</span> doc <span class="k">in</span> search_results:
+        context += <span class="s">f"section: {doc['section']}\nquestion: {doc['question']}\nanswer: {doc['text']}\n\n"</span>
+
+    <span class="k">return</span> prompt_template.<span class="f">format</span>(question=query, context=context).<span class="f">strip</span>()</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">llm() — generation step</div>
+        <pre><span class="k">def</span> <span class="f">llm</span>(prompt):
+    response = client.chat.completions.<span class="f">create</span>(
+        model=<span class="s">'gpt-4o'</span>,
+        messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: prompt}],
+    )
+    <span class="k">return</span> response.choices[<span class="n">0</span>].message.content</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">rag() — the whole pipeline in 3 lines</div>
+        <pre><span class="k">def</span> <span class="f">rag</span>(query):
+    search_results = <span class="f">search</span>(query)
+    prompt         = <span class="f">build_prompt</span>(query, search_results)
+    answer         = <span class="f">llm</span>(prompt)
+    <span class="k">return</span> answer
+
+<span class="f">rag</span>(<span class="s">'the course has already started, can I still enroll?'</span>)
+<span class="c"># → "Yes, you can still join the course even if you discovered it after the start date…"</span></pre>
+      </div>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Why Modular Wins</div>
+          <ul>
+            <li>Replace <code>search</code> → swap minsearch for Elasticsearch / Qdrant / pgvector</li>
+            <li>Replace <code>llm</code> → swap GPT-4o for Mistral, Claude, Bedrock, local Ollama</li>
+            <li>Each function is independently testable</li>
+            <li>The <code>rag</code> function reads exactly like the diagram</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Common Pitfalls</div>
+          <ul>
+            <li>Using <code>q</code> in one place and <code>query</code> in another (variable-name typo)</li>
+            <li>Returning too few results — bump <code>num_results</code> from 5 to 10 if answers feel thin</li>
+            <li>Forgetting <code>.strip()</code> and ending up with leading/trailing newlines in the prompt</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · OpenAI Alternatives</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌐</span> You Don't Need to Use OpenAI</h2>
+      <p>Many providers expose an OpenAI-compatible chat-completions API — sign up, get a key, change the base URL or SDK, and the rest of the pipeline doesn't care which provider answers. Most of them offer <strong>free credit</strong> that's enough to complete the course.</p>
+
+      <div class="providers">
+        <div class="provider"><strong>Mistral AI</strong><span>~€5 free trial on La Plateforme; strong open-weight family.</span></div>
+        <div class="provider"><strong>AWS Bedrock</strong><span>Hosted Claude, Llama, Titan, Mistral. Often eligible for ~$25 AWS credits.</span></div>
+        <div class="provider"><strong>Groq</strong><span>Free tier; very low-latency Llama / Mixtral inference.</span></div>
+        <div class="provider"><strong>Together AI</strong><span>Pay-as-you-go open-model API; $1+ free credit on signup.</span></div>
+        <div class="provider"><strong>Anthropic</strong><span>Claude family — direct API or via Bedrock.</span></div>
+        <div class="provider"><strong>Google AI Studio</strong><span>Gemini API with a generous free tier.</span></div>
+      </div>
+
+      <div class="callout">Module 2 of the LLM Zoomcamp covers <strong>self-hosted open-source models</strong> (Ollama, vLLM, HuggingFace pipelines). If you'd rather skip a paid API entirely, jump there.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Why Replace minsearch With Elasticsearch?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> The Toy Was Only Step One</h2>
+      <p>The TF-IDF in-memory index is great for teaching and prototyping but has real limitations:</p>
+
+      <div class="reward-grid">
+        <div class="reward-item bad">
+          <div class="label">minsearch Limitations</div>
+          <ul>
+            <li><strong>In-memory</strong> — index is lost when the kernel dies</li>
+            <li><strong>Rebuilds from scratch</strong> every notebook restart</li>
+            <li>No incremental indexing of new documents</li>
+            <li>No fuzzy matching, BM25, analyzers, multilingual support</li>
+            <li>Single-process — won't scale to many concurrent users</li>
+          </ul>
+        </div>
+        <div class="reward-item good">
+          <div class="label">Elasticsearch Wins</div>
+          <ul>
+            <li><strong>Persistent</strong> — data lives on disk, survives restarts</li>
+            <li><strong>BM25</strong> scoring + analyzers + boosting out of the box</li>
+            <li>Add documents incrementally with <code>es.index(...)</code></li>
+            <li>Production-grade query DSL (filters, aggs, multi_match)</li>
+            <li>Battle-tested at petabyte scale</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>The course keeps minsearch as a fallback for environments where running a real search server is impractical (e.g. SaturnCloud notebooks). Pick the one that fits your runtime.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Running Elasticsearch in Docker</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🐳</span> One Command, Full Stack</h2>
+      <p>The official Elasticsearch image is the fastest way to get a local cluster. Inside GitHub Codespaces (or any Docker host) one <code>docker run</code> is enough.</p>
+
+      <div class="code-block">
+        <div class="code-label">Run Elasticsearch 8.x locally</div>
+        <pre>docker run -it \
+  --rm \
+  --name elasticsearch \
+  -m 4GB \
+  -p 9200:9200 -p 9300:9300 \
+  -e <span class="s">"discovery.type=single-node"</span> \
+  -e <span class="s">"xpack.security.enabled=false"</span> \
+  docker.elastic.co/elasticsearch/elasticsearch:8.4.3</pre>
+      </div>
+
+      <p>Two ports matter:</p>
+      <ul>
+        <li><code>9200</code> — the HTTP REST API your Python client talks to.</li>
+        <li><code>9300</code> — internal node-to-node transport (only relevant for clusters).</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">Verify it's up</div>
+        <pre>curl http://localhost:9200
+<span class="c"># {
+#   "name": "...",
+#   "cluster_name": "docker-cluster",
+#   "version": { "number": "8.4.3", ... },
+#   "tagline": "You Know, for Search"
+# }</span></pre>
+      </div>
+
+      <div class="callout">If you're working in Codespaces, the <code>9200</code> port is auto-forwarded — but you only need it within the dev container, since the Python client connects to <code>localhost:9200</code> from inside the same machine.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Creating the Index</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📇</span> An Index Is Like a Table</h2>
+      <p>An Elasticsearch <span class="term">index</span> is the equivalent of a table in a relational database. Before indexing data we declare its schema via <span class="term">mappings</span> — most importantly, which fields are full-text-searchable (<code>text</code>) and which are exact-match filterable (<code>keyword</code>).</p>
+
+      <div class="code-block">
+        <div class="code-label">Connect to the cluster</div>
+        <pre><span class="k">from</span> elasticsearch <span class="k">import</span> Elasticsearch
+
+es_client = <span class="cl">Elasticsearch</span>(<span class="s">'http://localhost:9200'</span>)
+es_client.<span class="f">info</span>()                   <span class="c"># sanity check</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Index settings &amp; mappings</div>
+        <pre>index_settings = {
+    <span class="s">"settings"</span>: {
+        <span class="s">"number_of_shards"</span>: <span class="n">1</span>,
+        <span class="s">"number_of_replicas"</span>: <span class="n">0</span>,
+    },
+    <span class="s">"mappings"</span>: {
+        <span class="s">"properties"</span>: {
+            <span class="s">"text"</span>:     {<span class="s">"type"</span>: <span class="s">"text"</span>},        <span class="c"># tokenised, full-text</span>
+            <span class="s">"section"</span>:  {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"question"</span>: {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"course"</span>:   {<span class="s">"type"</span>: <span class="s">"keyword"</span>},     <span class="c"># exact match → for filters</span>
+        }
+    },
+}
+
+index_name = <span class="s">"course-questions"</span>
+es_client.indices.<span class="f">create</span>(index=index_name, body=index_settings)</pre>
+      </div>
+
+      <div class="formula-block">
+        <div class="formula-label">Field type cheat-sheet</div>
+        <div class="formula-main">
+          text  →  tokenised, lowercased, stemmed → use for <em>matching</em><br>
+          keyword  →  stored verbatim, single token → use for <em>filtering / aggregations</em>
+        </div>
+        <div class="formula-legend">
+          The same three text fields and one keyword field as the minsearch setup — same logical schema, different engine.
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Indexing the Documents</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📥</span> Pushing Data In</h2>
+      <p>With the schema in place, indexing is a loop calling <code>es.index(...)</code>. <code>tqdm</code> gives a progress bar — useful even for the small 948-document FAQ since indexing runs at ~30 docs/s.</p>
+
+      <div class="code-block">
+        <div class="code-label">Index every FAQ entry</div>
+        <pre><span class="k">from</span> tqdm.auto <span class="k">import</span> tqdm
+
+<span class="k">for</span> doc <span class="k">in</span> <span class="f">tqdm</span>(documents):
+    es_client.<span class="f">index</span>(index=index_name, document=doc)</pre>
+      </div>
+
+      <p>Two things that make Elasticsearch different from minsearch:</p>
+      <ul>
+        <li><strong>Persistence</strong> — data is written to disk, so a notebook restart doesn't wipe the index. Re-running this loop would create duplicates; in production you'd guard with <code>es.indices.exists()</code>.</li>
+        <li><strong>Volume mounting</strong> — if the Docker container itself is recreated, you'd want a <code>-v</code> mount on <code>/usr/share/elasticsearch/data</code> to keep data across container lifecycles. Outside the scope of this notebook, but standard Docker practice.</li>
+      </ul>
+
+      <div class="callout">For larger corpora use the <code>helpers.bulk()</code> API instead of one <code>index</code> call per document — it batches requests and is orders of magnitude faster.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Querying With Boost &amp; Filter</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Translating the minsearch Query</h2>
+      <p>The minsearch call had three concerns: a query string, a per-field boost (<code>question^3</code>), and a filter on <code>course</code>. Elasticsearch expresses all three in one DSL document — verbose, but very explicit.</p>
+
+      <div class="code-block">
+        <div class="code-label">Search query DSL</div>
+        <pre>search_query = {
+    <span class="s">"size"</span>: <span class="n">5</span>,
+    <span class="s">"query"</span>: {
+        <span class="s">"bool"</span>: {
+            <span class="s">"must"</span>: {
+                <span class="s">"multi_match"</span>: {
+                    <span class="s">"query"</span>:  query,
+                    <span class="s">"fields"</span>: [<span class="s">"question^3"</span>, <span class="s">"text"</span>, <span class="s">"section"</span>],
+                    <span class="s">"type"</span>:   <span class="s">"best_fields"</span>,
+                }
+            },
+            <span class="s">"filter"</span>: {
+                <span class="s">"term"</span>: {<span class="s">"course"</span>: <span class="s">"data-engineering-zoomcamp"</span>}
+            }
+        }
+    }
+}
+
+response = es_client.<span class="f">search</span>(index=index_name, body=search_query)</pre>
+      </div>
+
+      <p>Reading the DSL piece by piece:</p>
+      <ul>
+        <li><code>size: 5</code> — return at most 5 hits, the equivalent of <code>num_results=5</code> in minsearch.</li>
+        <li><code>bool.must.multi_match</code> — score documents on full-text similarity across multiple fields.</li>
+        <li><code>question^3</code> — the caret syntax boosts the <em>question</em> field by 3×, identical to <code>boost_dict={'question': 3.0}</code>.</li>
+        <li><code>type: "best_fields"</code> — take the score from the single best-matching field per document (other options: <code>most_fields</code>, <code>cross_fields</code>, <code>phrase</code>).</li>
+        <li><code>bool.filter.term</code> — exact-match filter on the <code>course</code> keyword field. <strong>Filter clauses do not affect the relevance score</strong>, only inclusion — exactly what we want for "scope this query to one course".</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📦</span> Unpacking the Response</h2>
+      <p>The Elasticsearch response is deeply nested: <code>response['hits']['hits']</code> is the list of hits, and each hit's original document lives under <code>'_source'</code>.</p>
+
+      <div class="code-block">
+        <div class="code-label">elastic_search() — drop-in replacement for search()</div>
+        <pre><span class="k">def</span> <span class="f">elastic_search</span>(query):
+    search_query = {
+        <span class="s">"size"</span>: <span class="n">5</span>,
+        <span class="s">"query"</span>: {
+            <span class="s">"bool"</span>: {
+                <span class="s">"must"</span>:   {<span class="s">"multi_match"</span>: {
+                    <span class="s">"query"</span>: query,
+                    <span class="s">"fields"</span>: [<span class="s">"question^3"</span>, <span class="s">"text"</span>, <span class="s">"section"</span>],
+                    <span class="s">"type"</span>: <span class="s">"best_fields"</span>,
+                }},
+                <span class="s">"filter"</span>: {<span class="s">"term"</span>: {<span class="s">"course"</span>: <span class="s">"data-engineering-zoomcamp"</span>}},
+            }
+        }
+    }
+    response = es_client.<span class="f">search</span>(index=index_name, body=search_query)
+
+    result_docs = []
+    <span class="k">for</span> hit <span class="k">in</span> response[<span class="s">'hits'</span>][<span class="s">'hits'</span>]:
+        result_docs.<span class="f">append</span>(hit[<span class="s">'_source'</span>])
+    <span class="k">return</span> result_docs</pre>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Swapping It Into the Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔌</span> Modularity Pays Off</h2>
+      <p>Because <code>search()</code> and <code>elastic_search()</code> share the same signature — query in, list of dicts out — moving the whole RAG flow onto Elasticsearch is a one-line change.</p>
+
+      <div class="code-block">
+        <div class="code-label">rag() now backed by Elasticsearch</div>
+        <pre><span class="k">def</span> <span class="f">rag</span>(query):
+    search_results = <span class="f">elastic_search</span>(query)        <span class="c"># ← only line that changed</span>
+    prompt         = <span class="f">build_prompt</span>(query, search_results)
+    answer         = <span class="f">llm</span>(prompt)
+    <span class="k">return</span> answer
+
+<span class="f">rag</span>(<span class="s">'I just discovered the course. Can I still join it?'</span>)
+<span class="c"># → "Yes, you can still join the course even if you discovered it after the start date…"</span></pre>
+      </div>
+
+      <p>Same answer, but now backed by a persistent, scalable, production-ready search engine. Future swaps — Qdrant for vector search, a different LLM, a different prompt — follow the same pattern: replace one function, leave the rest alone.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Key Takeaways</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> The Big Picture</h2>
+      <ul>
+        <li>RAG = <strong>retrieve relevant context</strong>, <strong>build a grounded prompt</strong>, <strong>generate</strong> an answer with an LLM. None of the three steps is optional.</li>
+        <li>A good RAG prompt has a <strong>role</strong>, a <strong>"use only the context" rule</strong>, and a <strong>structured context block</strong> with field labels.</li>
+        <li>Express the pipeline as four small functions — <code>search</code>, <code>build_prompt</code>, <code>llm</code>, <code>rag</code> — and any component becomes swappable.</li>
+        <li>OpenAI is convenient but not mandatory: Mistral, Bedrock, Groq, Together, Anthropic, and Gemini all expose a chat-completions API, often with free credit.</li>
+        <li>Elasticsearch's <code>multi_match</code> + <code>filter</code> is the production-grade equivalent of minsearch's <code>boost_dict</code> + <code>filter_dict</code>. Same logical query, different engine.</li>
+        <li>Persistence, BM25 scoring, scalability, and incremental indexing are why you graduate from a toy in-memory index to a real search server.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Resources</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Code &amp; Further Reading</h2>
+      <ul>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/01-intro/rag-intro.ipynb" style="color:#a5b4fc;">rag-intro.ipynb</a> — the source notebook for these notes.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp" style="color:#a5b4fc;">DataTalksClub/llm-zoomcamp</a> — the full free LLM Zoomcamp course.</li>
+        <li><a href="https://github.com/alexeygrigorev/minsearch" style="color:#a5b4fc;">alexeygrigorev/minsearch</a> — the toy in-memory search index used as the baseline retriever.</li>
+        <li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html" style="color:#a5b4fc;">Elasticsearch multi_match docs</a> — every <code>type</code> (<code>best_fields</code>, <code>most_fields</code>, <code>cross_fields</code>, <code>phrase</code>) explained.</li>
+        <li><a href="https://platform.openai.com/docs/api-reference/chat" style="color:#a5b4fc;">OpenAI Chat Completions API</a> — the reference SDK used here.</li>
+      </ul>
+    </div>
 
     <footer>
       <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RAG Index</a></p>
