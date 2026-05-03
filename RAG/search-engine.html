@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Build Your Own Search Engine — RAG</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Formula block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Code block ── */
+    .code-block { background:#0d1117; border:1px solid #2d3148; border-radius:10px; padding:1.1rem 1.3rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block .code-label { font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.7rem; }
+    .code-block pre { margin:0; font-family:'Courier New',monospace; font-size:0.82rem; line-height:1.7; color:#e2e8f0; white-space:pre; }
+    .code-block pre .c  { color:#475569; }
+    .code-block pre .k  { color:#c084fc; }
+    .code-block pre .f  { color:#60a5fa; }
+    .code-block pre .s  { color:#4ade80; }
+    .code-block pre .n  { color:#f59e0b; }
+    .code-block pre .cl { color:#fbbf24; }
+
+    /* ── RAG flow diagram ── */
+    .rag-flow { display:grid; grid-template-columns: repeat(5, 1fr); gap:0.6rem; margin:1rem 0; }
+    .rag-step { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:0.85rem 0.6rem; text-align:center; font-size:0.8rem; color:#cbd5e1; position:relative; }
+    .rag-step .num { display:block; font-size:0.65rem; font-weight:700; letter-spacing:0.1em; color:#6366f1; margin-bottom:0.35rem; text-transform:uppercase; }
+    .rag-step strong { color:#a5b4fc; display:block; margin-bottom:0.25rem; }
+
+    /* ── Search-type comparison ── */
+    .search-types { display:grid; grid-template-columns: 1fr 1fr; gap:0.9rem; margin-top:0.5rem; }
+    .search-type { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .search-type .label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#a5b4fc; margin-bottom:0.5rem; }
+    .search-type p { margin:0.35rem 0; color:#cbd5e1; font-size:0.88rem; }
+
+    /* ── Term-document matrix ── */
+    .matrix-wrap { overflow-x:auto; margin:0.7rem 0; }
+    table.tdm { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.82rem; min-width:100%; }
+    table.tdm th, table.tdm td { border:1px solid #2d3148; padding:0.45rem 0.7rem; text-align:center; color:#cbd5e1; }
+    table.tdm th { background:#1e2130; color:#a5b4fc; font-weight:700; }
+    table.tdm td.doc { background:#1e2130; color:#a5b4fc; text-align:left; font-weight:700; }
+    table.tdm td.one { color:#4ade80; }
+    table.tdm td.zero { color:#475569; }
+
+    @media (max-width: 540px) {
+      .rag-flow { grid-template-columns: 1fr 1fr; }
+      .search-types { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RAG Project Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Information Retrieval · TF-IDF · Vector Search · Embeddings</p>
+      <h1>Build Your Own Search Engine</h1>
+      <p>An end-to-end walkthrough of the retrieval step in RAG — building a toy in-memory search engine from bag-of-words to BERT embeddings, using only scikit-learn and pandas.</p>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Why Search Matters in RAG</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Retrieval Is the "R" in RAG</h2>
+      <p><span class="term">Retrieval-Augmented Generation</span> lets a language model answer questions using <em>your</em> data. The pattern is simple but every step matters:</p>
+
+      <div class="rag-flow">
+        <div class="rag-step"><span class="num">1</span><strong>User Query</strong>"Is it too late to join?"</div>
+        <div class="rag-step"><span class="num">2</span><strong>Search</strong>Top-k relevant docs</div>
+        <div class="rag-step"><span class="num">3</span><strong>Prompt</strong>Query + context</div>
+        <div class="rag-step"><span class="num">4</span><strong>LLM</strong>e.g. GPT-3.5</div>
+        <div class="rag-step"><span class="num">5</span><strong>Answer</strong>Grounded reply</div>
+      </div>
+
+      <p>Search is the foundation of the whole system — if retrieval gives the LLM the wrong documents, no amount of prompt engineering can save the answer. Understanding how relevance scoring works is therefore essential before reaching for Elasticsearch, FAISS, or any vector database.</p>
+
+      <div class="callout">The retrieval step controls <strong>what the model can know</strong>. Bad retrieval = confidently wrong answers. Good retrieval = grounded, useful responses.</div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📚</span> The Working Dataset</h2>
+      <p>Throughout these notes we use FAQ documents from the DataTalksClub Zoomcamp courses (Data Engineering, ML, MLOps). These are real ~300-page Google Docs students search through before asking on Slack. Each entry has four fields:</p>
+      <ul>
+        <li><span class="term">course</span> — which course the FAQ belongs to (used for filtering).</li>
+        <li><span class="term">section</span> — top-level grouping (e.g. "Module 1 — Docker").</li>
+        <li><span class="term">question</span> — the FAQ question.</li>
+        <li><span class="term">text</span> — the answer body.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">Loading the data</div>
+        <pre><span class="k">import</span> requests, pandas <span class="k">as</span> pd
+
+docs_url = <span class="s">'https://github.com/alexeygrigorev/llm-rag-workshop/raw/main/notebooks/documents.json'</span>
+documents_raw = requests.<span class="f">get</span>(docs_url).<span class="f">json</span>()
+
+documents = []
+<span class="k">for</span> course <span class="k">in</span> documents_raw:
+    <span class="k">for</span> doc <span class="k">in</span> course[<span class="s">'documents'</span>]:
+        doc[<span class="s">'course'</span>] = course[<span class="s">'course'</span>]
+        documents.<span class="f">append</span>(doc)
+
+df = pd.<span class="cl">DataFrame</span>(documents, columns=[<span class="s">'course'</span>, <span class="s">'section'</span>, <span class="s">'question'</span>, <span class="s">'text'</span>])</pre>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · Two Flavours of Search</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> Text Search vs Semantic / Vector Search</h2>
+      <p>There are two fundamentally different ways to match a query to documents. Both have the same goal — return relevant results — but they look at the text very differently.</p>
+
+      <div class="search-types">
+        <div class="search-type">
+          <div class="label">Text Search</div>
+          <p><strong>Matches exact words.</strong> If the query and document share the same tokens (after lowercasing and stop-word removal), they match.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Query:</em> "I just discovered the course, can I still join?"</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Matches:</em> docs containing <code>discovered</code>, <code>course</code>, <code>join</code>.</p>
+        </div>
+        <div class="search-type">
+          <div class="label">Semantic / Vector Search</div>
+          <p><strong>Matches meaning.</strong> Encodes query and documents into dense vectors so synonyms and paraphrases land near each other.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Query:</em> "I just <strong>found out</strong> about the <strong>program</strong>, can I still <strong>enroll</strong>?"</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Still matches:</em> docs about discovering and joining the course.</p>
+        </div>
+      </div>
+
+      <div class="callout">Text search fails on <strong>synonyms</strong>. Vector search fails on <strong>rare exact terms</strong> (product codes, acronyms). Real systems combine both — that is what production "hybrid search" means.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Vector Spaces &amp; Bag of Words</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Turning Documents Into Vectors</h2>
+      <p>The trick that powers every text-search algorithm — from 1970s SMART to modern Lucene — is the same: <strong>represent each document as a point in a high-dimensional vector space</strong>. Then "relevance" becomes geometric closeness.</p>
+
+      <p>The simplest such representation is the <span class="term">term-document matrix</span>: rows are documents, columns are vocabulary words, and each cell counts how many times a word appears in a document.</p>
+
+      <p style="margin-top:1rem;">Consider five toy documents:</p>
+      <ol style="color:#cbd5e1;font-size:0.88rem;">
+        <li>"Course starts on 15th Jan 2024"</li>
+        <li>"Prerequisites listed on GitHub"</li>
+        <li>"Submit homeworks after start date"</li>
+        <li>"Registration not required for participation"</li>
+        <li>"Setup Google Cloud and Python before course"</li>
+      </ol>
+
+      <div class="matrix-wrap">
+        <table class="tdm">
+          <thead>
+            <tr><th></th><th>course</th><th>start</th><th>github</th><th>homework</th><th>python</th><th>cloud</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="doc">Doc 1</td><td class="one">1</td><td class="one">1</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td></tr>
+            <tr><td class="doc">Doc 2</td><td class="zero">0</td><td class="zero">0</td><td class="one">1</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td></tr>
+            <tr><td class="doc">Doc 3</td><td class="zero">0</td><td class="one">1</td><td class="zero">0</td><td class="one">1</td><td class="zero">0</td><td class="zero">0</td></tr>
+            <tr><td class="doc">Doc 4</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td></tr>
+            <tr><td class="doc">Doc 5</td><td class="one">1</td><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td><td class="one">1</td><td class="one">1</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎒</span> The "Bag-of-Words" Assumption</h2>
+      <p>This representation is called <span class="term">bag of words</span> because it throws away word order — only the <strong>presence and frequency</strong> of each token matter. Two documents with the same words in different order produce identical vectors.</p>
+
+      <ul>
+        <li><strong>Lossy</strong> — "dog bites man" and "man bites dog" are the same vector.</li>
+        <li><strong>Sparse</strong> — most documents contain only a tiny fraction of the vocabulary, so most cells are zero. Storing it as a <em>sparse matrix</em> (only non-zero entries) is essential.</li>
+        <li><strong>Surprisingly effective</strong> — for a huge class of retrieval tasks, word-order-free matching is enough.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">CountVectorizer — the simplest bag of words</div>
+        <pre><span class="k">from</span> sklearn.feature_extraction.text <span class="k">import</span> CountVectorizer
+
+cv = <span class="cl">CountVectorizer</span>(stop_words=<span class="s">'english'</span>)
+X = cv.<span class="f">fit_transform</span>(docs_example)
+
+names = cv.<span class="f">get_feature_names_out</span>()        <span class="c"># vocabulary</span>
+df_docs = pd.<span class="cl">DataFrame</span>(X.<span class="f">toarray</span>(), columns=names)</pre>
+      </div>
+
+      <p>Two arguments worth knowing:</p>
+      <ul>
+        <li><code>stop_words='english'</code> — drops "the", "is", "and", … which carry no retrieval signal.</li>
+        <li><code>min_df=5</code> — only keep terms that appear in at least 5 documents. Without it, a single typo or rare token gets its own column. The full FAQ has ~6,700 unique tokens; setting <code>min_df=5</code> cuts this to a much more meaningful vocabulary.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · TF-IDF — Weighting What Matters</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Not All Words Are Equal</h2>
+      <p>Raw counts treat every word the same: matching <code>course</code> contributes as much as matching <code>yaml</code>. But intuitively, <code>yaml</code> is a much stronger signal — it appears in only a few documents, while <code>course</code> appears almost everywhere.</p>
+
+      <p><span class="term">TF-IDF</span> (Term Frequency × Inverse Document Frequency) formalises this: <strong>rare terms get higher weights</strong>, common terms get lower weights.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">TF-IDF Weight</div>
+        <div class="formula-main">
+          tfidf(t, d) = tf(t, d) · log( N / df(t) )
+        </div>
+        <div class="formula-legend">
+          <span>tf(t, d)</span> — number of times term <em>t</em> appears in document <em>d</em><br>
+          <span>df(t)</span> — number of documents that contain term <em>t</em><br>
+          <span>N</span> — total number of documents in the corpus<br>
+          A term in many documents (large df) → small log term → small weight.
+        </div>
+      </div>
+
+      <p>In scikit-learn, swapping <code>CountVectorizer</code> for <code>TfidfVectorizer</code> is the only change needed — the rest of the pipeline stays identical.</p>
+
+      <div class="code-block">
+        <div class="code-label">Bag of words → TF-IDF (one-line swap)</div>
+        <pre><span class="k">from</span> sklearn.feature_extraction.text <span class="k">import</span> TfidfVectorizer
+
+cv = <span class="cl">TfidfVectorizer</span>(stop_words=<span class="s">'english'</span>, min_df=<span class="n">3</span>)
+X = cv.<span class="f">fit_transform</span>(df[<span class="s">'text'</span>])</pre>
+      </div>
+
+      <p>After fitting, cells contain floats like <code>0.21</code> or <code>0.05</code> instead of integer counts — these are the term weights. <code>TfidfVectorizer</code> also <strong>L2-normalises</strong> each row by default, which is what makes the dot-product equal to cosine similarity (next section).</p>
+
+      <div class="callout">TF-IDF gives you <strong>importance-aware matching</strong> for free. It is the strongest no-ML baseline in information retrieval and the foundation that BM25 and Lucene refine.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Scoring — Dot Product &amp; Cosine Similarity</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📏</span> Measuring How Close Query and Document Are</h2>
+      <p>Once the query is in the same vector space as the documents (using <em>the same fitted vectorizer</em>), comparing them is straight linear algebra: <strong>multiply the corresponding weights and sum</strong>. Words that appear in both contribute; words missing from either contribute zero.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Dot product as relevance score</div>
+        <div class="formula-main">
+          score(q, d) = Σ<sub>t</sub> &nbsp; q<sub>t</sub> · d<sub>t</sub>
+        </div>
+        <div class="formula-legend">
+          <span>q<sub>t</sub></span> — TF-IDF weight of term <em>t</em> in the query<br>
+          <span>d<sub>t</sub></span> — TF-IDF weight of term <em>t</em> in the document<br>
+          The sum runs over every term in the vocabulary; non-matching terms add zero.
+        </div>
+      </div>
+
+      <p>Doing this for <em>all</em> documents in one shot is just a matrix–vector multiplication — and sparse matrices make it blazingly fast.</p>
+
+      <div class="code-block">
+        <div class="code-label">Score every document against the query</div>
+        <pre>query = <span class="s">"I just signed up. Is it too late to join the course?"</span>
+
+q = cv.<span class="f">transform</span>([query])           <span class="c"># same vectorizer as for X</span>
+scores = X.<span class="f">dot</span>(q.T).<span class="f">toarray</span>().<span class="f">flatten</span>()</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📐</span> Cosine Similarity</h2>
+      <p><span class="term">Cosine similarity</span> is the dot product after both vectors are normalised to unit length — it measures the <em>angle</em> between vectors, ignoring magnitude. Long documents do not get an unfair boost just for being long.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Cosine similarity</div>
+        <div class="formula-main">
+          cos(q, d) = ( q · d ) / ( ‖q‖ · ‖d‖ )
+        </div>
+        <div class="formula-legend">
+          With <code>TfidfVectorizer</code>'s default L2 normalisation, ‖q‖ = ‖d‖ = 1, so cosine similarity equals the plain dot product.
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">scikit-learn one-liner</div>
+        <pre><span class="k">from</span> sklearn.metrics.pairwise <span class="k">import</span> cosine_similarity
+
+scores = <span class="f">cosine_similarity</span>(X, q).<span class="f">flatten</span>()</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🏆</span> Ranking the Top-k</h2>
+      <p>Once you have a score per document, sort descending and take the top <em>k</em>. <code>np.argsort</code> returns indices, not values — perfect for indexing back into the dataframe.</p>
+
+      <div class="code-block">
+        <div class="code-label">Top-5 results</div>
+        <pre><span class="k">import</span> numpy <span class="k">as</span> np
+
+idx = np.<span class="f">argsort</span>(-scores)[:<span class="n">5</span>]      <span class="c"># negate to sort descending</span>
+top_docs = df.<span class="f">iloc</span>[idx]</pre>
+      </div>
+
+      <p>For very large corpora, <code>np.argpartition</code> is asymptotically faster — it finds the top-k without fully sorting the rest.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Multi-Field Search, Boosting &amp; Filtering</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> Searching Across Multiple Fields</h2>
+      <p>Real documents have structure — a <code>question</code> field, a <code>text</code> answer body, a <code>section</code> heading. A match in the question field is much stronger evidence of relevance than the same word buried in a long answer.</p>
+
+      <p>The recipe:</p>
+      <ol class="algo-steps">
+        <li>Fit a <strong>separate</strong> <code>TfidfVectorizer</code> on each field — each gets its own vocabulary and its own term-document matrix.</li>
+        <li>For each query, transform it through every field's vectorizer and compute cosine similarity per field.</li>
+        <li><strong>Sum the per-field scores</strong>, multiplying by a <span class="term">boost</span> that gives some fields more weight than others.</li>
+        <li>Apply hard <span class="term">filters</span> (e.g. <code>course == "data-engineering-zoomcamp"</code>) by zeroing out scores of documents that fail the filter.</li>
+        <li>Sort and return the top-k.</li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">Per-field TF-IDF index</div>
+        <pre>fields       = [<span class="s">'section'</span>, <span class="s">'question'</span>, <span class="s">'text'</span>]
+transformers = {}
+matrices     = {}
+
+<span class="k">for</span> f <span class="k">in</span> fields:
+    cv = <span class="cl">TfidfVectorizer</span>(stop_words=<span class="s">'english'</span>, min_df=<span class="n">3</span>)
+    matrices[f]     = cv.<span class="f">fit_transform</span>(df[f])
+    transformers[f] = cv</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Combined score with boosting + filtering</div>
+        <pre>boost   = {<span class="s">'question'</span>: <span class="n">3.0</span>}                <span class="c"># question matches count 3×</span>
+filters = {<span class="s">'course'</span>: <span class="s">'data-engineering-zoomcamp'</span>}
+
+score = np.<span class="f">zeros</span>(<span class="f">len</span>(df))
+
+<span class="k">for</span> f <span class="k">in</span> fields:
+    b = boost.<span class="f">get</span>(f, <span class="n">1.0</span>)
+    q = transformers[f].<span class="f">transform</span>([query])
+    s = <span class="f">cosine_similarity</span>(matrices[f], q).<span class="f">flatten</span>()
+    score = score + b * s
+
+<span class="k">for</span> field, value <span class="k">in</span> filters.<span class="f">items</span>():
+    mask  = (df[field] == value).values             <span class="c"># bool array</span>
+    score = score * mask                            <span class="c"># zero out non-matches</span>
+
+idx     = np.<span class="f">argsort</span>(-score)[:<span class="n">5</span>]
+results = df.<span class="f">iloc</span>[idx].<span class="f">to_dict</span>(orient=<span class="s">'records'</span>)</pre>
+      </div>
+
+      <div class="callout">This is exactly how Elasticsearch's <strong>multi_match query with boosts</strong> works under the hood. You now have the same retrieval primitive in ~25 lines of Python.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Wrapping It Up — The TextSearch Class</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> A Reusable Search Index</h2>
+      <p>Bundling the steps into a class gives an Elasticsearch-style API: <code>fit</code> once on a list of records, then call <code>search</code> repeatedly with different queries, boosts, and filters.</p>
+
+      <div class="code-block">
+        <div class="code-label">minsearch — toy in-memory index</div>
+        <pre><span class="k">class</span> <span class="cl">TextSearch</span>:
+    <span class="k">def</span> <span class="f">__init__</span>(self, text_fields):
+        self.text_fields = text_fields
+        self.matrices    = {}
+        self.vectorizers = {}
+
+    <span class="k">def</span> <span class="f">fit</span>(self, records, vectorizer_params={}):
+        self.df = pd.<span class="cl">DataFrame</span>(records)
+        <span class="k">for</span> f <span class="k">in</span> self.text_fields:
+            cv = <span class="cl">TfidfVectorizer</span>(**vectorizer_params)
+            self.matrices[f]    = cv.<span class="f">fit_transform</span>(self.df[f])
+            self.vectorizers[f] = cv
+
+    <span class="k">def</span> <span class="f">search</span>(self, query, n_results=<span class="n">10</span>, boost={}, filters={}):
+        score = np.<span class="f">zeros</span>(<span class="f">len</span>(self.df))
+        <span class="k">for</span> f <span class="k">in</span> self.text_fields:
+            b = boost.<span class="f">get</span>(f, <span class="n">1.0</span>)
+            q = self.vectorizers[f].<span class="f">transform</span>([query])
+            s = <span class="f">cosine_similarity</span>(self.matrices[f], q).<span class="f">flatten</span>()
+            score = score + b * s
+        <span class="k">for</span> field, value <span class="k">in</span> filters.<span class="f">items</span>():
+            score = score * (self.df[field] == value).values
+        idx = np.<span class="f">argsort</span>(-score)[:n_results]
+        <span class="k">return</span> self.df.<span class="f">iloc</span>[idx].<span class="f">to_dict</span>(orient=<span class="s">'records'</span>)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Usage — Elasticsearch-style</div>
+        <pre>index = <span class="cl">TextSearch</span>(text_fields=[<span class="s">'section'</span>, <span class="s">'question'</span>, <span class="s">'text'</span>])
+index.<span class="f">fit</span>(documents)
+
+results = index.<span class="f">search</span>(
+    query=<span class="s">'I just signed up. Is it too late to join the course?'</span>,
+    n_results=<span class="n">5</span>,
+    boost={<span class="s">'question'</span>: <span class="n">3.0</span>},
+    filters={<span class="s">'course'</span>: <span class="s">'data-engineering-zoomcamp'</span>},
+)</pre>
+      </div>
+
+      <p>This exact class lives in the <a href="https://github.com/alexeygrigorev/minsearch" style="color:#a5b4fc;">minsearch</a> library and is the retriever used in subsequent RAG modules.</p>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">What This Buys You</div>
+          <ul>
+            <li>Zero infrastructure — pure Python, no server</li>
+            <li>Field-aware scoring with boosting and filtering</li>
+            <li>Fast enough for thousands of documents</li>
+            <li>Great for prototyping a RAG pipeline</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">What It's Not</div>
+          <ul>
+            <li>Not for production — in-memory only</li>
+            <li>No incremental indexing of new documents</li>
+            <li>No fuzzy matching, stemming, or BM25</li>
+            <li>Crashes? You lose the index</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Vector Search — The Synonym Problem</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> When Exact Matching Fails</h2>
+      <p>Text search depends on shared tokens. But users rarely use the exact words from the document:</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Same meaning, zero matching tokens</div>
+        <div class="formula-main">
+          <strong>Document</strong> &nbsp; "I just <em>discovered</em> the <em>course</em>, can I still <em>join</em>?"<br>
+          <strong>Query</strong> &nbsp;&nbsp;&nbsp;&nbsp; "I just <em>found out</em> about the <em>program</em>, can I <em>enroll</em>?"
+        </div>
+        <div class="formula-legend">
+          Every important content word is different. TF-IDF score ≈ 0. We need to compare <strong>meaning</strong>, not surface words.
+        </div>
+      </div>
+
+      <p>The answer is <span class="term">embeddings</span>: dense numerical vectors where similar items end up close, regardless of the exact words used.</p>
+
+      <ul>
+        <li><strong>Conversion to numbers</strong> — words, sentences, documents become arrays of floats.</li>
+        <li><strong>Similarity preserved</strong> — synonyms ("enroll", "join", "sign up") land in nearby regions of the vector space.</li>
+        <li><strong>Dimensionality reduced</strong> — instead of a 6,700-column sparse matrix, embeddings are typically 16 to 768 dense floats per document.</li>
+        <li><strong>Reusable</strong> — the same embeddings feed downstream ML models, clustering, recommendation, classification.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · LSA via SVD</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗜️</span> Compressing the Term-Document Matrix</h2>
+      <p><span class="term">Latent Semantic Analysis</span> (Deerwester et al., 1990) is the simplest way to turn a bag-of-words matrix into embeddings. It applies <span class="term">Singular Value Decomposition</span> to "compress" the matrix while keeping as much information as possible.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Singular Value Decomposition</div>
+        <div class="formula-main">
+          X &nbsp;≈&nbsp; U · Σ · V<sup>T</sup>
+        </div>
+        <div class="formula-legend">
+          <span>X</span> — original sparse term-document matrix (e.g. 948 × 6700)<br>
+          <span>U · Σ</span> — dense, low-rank embedding for each document (e.g. 948 × 16)<br>
+          Truncating to <em>k</em> components is a <strong>lossy</strong> compression — exact reconstruction is impossible, but the most informative directions are kept.
+        </div>
+      </div>
+
+      <p>The intuition is the same as SVD on images: keep the top <em>k</em> singular values and you preserve the broad structure (synonyms grouped together as "topics") while throwing away noise.</p>
+
+      <div class="code-block">
+        <div class="code-label">Truncated SVD on the TF-IDF matrix</div>
+        <pre><span class="k">from</span> sklearn.decomposition <span class="k">import</span> TruncatedSVD
+
+X  = matrices[<span class="s">'text'</span>]
+cv = transformers[<span class="s">'text'</span>]
+
+svd   = <span class="cl">TruncatedSVD</span>(n_components=<span class="n">16</span>)
+X_emb = svd.<span class="f">fit_transform</span>(X)        <span class="c"># (n_docs, 16) dense</span>
+
+Q     = cv.<span class="f">transform</span>([query])
+Q_emb = svd.<span class="f">transform</span>(Q)            <span class="c"># same projection</span>
+
+scores = <span class="f">cosine_similarity</span>(X_emb, Q_emb).<span class="f">flatten</span>()
+idx    = np.<span class="f">argsort</span>(-scores)[:<span class="n">10</span>]</pre>
+      </div>
+
+      <p>The same query that scored zero with text search now retrieves relevant documents — synonyms like "enroll" and "join" get folded into the same latent dimensions because they co-occur with the same neighbouring words.</p>
+
+      <div class="callout">SVD/LSA is <strong>almost as old as the internet</strong> (1990) yet still produces remarkably competitive embeddings for small corpora. The technique is timeless; only the names ("LSA", "Latent Semantic Indexing", "Truncated SVD") change.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · NMF — Interpretable Topics</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎨</span> Non-Negative Matrix Factorization</h2>
+      <p>SVD is powerful but spits out <strong>negative</strong> components. What does it mean for a document to belong to a topic with score <code>-0.08</code>? Hard to say.</p>
+
+      <p><span class="term">NMF</span> solves this: if the input matrix is non-negative (and TF-IDF always is), the output factors are non-negative too. Each column of the embedding can be read as <em>"how much this document is about topic <em>k</em>"</em>, with zero meaning "not at all".</p>
+
+      <div class="code-block">
+        <div class="code-label">NMF in place of SVD</div>
+        <pre><span class="k">from</span> sklearn.decomposition <span class="k">import</span> NMF
+
+nmf   = <span class="cl">NMF</span>(n_components=<span class="n">16</span>)
+X_emb = nmf.<span class="f">fit_transform</span>(X)
+Q_emb = nmf.<span class="f">transform</span>(cv.<span class="f">transform</span>([query]))
+
+scores = <span class="f">cosine_similarity</span>(X_emb, Q_emb).<span class="f">flatten</span>()</pre>
+      </div>
+
+      <p>NMF embeddings are typically <strong>sparse</strong> — each document scores high on only a handful of topics. This makes them an entry-level form of <em>topic modelling</em>: you can interpret what each dimension represents by looking at the documents that score highest in it.</p>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">SVD vs NMF — When to Use Which</div>
+          <ul>
+            <li><strong>SVD</strong>: maximum information retention, fastest, classic LSA</li>
+            <li><strong>NMF</strong>: interpretable, sparse, topic-modelling-friendly</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Shared Limitations</div>
+          <ul>
+            <li>Both built on bag-of-words → still no word order</li>
+            <li>Negations ("not deprecated") still ignored</li>
+            <li>Won't handle words never seen at fit time</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · BERT Embeddings</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🤖</span> Contextual Embeddings That Know Word Order</h2>
+      <p><span class="term">BERT</span> (Bidirectional Encoder Representations from Transformers) is a neural network pre-trained on huge amounts of text. Unlike bag-of-words methods, BERT <strong>does</strong> see word order, handles negation, and produces strong embeddings even for words it has never seen in the FAQ corpus.</p>
+
+      <p>The HuggingFace <code>transformers</code> library makes this nearly trivial:</p>
+
+      <div class="code-block">
+        <div class="code-label">Install</div>
+        <pre>pip install transformers tqdm torch</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Loading a pre-trained BERT model</div>
+        <pre><span class="k">import</span> torch
+<span class="k">from</span> transformers <span class="k">import</span> BertModel, BertTokenizer
+
+tokenizer = BertTokenizer.<span class="f">from_pretrained</span>(<span class="s">"bert-base-uncased"</span>)
+model     = BertModel.<span class="f">from_pretrained</span>(<span class="s">"bert-base-uncased"</span>)
+model.<span class="f">eval</span>()    <span class="c"># inference mode (no dropout / gradients)</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔢</span> From Text to Vector — Two Steps</h2>
+      <ol class="algo-steps">
+        <li><strong>Tokenize</strong> — split text into sub-word IDs the model understands. <code>padding=True</code> aligns sequences in a batch; <code>truncation=True</code> caps overly long inputs.</li>
+        <li><strong>Forward pass</strong> — feed token IDs through the model, take the last hidden states (one vector per token), then <strong>average across tokens</strong> to get a single sentence embedding.</li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">Compute a sentence embedding</div>
+        <pre>texts = [
+    <span class="s">"Yes, we keep all materials after the course finishes."</span>,
+    <span class="s">"You can follow the course at your own pace after it finishes."</span>,
+]
+encoded = tokenizer(texts, padding=<span class="k">True</span>, truncation=<span class="k">True</span>, return_tensors=<span class="s">'pt'</span>)
+
+<span class="k">with</span> torch.<span class="f">no_grad</span>():                       <span class="c"># inference, no autograd</span>
+    out      = <span class="f">model</span>(**encoded)
+    hidden   = out.last_hidden_state          <span class="c"># (batch, tokens, 768)</span>
+    sent_emb = hidden.<span class="f">mean</span>(dim=<span class="n">1</span>)            <span class="c"># mean-pool → (batch, 768)</span>
+
+X_emb = sent_emb.<span class="f">cpu</span>().<span class="f">numpy</span>()              <span class="c"># move off GPU if needed</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📦</span> Batching for the Whole Corpus</h2>
+      <p>Encoding ~1,000 documents one-by-one is slow; batching 8 at a time and using a progress bar is the standard recipe.</p>
+
+      <div class="code-block">
+        <div class="code-label">Batched corpus embedding</div>
+        <pre><span class="k">from</span> tqdm.auto <span class="k">import</span> tqdm
+
+<span class="k">def</span> <span class="f">make_batches</span>(seq, n):
+    <span class="k">return</span> [seq[i:i+n] <span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">0</span>, <span class="f">len</span>(seq), n)]
+
+<span class="k">def</span> <span class="f">compute_embeddings</span>(texts, batch_size=<span class="n">8</span>):
+    all_emb = []
+    <span class="k">for</span> batch <span class="k">in</span> <span class="f">tqdm</span>(<span class="f">make_batches</span>(texts, batch_size)):
+        enc = tokenizer(batch, padding=<span class="k">True</span>, truncation=<span class="k">True</span>, return_tensors=<span class="s">'pt'</span>)
+        <span class="k">with</span> torch.<span class="f">no_grad</span>():
+            h = <span class="f">model</span>(**enc).last_hidden_state
+            all_emb.<span class="f">append</span>(h.<span class="f">mean</span>(dim=<span class="n">1</span>).<span class="f">cpu</span>().<span class="f">numpy</span>())
+    <span class="k">return</span> np.<span class="f">vstack</span>(all_emb)
+
+X_text = <span class="f">compute_embeddings</span>(df[<span class="s">'text'</span>].<span class="f">tolist</span>())</pre>
+      </div>
+
+      <div class="callout">For a small FAQ, BERT is <strong>overkill</strong> — TF-IDF + SVD usually wins on speed and is competitive on quality. BERT shines on longer, more complex text where word order, negation, and out-of-vocabulary terms matter.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Going to Production</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏭</span> Why You Can't Use This At Google Scale</h2>
+      <p>Computing cosine similarity against <em>every</em> document works for 1,000 FAQ entries. It does <strong>not</strong> work for billions of web pages. Two engineering ideas make web-scale search possible:</p>
+
+      <h2 style="margin-top:1.4rem;"><span class="icon">📇</span> Inverted Index &amp; Posting Lists (for text search)</h2>
+      <p>Instead of "for each document, list its terms" (the term-document matrix), you store "for each term, list the documents that contain it" — the <span class="term">inverted index</span>. Each list is a <span class="term">posting list</span>:</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Inverted index entry</div>
+        <div class="formula-main">
+          "yaml" &nbsp;→&nbsp; [doc_42, doc_117, doc_503, …]
+        </div>
+        <div class="formula-legend">
+          A query like <em>"yaml docker"</em> intersects (or unions) the posting lists for <code>yaml</code> and <code>docker</code> — only those documents are scored, not the entire corpus. This is the foundation of Lucene, Elasticsearch, OpenSearch, Solr.
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.4rem;"><span class="icon">🎲</span> LSH &amp; Random Projections (for vector search)</h2>
+      <p><span class="term">Locality-Sensitive Hashing</span> turns dense embeddings into short bit-vectors such that similar embeddings produce similar bit-strings. The simplest variant is <span class="term">random projection</span>:</p>
+
+      <ol class="algo-steps">
+        <li>Pick <em>b</em> random hyperplanes in embedding space.</li>
+        <li>For each document, output <code>1</code> if it falls on the positive side of a hyperplane, <code>0</code> otherwise — that's a <em>b</em>-bit hash.</li>
+        <li>Group documents into "bins" by their hash. At query time, only compare against documents in the same (or nearby) bin — usually a tiny fraction of the corpus.</li>
+        <li>Cosine similarity between dense vectors is well-approximated by Hamming similarity between their hashes.</li>
+      </ol>
+
+      <p>Real vector databases (FAISS, Milvus, Pinecone, Qdrant, Weaviate) use refinements of this idea — IVF, HNSW graphs, product quantization — but the core insight is the same: <strong>do not scan everything</strong>.</p>
+
+      <div class="callout">For RAG prototypes, the toy in-memory index is fine. For anything beyond ~100k documents, reach for Elasticsearch (text) or FAISS / a managed vector DB (embeddings).</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Evaluating Search Quality</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Picking Hyperparameters Without Guesswork</h2>
+      <p>Many knobs need tuning: number of SVD components, vectorizer's <code>min_df</code>, boost weights, choice of embedder. The only honest way to choose is to <strong>measure</strong> retrieval quality on a labelled set of (query, relevant doc) pairs.</p>
+
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>What it measures</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Precision@k</strong></td><td>Fraction of the top-<em>k</em> results that are relevant. Easy to interpret, ignores rank order within the top-k.</td></tr>
+          <tr><td><strong>Recall@k</strong></td><td>Fraction of all relevant documents that show up in the top-<em>k</em>. Cares about coverage.</td></tr>
+          <tr><td><strong>Mean Average Precision (MAP)</strong></td><td>Averages precision at every rank where a relevant document appears. Penalises burying good results.</td></tr>
+          <tr><td><strong>nDCG@k</strong></td><td>Normalised Discounted Cumulative Gain. Rewards relevant results appearing earlier; the de-facto standard for ranking quality.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">If a heavy BERT setup gives only marginal gains over TF-IDF + SVD on <strong>your</strong> nDCG, the simpler model wins. <strong>Measure first, optimise second.</strong></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Key Takeaways</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> The Big Picture</h2>
+      <ul>
+        <li>Every relevance-search algorithm — old or new — represents <strong>queries and documents in the same vector space</strong> and ranks by similarity.</li>
+        <li><strong>TF-IDF + cosine similarity</strong> is a remarkably strong baseline. Don't skip it for a fancier method until you have measured.</li>
+        <li>Multi-field search needs <strong>per-field vectorizers</strong>, additive boosting, and post-hoc filtering — together they reproduce 90% of Elasticsearch's relevance behaviour.</li>
+        <li>Bag-of-words methods (CountVectorizer, TF-IDF, LSA, NMF) <strong>throw away word order</strong>. For most FAQ-style tasks that's fine; for nuanced text, BERT-style embeddings help.</li>
+        <li>SVD/LSA, NMF, and BERT differ mainly in how they produce embeddings — once you have vectors, the cosine-similarity ranking step is identical.</li>
+        <li>In production, the cost is dominated by <strong>not scanning the whole corpus</strong>: inverted indexes for text, LSH/HNSW for vectors.</li>
+        <li>Hybrid search (text + vector) is what most real-world RAG systems use — exact keyword matches plus semantic similarity, the best of both worlds.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>15 · Resources</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Further Reading &amp; Code</h2>
+      <ul>
+        <li><a href="https://github.com/alexeygrigorev/build-your-own-search-engine" style="color:#a5b4fc;">alexeygrigorev/build-your-own-search-engine</a> — full notebook this page is based on.</li>
+        <li><a href="https://github.com/alexeygrigorev/minsearch" style="color:#a5b4fc;">alexeygrigorev/minsearch</a> — the <code>TextSearch</code> class as a reusable library.</li>
+        <li><a href="https://www.youtube.com/watch?v=nMrGK5QgPVE" style="color:#a5b4fc;">Workshop video</a> — the live walkthrough that produced these notes.</li>
+        <li><a href="https://nlp.stanford.edu/IR-book/" style="color:#a5b4fc;">Introduction to Information Retrieval</a> (Manning, Raghavan, Schütze) — the canonical free textbook covering inverted indexes, TF-IDF, LSA, and evaluation metrics.</li>
+        <li><a href="http://www.mmds.org/" style="color:#a5b4fc;">Mining of Massive Datasets</a> — chapter on LSH and finding similar items at scale.</li>
+        <li><a href="https://github.com/alexeygrigorev/llm-rag-workshop" style="color:#a5b4fc;">llm-rag-workshop</a> — the upstream RAG workshop where this search engine plugs in.</li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RAG Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
