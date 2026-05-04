@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vector Search with Qdrant — RAG</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Formula block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Code block ── */
+    .code-block { background:#0d1117; border:1px solid #2d3148; border-radius:10px; padding:1.1rem 1.3rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block .code-label { font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.7rem; }
+    .code-block pre { margin:0; font-family:'Courier New',monospace; font-size:0.82rem; line-height:1.7; color:#e2e8f0; white-space:pre; }
+    .code-block pre .c  { color:#475569; }
+    .code-block pre .k  { color:#c084fc; }
+    .code-block pre .f  { color:#60a5fa; }
+    .code-block pre .s  { color:#4ade80; }
+    .code-block pre .n  { color:#f59e0b; }
+    .code-block pre .cl { color:#fbbf24; }
+
+    /* ── Search-type comparison ── */
+    .search-types { display:grid; grid-template-columns: 1fr 1fr; gap:0.9rem; margin-top:0.5rem; }
+    .search-type { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .search-type .label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#a5b4fc; margin-bottom:0.5rem; }
+    .search-type p { margin:0.35rem 0; color:#cbd5e1; font-size:0.88rem; }
+
+    /* ── Pipeline diagram (offline / online) ── */
+    .pipeline { display:grid; grid-template-columns: repeat(4, 1fr); gap:0.6rem; margin:1rem 0; }
+    .pipe-step { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:0.85rem 0.6rem; text-align:center; font-size:0.8rem; color:#cbd5e1; }
+    .pipe-step .num { display:block; font-size:0.65rem; font-weight:700; letter-spacing:0.1em; color:#6366f1; margin-bottom:0.35rem; text-transform:uppercase; }
+    .pipe-step strong { color:#a5b4fc; display:block; margin-bottom:0.25rem; }
+
+    /* ── Qdrant entity diagram ── */
+    .entity-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.9rem; margin-top:0.5rem; }
+    .entity { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .entity .label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#a5b4fc; margin-bottom:0.5rem; }
+    .entity p { margin:0.35rem 0; color:#cbd5e1; font-size:0.85rem; }
+
+    /* ── Model comparison table ── */
+    table.models { border-collapse:collapse; font-size:0.82rem; min-width:100%; margin:0.6rem 0; }
+    table.models th, table.models td { border:1px solid #2d3148; padding:0.5rem 0.7rem; text-align:left; color:#cbd5e1; vertical-align:top; }
+    table.models th { background:#1e2130; color:#a5b4fc; font-weight:700; }
+    table.models td.model-name { font-family:'Courier New',monospace; color:#a5b4fc; }
+    table.models td.pick { color:#4ade80; font-weight:700; }
+    table.models td.skip { color:#f87171; }
+
+    @media (max-width: 540px) {
+      .pipeline { grid-template-columns: 1fr 1fr; }
+      .search-types { grid-template-columns: 1fr; }
+      .entity-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RAG Project Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Retrieval · Embeddings · Qdrant · FastEmbed</p>
+      <h1>Vector Search with Qdrant</h1>
+      <p>From keyword matching to semantic similarity — building a small but production-shaped vector search solution with Qdrant in Docker, FastEmbed local inference, and a Q&amp;A FAQ dataset.</p>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Why Vector Search</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔎</span> Beyond Exact Keywords</h2>
+      <p>Traditional <span class="term">keyword search</span> retrieves a document only when the query and the document share the same surface tokens. That works fine when you know the exact words present in the data, but it falls apart in two very common situations:</p>
+
+      <ul>
+        <li><strong>Different modality</strong> — searching an image, an audio clip, or a video against a text query. There are no shared "words" to match.</li>
+        <li><strong>Same idea, different words</strong> — "flying mouse", "fruit bat", and "the bat hung in the cave" all describe the same animal, yet share almost no overlapping keywords.</li>
+      </ul>
+
+      <p><span class="term">Vector search</span> sidesteps this by working on <strong>meaning</strong> rather than tokens. Each document, image, or audio clip is converted to a dense numerical vector — its <span class="term">embedding</span> — and similarity becomes geometric closeness in that vector space.</p>
+
+      <div class="search-types">
+        <div class="search-type">
+          <div class="label">Keyword Search</div>
+          <p><strong>Matches exact tokens.</strong> Query "bat in cave" matches a document containing those literal words.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Fails on:</em> synonyms, paraphrases, cross-modal queries (image, audio, video).</p>
+        </div>
+        <div class="search-type">
+          <div class="label">Vector Search</div>
+          <p><strong>Matches meaning.</strong> Query "flying mouse" still retrieves bat documents, images of bats, or even bat sounds.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Works because:</em> embeddings of related concepts land close together regardless of phrasing or modality.</p>
+        </div>
+      </div>
+
+      <div class="callout">Vector search compares <strong>vectorised representations</strong>, not text. Closeness is measured numerically with metrics like <strong>cosine similarity</strong> — the smaller the angle between two vectors, the more semantically similar they are.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · Qdrant — A Dedicated Vector Search Engine</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> What Qdrant Is and Why You'd Use It</h2>
+      <p><span class="term">Qdrant</span> is an open-source vector search engine written in Rust. It is a <em>dedicated</em> solution for vector search, not a general-purpose database with an embedded ANN library — and the difference matters once you scale past a few thousand vectors.</p>
+
+      <p>Three reasons a dedicated vector database earns its keep:</p>
+      <ul>
+        <li><strong>Production-scale search</strong> — millions or billions of vectors, with predictable latency and throughput.</li>
+        <li><strong>In sync with research</strong> — vector search is moving fast (multivectors, late interaction, hybrid search, rerankers). A dedicated engine keeps pace.</li>
+        <li><strong>Beyond similarity</strong> — Qdrant supports payload filtering, hybrid (sparse + dense) search, recommendation, discovery, and unstructured data analysis on top of similarity.</li>
+      </ul>
+
+      <p>Qdrant is open-source and flexible to deploy: self-hosted, Kubernetes, or managed cloud. For these notes we run a local Docker container — the smallest possible setup that still mirrors how you would deploy in production.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Step 0 — Setup</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🐳</span> Running Qdrant in Docker</h2>
+      <p>Pull the image and start a container. The whole engine is one binary; there is no separate database to provision.</p>
+
+      <div class="code-block">
+        <div class="code-label">Pull and run Qdrant</div>
+        <pre>docker pull qdrant/qdrant
+
+docker run -p <span class="n">6333</span>:<span class="n">6333</span> -p <span class="n">6334</span>:<span class="n">6334</span> \
+   -v <span class="s">"$(pwd)/qdrant_storage:/qdrant/storage:z"</span> \
+   qdrant/qdrant</pre>
+      </div>
+
+      <ul>
+        <li><strong>Port 6333</strong> — REST API. Same port serves the Web UI at <code>http://localhost:6333/dashboard</code>.</li>
+        <li><strong>Port 6334</strong> — gRPC API for higher-throughput clients.</li>
+        <li><strong>Volume mount</strong> — <code>-v "$(pwd)/qdrant_storage:/qdrant/storage:z"</code> persists your data on the host machine. Stop, restart, or delete the container and the data survives.</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📦</span> Python Libraries</h2>
+      <p>Two packages cover everything we need. Install them in the virtual environment for the course.</p>
+
+      <div class="code-block">
+        <div class="code-label">Install client + embeddings</div>
+        <pre>pip install <span class="s">"qdrant-client[fastembed]&gt;=1.14.2"</span></pre>
+      </div>
+
+      <ul>
+        <li><span class="term">qdrant-client</span> — the official Python client. Qdrant also ships JavaScript / TypeScript, Go, and Rust clients.</li>
+        <li><span class="term">fastembed</span> — Qdrant's own embedding library. Lightweight, CPU-friendly (ONNX runtime), and tightly integrated so you pass <em>text</em> to the client and it produces and stores the vectors for you. Version <code>&gt;= 1.14.2</code> is needed for local inference inside the client.</li>
+      </ul>
+
+      <div class="callout">The Web UI at <code>localhost:6333/dashboard</code> is the unsung hero of Qdrant — collections, payloads, raw vectors, and a 2D <strong>visualisation tab</strong> that projects your embeddings into a plane so you can <em>see</em> semantic clusters.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Step 1 — Connect to Qdrant</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔌</span> Importing the Client</h2>
+      <p>The <code>QdrantClient</code> class establishes a connection to the running Qdrant service; the <code>models</code> module holds the configuration objects we'll use for collections, points, and filters.</p>
+
+      <div class="code-block">
+        <div class="code-label">Connect to local Qdrant</div>
+        <pre><span class="k">from</span> qdrant_client <span class="k">import</span> QdrantClient, models
+
+client = <span class="cl">QdrantClient</span>(<span class="s">"http://localhost:6333"</span>)   <span class="c"># local Docker instance</span></pre>
+      </div>
+
+      <p>That's the entire connection step. From here every operation — creating collections, inserting points, running searches — goes through this <code>client</code> object.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Step 2 — Study the Dataset</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧐</span> Look at Your Data Before You Vectorise It</h2>
+      <p>Before touching any embedding model, study the dataset. The "schema" of your vector search solution — <strong>what gets embedded</strong> vs <strong>what gets stored as metadata</strong> — and the <strong>choice of embedding model</strong> both depend on the modality, language, and shape of the data.</p>
+
+      <p>Two questions to answer up front:</p>
+      <ul>
+        <li><strong>Modality &amp; specifics</strong> — Is it text, images, audio, mixed? What language? Are the chunks short or long? Are there special tokens (URLs, code, formulas)?</li>
+        <li><strong>What to vectorise vs what to filter</strong> — Some fields are content you want to search semantically; others are categorical labels you want to filter on (course, section, date, region, …).</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📚</span> The FAQ Dataset</h2>
+      <p>We use the same DataTalksClub Zoomcamp FAQ as the rest of the RAG notes — three courses, ~948 documents total, each with four fields:</p>
+
+      <div class="code-block">
+        <div class="code-label">Loading the documents</div>
+        <pre><span class="k">import</span> requests
+
+docs_url = <span class="s">'https://github.com/alexeygrigorev/llm-rag-workshop/raw/main/notebooks/documents.json'</span>
+documents_raw = requests.<span class="f">get</span>(docs_url).<span class="f">json</span>()</pre>
+      </div>
+
+      <ul>
+        <li><span class="term">course</span> — <code>data-engineering-zoomcamp</code>, <code>machine-learning-zoomcamp</code>, or <code>mlops-zoomcamp</code>.</li>
+        <li><span class="term">section</span> — module within the course.</li>
+        <li><span class="term">question</span> — the FAQ question.</li>
+        <li><span class="term">text</span> — the answer body.</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎯</span> What to Embed vs What to Filter</h2>
+      <p>The classic semantic-similarity test: questions and answers about the same thing share almost no keywords.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Same idea, different words</div>
+        <div class="formula-main">
+          <strong>Question</strong> &nbsp; "I have <em>registered</em> for the bootcamp. When can I expect the confirmation email?"<br>
+          <strong>Answer</strong> &nbsp;&nbsp;&nbsp; "You don't need it. You're accepted. Registration is just to gauge interest before the start date."
+        </div>
+        <div class="formula-legend">
+          Both share only the keyword "registered" — but a sentence like <em>"Unregistered participants don't get certification"</em> would also match that keyword while having a completely different meaning. Keyword search can't tell these apart; vector search can.
+        </div>
+      </div>
+
+      <p>For a Q&amp;A retrieval system the natural schema is:</p>
+      <ul>
+        <li><strong>Embed the <code>text</code> field</strong> (the answers) — that's what we'll search semantically with the incoming question.</li>
+        <li><strong>Store <code>course</code> and <code>section</code> as metadata (payload)</strong> — used later for hard filtering ("only data-engineering questions").</li>
+        <li><strong>Don't embed the question</strong> — it is the <em>query side</em>, not the indexed side.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Offline / Online — How a Vector Search Pipeline Works</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> Two Phases</h2>
+      <p>Comparing two vectors is trivial; comparing one query against billions of stored vectors is not. Dedicated solutions split the work into an <strong>offline indexing phase</strong> and an <strong>online query phase</strong>.</p>
+
+      <div class="pipeline">
+        <div class="pipe-step"><span class="num">Offline · 1</span><strong>Embed Documents</strong>Each answer → vector via the chosen model</div>
+        <div class="pipe-step"><span class="num">Offline · 2</span><strong>Build Index</strong>Vectors stored in Qdrant; ANN index built</div>
+        <div class="pipe-step"><span class="num">Online · 3</span><strong>Embed Query</strong>Same model, same vector space</div>
+        <div class="pipe-step"><span class="num">Online · 4</span><strong>Search Index</strong>Top-k closest vectors returned, ranked by similarity</div>
+      </div>
+
+      <div class="callout">The single most important rule: <strong>query and documents must use the same embedding model</strong>. Different models live in different vector spaces and their distances are meaningless.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Step 3 — Choose an Embedding Model with FastEmbed</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Why FastEmbed</h2>
+      <p>The choice of embedding model decides the quality of every result your system will ever return. It depends on the task, modality, language, domain, latency target, and budget. <strong>Test and benchmark on your own data</strong> when stakes are high.</p>
+
+      <p>For this notebook we use <span class="term">FastEmbed</span>, Qdrant's own embedding library:</p>
+      <ul>
+        <li><strong>Tightly integrated</strong> — pass text directly to the Qdrant client; FastEmbed downloads the model and produces the vectors transparently.</li>
+        <li><strong>Lightweight</strong> — uses ONNX Runtime with quantised weights, no PyTorch / TensorFlow dependency. Faster than Sentence Transformers on CPU.</li>
+        <li><strong>Local inference</strong> — runs on your machine. Cost is your CPU; no third-party API calls.</li>
+        <li><strong>Multiple vector types</strong> — dense (today), sparse (BM25-style, for hybrid search), multivectors (ColBERT, ColPali), image embeddings, rerankers.</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📋</span> Listing Available Text Models</h2>
+      <div class="code-block">
+        <div class="code-label">Filter by output dimensionality</div>
+        <pre><span class="k">from</span> fastembed <span class="k">import</span> TextEmbedding
+<span class="k">import</span> json
+
+EMBEDDING_DIMENSIONALITY = <span class="n">512</span>
+
+<span class="k">for</span> model <span class="k">in</span> TextEmbedding.<span class="f">list_supported_models</span>():
+    <span class="k">if</span> model[<span class="s">"dim"</span>] == EMBEDDING_DIMENSIONALITY:
+        <span class="f">print</span>(json.<span class="f">dumps</span>(model, indent=<span class="n">2</span>))</pre>
+      </div>
+
+      <p>Smaller embeddings (e.g. 512 dimensions) are a good default for a toy setup — vectors are big data objects, and dimensionality drives storage and memory cost. Higher dimensionality often means richer semantic capture, but at a price.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">⚖️</span> Picking Among 512-Dim Options</h2>
+      <table class="models">
+        <thead>
+          <tr><th>Model</th><th>Modality / Language</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="model-name">BAAI/bge-small-zh-v1.5</td>
+            <td>Text · Chinese</td>
+            <td class="skip">Skip — wrong language</td>
+          </tr>
+          <tr>
+            <td class="model-name">Qdrant/clip-ViT-B-32-text</td>
+            <td>Multimodal text+image · English</td>
+            <td class="skip">Skip — multimodal overkill, no images here</td>
+          </tr>
+          <tr>
+            <td class="model-name">jinaai/jina-embeddings-v2-small-en</td>
+            <td>Text · English · 8192 input tokens</td>
+            <td class="pick">Pick — English unimodal, generous context</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-label">The chosen model handle</div>
+        <pre>model_handle = <span class="s">"jinaai/jina-embeddings-v2-small-en"</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📐</span> Cosine Similarity — The Distance Metric</h2>
+      <p>Most dense embedding models, including Jina, are trained to be compared with <span class="term">cosine similarity</span> — you can confirm this on the model's Hugging Face card. Cosine similarity measures the cosine of the angle between two vectors, ignoring their magnitudes.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Cosine similarity</div>
+        <div class="formula-main">
+          cos(a, b) = ( a · b ) / ( ‖a‖ · ‖b‖ )
+        </div>
+        <div class="formula-legend">
+          <span>= 1</span> — vectors point the same way → semantically identical.<br>
+          <span>= 0</span> — orthogonal vectors → unrelated.<br>
+          <span>= -1</span> — opposite directions → semantic opposites.
+        </div>
+      </div>
+
+      <div class="callout">Two parameters fully describe a dense embedding choice for Qdrant: the <strong>output dimension</strong> (here 512) and the <strong>distance metric</strong> (here cosine). Both are required to create a collection.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Qdrant Core Concepts — Points and Collections</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> The Two Entities You Need to Know</h2>
+      <p>Everything in Qdrant boils down to two objects:</p>
+
+      <div class="entity-grid">
+        <div class="entity">
+          <div class="label">Point</div>
+          <p>A single data record. Has an <strong>ID</strong> (integer or UUID), one or more <strong>vectors</strong>, and an optional <strong>payload</strong> (metadata as key-value pairs).</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>In our case:</em> id = 0..947, vector = jina embedding of the answer, payload = <code>{text, section, course}</code>.</p>
+        </div>
+        <div class="entity">
+          <div class="label">Collection</div>
+          <p>A named container of points sharing the same vector configuration. Think of it as one solution to one business problem.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>In our case:</em> a single collection <code>zoomcamp-rag</code>.</p>
+        </div>
+        <div class="entity">
+          <div class="label">Payload</div>
+          <p>Optional structured metadata stored alongside each vector. Supports booleans, keywords, numbers, geo-locations, arrays, and nested objects.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Used for:</em> filtering, sorting, and showing human-readable results.</p>
+        </div>
+      </div>
+
+      <p>Qdrant supports several <strong>vector types</strong> per point — dense (today's focus), sparse (BM25-style, for hybrid search), multivectors (ColBERT-style late interaction), and named vectors (multiple vectors per point). For semantic similarity on text, plain dense vectors are the right default.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Step 4 — Create a Collection</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🆕</span> Minimal Required Configuration</h2>
+      <p>Creating a collection needs three things: a <strong>name</strong>, the vector <strong>size</strong>, and the <strong>distance metric</strong>.</p>
+
+      <div class="code-block">
+        <div class="code-label">Create a Qdrant collection</div>
+        <pre>collection_name = <span class="s">"zoomcamp-rag"</span>
+
+client.<span class="f">create_collection</span>(
+    collection_name=collection_name,
+    vectors_config=models.<span class="cl">VectorParams</span>(
+        size=EMBEDDING_DIMENSIONALITY,        <span class="c"># 512, from the model</span>
+        distance=models.Distance.COSINE       <span class="c"># cosine similarity</span>
+    )
+)</pre>
+      </div>
+
+      <p>After this call, the collection exists but is empty — visible in the dashboard with the right dimensionality and metric, just no points inside yet. All other parameters (HNSW tuning, on-disk storage, quantisation, named vectors, sparse vectors) have sensible defaults you only touch when scale demands it.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Step 5 — Embed and Upsert Points</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📥</span> Building the Point List</h2>
+      <p>Each point pairs an answer's vector with its metadata. The trick that makes FastEmbed integration painless: pass <code>models.Document(text=..., model=...)</code> instead of an explicit numpy array, and the Qdrant client handles the embedding for you.</p>
+
+      <div class="code-block">
+        <div class="code-label">Construct points with embedded text + payload</div>
+        <pre>points = []
+id = <span class="n">0</span>
+
+<span class="k">for</span> course <span class="k">in</span> documents_raw:
+    <span class="k">for</span> doc <span class="k">in</span> course[<span class="s">'documents'</span>]:
+        point = models.<span class="cl">PointStruct</span>(
+            id=id,
+            vector=models.<span class="cl">Document</span>(
+                text=doc[<span class="s">'text'</span>],
+                model=model_handle              <span class="c"># jinaai/jina-embeddings-v2-small-en</span>
+            ),
+            payload={
+                <span class="s">"text"</span>:    doc[<span class="s">'text'</span>],          <span class="c"># human-readable answer</span>
+                <span class="s">"section"</span>: doc[<span class="s">'section'</span>],
+                <span class="s">"course"</span>:  course[<span class="s">'course'</span>]
+            }
+        )
+        points.<span class="f">append</span>(point)
+        id += <span class="n">1</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">⬆️</span> Upserting Into the Collection</h2>
+      <p>One call does everything: FastEmbed downloads the model on first use (cached under <code>tempfile.gettempdir()/fastembed_cache</code>), runs local inference on each text, and Qdrant inserts the resulting points and updates the vector index.</p>
+
+      <div class="code-block">
+        <div class="code-label">Upload points</div>
+        <pre>client.<span class="f">upsert</span>(
+    collection_name=collection_name,
+    points=points
+)</pre>
+      </div>
+
+      <p>Speed is dominated by local inference. To go faster:</p>
+      <ul>
+        <li>Use <strong>GPU</strong> with FastEmbed (or a beefier CPU machine).</li>
+        <li>Use <strong>batch upsert</strong> via <code>upload_collection</code> or <code>upload_points</code> — both accept column- or record-oriented inputs and provide <em>parallelisation</em>, <em>retries</em>, and <em>lazy batching</em> out of the box.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Visualise the Vector Space</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">👀</span> Seeing Semantic Similarity in 2D</h2>
+      <p>Open <code>http://localhost:6333/dashboard</code>, select the <code>zoomcamp-rag</code> collection, and switch to the <strong>Visualize</strong> tab. The dashboard projects the 512-dimensional embeddings down to 2D so you can <em>see</em> how documents cluster by meaning. Colour the points by a payload field to highlight structure.</p>
+
+      <div class="code-block">
+        <div class="code-label">Visualize all 948 answers, coloured by course</div>
+        <pre>{
+  <span class="s">"limit"</span>: <span class="n">948</span>,
+  <span class="s">"color_by"</span>: {
+    <span class="s">"payload"</span>: <span class="s">"course"</span>
+  }
+}</pre>
+      </div>
+
+      <p>Two patterns become obvious immediately:</p>
+      <ul>
+        <li>Answers about a similar topic — deadlines, certification, registration — cluster together <em>across courses</em>. This is exactly the cross-course semantic similarity we want vector search to exploit.</li>
+        <li>Course-specific tooling (Spark, Kubernetes, MLflow) forms tight, course-coloured clusters at the periphery.</li>
+      </ul>
+
+      <div class="callout">The dashboard is the fastest way to <em>understand your own data</em>. If two clusters that should be together are far apart — or vice versa — it tells you something about the embedding model, the chunking, or the data itself before you ever run a query.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Step 6 — Similarity Search</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> How Search Works in Qdrant</h2>
+      <ol class="algo-steps">
+        <li>The query text is embedded with the <strong>same model</strong> used at indexing time, landing it in the same vector space.</li>
+        <li>Qdrant compares the query vector against the stored vectors using the collection's distance metric (here cosine).</li>
+        <li>The closest matches are returned, ranked by similarity score.</li>
+      </ol>
+
+      <p>The vector index is built for <span class="term">approximate nearest neighbour</span> (ANN) search — the cost of making large-scale vector search feasible is giving up perfect recall in exchange for sub-linear query time. Qdrant's index of choice is a custom variant of HNSW called <strong>Filterable HNSW</strong>, designed to keep accuracy high even when payload filters are applied at query time.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔍</span> Defining a Search Function</h2>
+      <div class="code-block">
+        <div class="code-label">Top-k semantic search</div>
+        <pre><span class="k">def</span> <span class="f">search</span>(query, limit=<span class="n">1</span>):
+    results = client.<span class="f">query_points</span>(
+        collection_name=collection_name,
+        query=models.<span class="cl">Document</span>(
+            text=query,
+            model=model_handle                 <span class="c"># same model as upsert</span>
+        ),
+        limit=limit,                           <span class="c"># top closest matches</span>
+        with_payload=<span class="k">True</span>                     <span class="c"># return human-readable metadata</span>
+    )
+    <span class="k">return</span> results</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🧪</span> Sanity Check — Question From the Dataset</h2>
+      <p>Pick a random question from the dataset (note we never indexed the questions, only the answers) and run search against it. The expected behaviour: the matching answer is returned at the top, with a high cosine score.</p>
+
+      <div class="code-block">
+        <div class="code-label">Search with a known question</div>
+        <pre><span class="k">import</span> random
+
+course        = random.<span class="f">choice</span>(documents_raw)
+course_piece  = random.<span class="f">choice</span>(course[<span class="s">'documents'</span>])
+
+result = <span class="f">search</span>(course_piece[<span class="s">'question'</span>])
+
+<span class="f">print</span>(<span class="s">"Top retrieved answer:"</span>, result.points[<span class="n">0</span>].payload[<span class="s">'text'</span>])
+<span class="f">print</span>(<span class="s">"Score:"</span>,                  result.points[<span class="n">0</span>].score)</pre>
+      </div>
+
+      <p>The result contains a <code>ScoredPoint</code> with the matching point ID, the cosine <strong>score</strong> (e.g. <code>0.88</code>), and the payload — the original answer text, section, and course.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🆕</span> Question Not in the Dataset</h2>
+      <p>The real test is a query that doesn't exist in the indexed corpus at all.</p>
+
+      <div class="code-block">
+        <div class="code-label">Free-form natural-language query</div>
+        <pre><span class="f">print</span>(<span class="f">search</span>(<span class="s">"What if I submit homeworks late?"</span>).points[<span class="n">0</span>].payload[<span class="s">'text'</span>])
+<span class="c"># → "No, late submissions are not allowed. But if the form is still not closed</span>
+<span class="c">#    and it's after the due date, you can still submit the homework..."</span></pre>
+      </div>
+
+      <div class="callout">Vector search returned a sensible, semantically-on-target answer to a question phrased in <strong>completely different words</strong> from any indexed text. That is the entire promise of semantic search.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Step 7 — Search With Filters</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎛️</span> Why Filters Matter</h2>
+      <p>Pure semantic search ignores hard constraints. If a user asks "are late homeworks allowed?" while studying the MLOps course, the data-engineering answer is <em>almost certainly wrong for them</em> — even if it scores higher semantically. <span class="term">Payload filters</span> let you pin search to specific subsets of the data.</p>
+
+      <p>Qdrant supports <code>must</code>, <code>should</code>, <code>must_not</code>, <code>range</code>, and other filter clauses. <strong>must</strong> is the AND-style requirement: every condition must be satisfied for a point to be returned.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📑</span> Indexing Payload Fields for Filters</h2>
+      <p>For efficient filtering, build a payload index on the field you'll filter against. <code>"keyword"</code> means exact-match on a string.</p>
+
+      <div class="code-block">
+        <div class="code-label">Index the "course" payload field</div>
+        <pre>client.<span class="f">create_payload_index</span>(
+    collection_name=collection_name,
+    field_name=<span class="s">"course"</span>,
+    field_schema=<span class="s">"keyword"</span>            <span class="c"># exact string match</span>
+)</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔍</span> Filtered Search Function</h2>
+      <div class="code-block">
+        <div class="code-label">Semantic search restricted to one course</div>
+        <pre><span class="k">def</span> <span class="f">search_in_course</span>(query, course=<span class="s">"mlops-zoomcamp"</span>, limit=<span class="n">1</span>):
+    results = client.<span class="f">query_points</span>(
+        collection_name=collection_name,
+        query=models.<span class="cl">Document</span>(text=query, model=model_handle),
+        query_filter=models.<span class="cl">Filter</span>(
+            must=[
+                models.<span class="cl">FieldCondition</span>(
+                    key=<span class="s">"course"</span>,
+                    match=models.<span class="cl">MatchValue</span>(value=course)
+                )
+            ]
+        ),
+        limit=limit,
+        with_payload=<span class="k">True</span>
+    )
+    <span class="k">return</span> results</pre>
+      </div>
+
+      <p>Now the same question — <em>"What if I submit homeworks late?"</em> — gives different, course-appropriate answers depending on the filter:</p>
+
+      <ul>
+        <li><strong>data-engineering-zoomcamp</strong> — strict: late submissions not allowed.</li>
+        <li><strong>machine-learning-zoomcamp</strong> — softer: depends on whether the form is still open.</li>
+        <li><strong>mlops-zoomcamp</strong> — no semantically close answer exists, so the result drops in score and relevance.</li>
+      </ul>
+
+      <div class="callout">Qdrant's <strong>Filterable HNSW</strong> index is specifically engineered so that adding filters does <em>not</em> wreck recall — a known weakness of naive ANN-with-filters approaches that filter <em>after</em> the graph search.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Plugging Vector Search Into a RAG Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> RAG Is Three Steps — Only One of Them Changes</h2>
+      <p>The RAG pattern from <a href="search-engine.html" style="color:#a5b4fc;">module 1</a> is a three-step function: <strong>search → build prompt → call LLM</strong>. The middle and the last step are independent of <em>how</em> you retrieve. Swapping the search backend — from <code>minsearch</code> to Qdrant vector search — is a one-line change.</p>
+
+      <div class="rag-flow" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="rag-step" style="border-color:#6366f1;background:#1a1f3a;"><span class="num">Replaceable</span><strong>Search</strong>minsearch · Elasticsearch · <strong style="color:#4ade80;">Qdrant</strong></div>
+        <div class="rag-step"><span class="num">Stable</span><strong>Build Prompt</strong>Inject retrieved context</div>
+        <div class="rag-step"><span class="num">Stable</span><strong>LLM Call</strong>OpenAI · GPT-4o-mini</div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📜</span> The Starting Point — Keyword RAG</h2>
+      <p>The starter notebook uses the same <code>minsearch.Index</code> retriever from module 1, with field boosts and a course filter:</p>
+
+      <div class="code-block">
+        <div class="code-label">Original RAG with minsearch</div>
+        <pre><span class="k">import</span> minsearch
+<span class="k">from</span> openai <span class="k">import</span> OpenAI
+
+openai_client = <span class="cl">OpenAI</span>()
+
+index = minsearch.<span class="cl">Index</span>(
+    text_fields=[<span class="s">"question"</span>, <span class="s">"text"</span>, <span class="s">"section"</span>],
+    keyword_fields=[<span class="s">"course"</span>]
+)
+index.<span class="f">fit</span>(documents)
+
+<span class="k">def</span> <span class="f">search</span>(query):
+    <span class="k">return</span> index.<span class="f">search</span>(
+        query=query,
+        filter_dict={<span class="s">"course"</span>: <span class="s">"data-engineering-zoomcamp"</span>},
+        boost_dict={<span class="s">"question"</span>: <span class="n">3.0</span>, <span class="s">"section"</span>: <span class="n">0.5</span>},
+        num_results=<span class="n">5</span>
+    )
+
+<span class="k">def</span> <span class="f">build_prompt</span>(query, search_results):
+    template = <span class="s">"""You're a course teaching assistant. Answer the QUESTION based on the CONTEXT from the FAQ database.
+Use only the facts from the CONTEXT when answering the QUESTION.
+
+QUESTION: {question}
+
+CONTEXT:
+{context}"""</span>.<span class="f">strip</span>()
+    context = <span class="s">""</span>
+    <span class="k">for</span> doc <span class="k">in</span> search_results:
+        context += <span class="s">f"section: {doc['section']}\nquestion: {doc['question']}\nanswer: {doc['text']}\n\n"</span>
+    <span class="k">return</span> template.<span class="f">format</span>(question=query, context=context).<span class="f">strip</span>()
+
+<span class="k">def</span> <span class="f">llm</span>(prompt):
+    response = openai_client.chat.completions.<span class="f">create</span>(
+        model=<span class="s">"gpt-4o-mini"</span>,
+        messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: prompt}]
+    )
+    <span class="k">return</span> response.choices[<span class="n">0</span>].message.content
+
+<span class="k">def</span> <span class="f">rag</span>(query):
+    search_results = <span class="f">search</span>(query)
+    prompt         = <span class="f">build_prompt</span>(query, search_results)
+    <span class="k">return</span> <span class="f">llm</span>(prompt)</pre>
+      </div>
+
+      <p>Note the rename — the OpenAI client is now <code>openai_client</code> rather than just <code>client</code>, because we're about to introduce a second client (the Qdrant one) and we don't want them to collide.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔁</span> Swapping In Qdrant Vector Search</h2>
+      <p>The Qdrant pieces are exactly what we built in earlier sections — connect, create a collection, upsert points, query. Two small but important changes for RAG:</p>
+
+      <ol class="algo-steps">
+        <li>Use a separate variable name <code>qd_client</code> for the Qdrant client, side-by-side with <code>openai_client</code>.</li>
+        <li>Embed <strong>question + text</strong> together, not just the answer. RAG queries can match either side — keywords from the question or context from the answer — so giving the embedding both gives retrieval more surface to match against.</li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">Setup — separate clients, new collection</div>
+        <pre><span class="k">from</span> qdrant_client <span class="k">import</span> QdrantClient, models
+
+qd_client = <span class="cl">QdrantClient</span>(<span class="s">"http://localhost:6333"</span>)
+
+EMBEDDING_DIMENSIONALITY = <span class="n">512</span>
+model_handle    = <span class="s">"jinaai/jina-embeddings-v2-small-en"</span>
+collection_name = <span class="s">"zoomcamp-faq"</span>           <span class="c"># new collection — different schema</span>
+
+<span class="c"># If a stale collection with this name exists, drop it first:</span>
+<span class="c"># qd_client.delete_collection(collection_name=collection_name)</span>
+
+qd_client.<span class="f">create_collection</span>(
+    collection_name=collection_name,
+    vectors_config=models.<span class="cl">VectorParams</span>(
+        size=EMBEDDING_DIMENSIONALITY,
+        distance=models.Distance.COSINE
+    )
+)
+
+qd_client.<span class="f">create_payload_index</span>(
+    collection_name=collection_name,
+    field_name=<span class="s">"course"</span>,
+    field_schema=<span class="s">"keyword"</span>
+)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Upsert points — embed question + text together, full doc as payload</div>
+        <pre>points = []
+<span class="k">for</span> i, doc <span class="k">in</span> <span class="f">enumerate</span>(documents):
+    text   = doc[<span class="s">"question"</span>] + <span class="s">" "</span> + doc[<span class="s">"text"</span>]   <span class="c"># both sides → one vector</span>
+    vector = models.<span class="cl">Document</span>(text=text, model=model_handle)
+    points.<span class="f">append</span>(models.<span class="cl">PointStruct</span>(
+        id=i,
+        vector=vector,
+        payload=doc                                <span class="c"># whole doc kept for downstream prompts</span>
+    ))
+
+qd_client.<span class="f">upsert</span>(collection_name=collection_name, points=points)</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔍</span> The New <code>vector_search</code> Function</h2>
+      <p>This replaces the original <code>search</code> entirely. Course filtering happens server-side via <code>query_filter</code>; the function returns a list of payload dicts so <code>build_prompt</code> doesn't need any change.</p>
+
+      <div class="code-block">
+        <div class="code-label">Drop-in replacement for the search step</div>
+        <pre><span class="k">def</span> <span class="f">vector_search</span>(question):
+    <span class="f">print</span>(<span class="s">"vector_search is used"</span>)                <span class="c"># sanity-check trace</span>
+    course = <span class="s">"data-engineering-zoomcamp"</span>
+
+    query_points = qd_client.<span class="f">query_points</span>(
+        collection_name=collection_name,
+        query=models.<span class="cl">Document</span>(text=question, model=model_handle),
+        query_filter=models.<span class="cl">Filter</span>(
+            must=[models.<span class="cl">FieldCondition</span>(
+                key=<span class="s">"course"</span>,
+                match=models.<span class="cl">MatchValue</span>(value=course)
+            )]
+        ),
+        limit=<span class="n">5</span>,
+        with_payload=<span class="k">True</span>
+    )
+
+    <span class="k">return</span> [point.payload <span class="k">for</span> point <span class="k">in</span> query_points.points]</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">RAG function — only the search call changes</div>
+        <pre><span class="k">def</span> <span class="f">rag</span>(query):
+    search_results = <span class="f">vector_search</span>(query)            <span class="c"># ← the only line that's different</span>
+    prompt         = <span class="f">build_prompt</span>(query, search_results)
+    <span class="k">return</span> <span class="f">llm</span>(prompt)
+
+<span class="f">rag</span>(<span class="s">"how do I run kafka?"</span>)
+<span class="c"># → "vector_search is used"</span>
+<span class="c"># → "To run Kafka, you need to follow these steps..."</span></pre>
+      </div>
+
+      <div class="callout">RAG is <strong>modular</strong>. Build prompt and LLM stay identical; the retriever is a <em>plug</em>. That's why <code>minsearch</code> → Qdrant → Elasticsearch → hybrid is a one-function swap, and why evaluation in module 3 is meaningful — you can compare retrievers fairly with everything else held constant.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>15 · Hybrid Search — Sparse, Dense, Fusion &amp; Reranking</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪢</span> Why Combine Methods at All</h2>
+      <p>Dense embeddings capture meaning but stumble on <strong>exact matches</strong> — product codes, identifiers, library names, version numbers, proper nouns the model never saw. Keyword methods (BM25, TF-IDF) excel at exact matches but ignore semantics. Real users send both styles of query. <span class="term">Hybrid search</span> serves both audiences by running multiple retrieval methods and combining their results.</p>
+
+      <div class="search-types">
+        <div class="search-type">
+          <div class="label">Dense Search</div>
+          <p><strong>Captures meaning.</strong> "flying mouse" finds bat docs.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;">Always returns <em>some</em> results — even when nothing truly matches, vectors stay somewhat similar.</p>
+        </div>
+        <div class="search-type">
+          <div class="label">Sparse Search (BM25)</div>
+          <p><strong>Captures exact words.</strong> "qdrant" finds Qdrant-mentioning docs.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;">Returns <em>nothing</em> when no token matches — useful negative signal.</p>
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🪶</span> Sparse Vectors</h2>
+      <p>Keyword search can be expressed as vector search — but the vectors are <span class="term">sparse</span>: dimensions = vocabulary size, but almost every entry is zero. Storing all those zeros would be wasteful, so vector databases keep only the non-zero entries. The big advantages over dense embeddings:</p>
+
+      <ul>
+        <li><strong>Flexible dictionary</strong> — sparse vectors are not limited to tokens seen during training. New product codes, fresh slang, future technical terms all get a column.</li>
+        <li><strong>Fast to build</strong> — BM25 is purely statistical, no neural network involved.</li>
+        <li><strong>Strong baseline</strong> — BM25 still tops several IR benchmarks; do not skip it.</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📏</span> BM25 In One Paragraph</h2>
+      <p><span class="term">BM25</span> ("Best Matching 25" — the 25th attempt at the formula) is a ranking function combining three ideas:</p>
+
+      <div class="formula-block">
+        <div class="formula-label">BM25 — three signals</div>
+        <div class="formula-main">
+          score(q, d) &nbsp;∝&nbsp; Σ<sub>t∈q</sub> &nbsp; <strong>IDF(t)</strong> · <strong>TF(t, d)</strong> · <strong>length-norm(d)</strong>
+        </div>
+        <div class="formula-legend">
+          <span>TF</span> rewards documents that contain query terms — but with diminishing returns, so 10 occurrences are not 10× better than 1.<br>
+          <span>IDF</span> boosts rare terms and downweights common words that appear everywhere.<br>
+          <span>length-norm</span> stops long documents from winning just by being long.
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🆕</span> Sparse-Only Collection in Qdrant</h2>
+      <p>Sparse vectors need a different config slot — <code>sparse_vectors_config</code> rather than <code>vectors_config</code>. Crucially, set <code>Modifier.IDF</code> so Qdrant computes IDF globally across the collection. Without it, BM25 won't reward rare words.</p>
+
+      <div class="code-block">
+        <div class="code-label">Sparse-only collection with global IDF</div>
+        <pre>client.<span class="f">create_collection</span>(
+    collection_name=<span class="s">"zoomcamp-sparse"</span>,
+    sparse_vectors_config={
+        <span class="s">"bm25"</span>: models.<span class="cl">SparseVectorParams</span>(
+            modifier=models.Modifier.IDF        <span class="c"># Qdrant computes IDF for us</span>
+        )
+    }
+)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Upsert with the BM25 model from FastEmbed</div>
+        <pre><span class="k">import</span> uuid
+
+points = []
+<span class="k">for</span> course <span class="k">in</span> documents_raw:
+    <span class="k">for</span> doc <span class="k">in</span> course[<span class="s">"documents"</span>]:
+        points.<span class="f">append</span>(models.<span class="cl">PointStruct</span>(
+            id=uuid.<span class="f">uuid4</span>().hex,
+            vector={
+                <span class="s">"bm25"</span>: models.<span class="cl">Document</span>(
+                    text=doc[<span class="s">"text"</span>],
+                    model=<span class="s">"Qdrant/bm25"</span>             <span class="c"># statistical, no neural net</span>
+                )
+            },
+            payload=doc | {<span class="s">"course"</span>: course[<span class="s">"course"</span>]}
+        ))
+
+client.<span class="f">upsert</span>(collection_name=<span class="s">"zoomcamp-sparse"</span>, points=points)</pre>
+      </div>
+
+      <p>This upsert finishes in <em>seconds</em>, not minutes — BM25 is statistical, not neural. The price of zero inference cost is paid in capability: BM25 cannot match synonyms or paraphrases.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔍</span> Sparse Search</h2>
+      <p>Querying a named vector requires <code>using=</code> to tell Qdrant which vector type to compare against.</p>
+
+      <div class="code-block">
+        <div class="code-label">BM25 search helper</div>
+        <pre><span class="k">def</span> <span class="f">search</span>(query, limit=<span class="n">1</span>):
+    <span class="k">return</span> client.<span class="f">query_points</span>(
+        collection_name=<span class="s">"zoomcamp-sparse"</span>,
+        query=models.<span class="cl">Document</span>(text=query, model=<span class="s">"Qdrant/bm25"</span>),
+        using=<span class="s">"bm25"</span>,                          <span class="c"># pick the named sparse vector</span>
+        limit=limit,
+        with_payload=<span class="k">True</span>
+    )</pre>
+      </div>
+
+      <p>Two behaviours surprise people coming from dense search:</p>
+      <ul>
+        <li><strong>BM25 returns zero results</strong> when no query token appears in any document. Dense always returns <em>something</em> (some weak similarity). Empty results are useful signal.</li>
+        <li><strong>BM25 scores are unbounded</strong> — not in <code>[-1, 1]</code> like cosine. They are only meaningful <em>within a single query</em> for ranking; you can't compare scores across queries, and you definitely can't compare BM25 vs cosine scores directly.</li>
+      </ul>
+
+      <div class="callout">When the query is short and keyword-heavy ("qdrant", "pandas"), BM25 wins. When the query is a long natural-language sentence ("Uploading to S3 fails — what should I do?"), BM25 drowns in matched-but-irrelevant words. Different queries, different methods.</div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🛤️</span> Universal Query API &amp; Prefetch</h2>
+      <p>Qdrant's <code>query_points</code> is actually a <strong>universal query API</strong>. It can take one or more <code>prefetch</code> stages — a fast initial retriever pulls candidates, and a slower / more precise method reranks them. The classic search architecture (<em>retrieve then rerank</em>) collapses into one Qdrant call.</p>
+
+      <p>To use multiple methods on the same data, store both representations in the same collection using <strong>named vectors</strong>:</p>
+
+      <div class="code-block">
+        <div class="code-label">Collection with both sparse and dense named vectors</div>
+        <pre>client.<span class="f">create_collection</span>(
+    collection_name=<span class="s">"zoomcamp-sparse-and-dense"</span>,
+    vectors_config={
+        <span class="s">"jina-small"</span>: models.<span class="cl">VectorParams</span>(
+            size=<span class="n">512</span>,
+            distance=models.Distance.COSINE
+        )
+    },
+    sparse_vectors_config={
+        <span class="s">"bm25"</span>: models.<span class="cl">SparseVectorParams</span>(modifier=models.Modifier.IDF)
+    }
+)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Each point carries two vectors</div>
+        <pre>points.<span class="f">append</span>(models.<span class="cl">PointStruct</span>(
+    id=uuid.<span class="f">uuid4</span>().hex,
+    vector={
+        <span class="s">"jina-small"</span>: models.<span class="cl">Document</span>(text=doc[<span class="s">"text"</span>], model=<span class="s">"jinaai/jina-embeddings-v2-small-en"</span>),
+        <span class="s">"bm25"</span>:       models.<span class="cl">Document</span>(text=doc[<span class="s">"text"</span>], model=<span class="s">"Qdrant/bm25"</span>),
+    },
+    payload=doc
+))</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🪜</span> Multi-Stage Search — Dense Retrieve, Sparse Rerank</h2>
+      <p>One useful pipeline: use the fast, semantic dense model to pull a wide set of candidates, then let BM25 re-order them based on exact-keyword overlap. The "main" <code>query</code> here applies to the candidates returned by <code>prefetch</code>, <strong>not</strong> the entire collection.</p>
+
+      <div class="code-block">
+        <div class="code-label">Dense retrieve → BM25 rerank</div>
+        <pre><span class="k">def</span> <span class="f">multi_stage_search</span>(query, limit=<span class="n">1</span>):
+    <span class="k">return</span> client.<span class="f">query_points</span>(
+        collection_name=<span class="s">"zoomcamp-sparse-and-dense"</span>,
+        prefetch=[
+            models.<span class="cl">Prefetch</span>(
+                query=models.<span class="cl">Document</span>(text=query, model=<span class="s">"jinaai/jina-embeddings-v2-small-en"</span>),
+                using=<span class="s">"jina-small"</span>,
+                limit=(<span class="n">10</span> * limit)             <span class="c"># pull 10× more candidates</span>
+            ),
+        ],
+        query=models.<span class="cl">Document</span>(text=query, model=<span class="s">"Qdrant/bm25"</span>),
+        using=<span class="s">"bm25"</span>,                          <span class="c"># rerank prefetched candidates</span>
+        limit=limit,
+        with_payload=<span class="k">True</span>
+    )</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎲</span> Fusion — Reciprocal Rank Fusion (RRF)</h2>
+      <p>The other strategy: run dense and sparse <em>in parallel</em> and combine their result lists. The challenge — dense and BM25 scores live on incomparable scales — is sidestepped by ignoring the raw scores entirely. <span class="term">Reciprocal Rank Fusion</span> only looks at the <strong>position</strong> of each document in each ranked list.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Reciprocal Rank Fusion</div>
+        <div class="formula-main">
+          rrf(d) &nbsp;=&nbsp; Σ<sub>m</sub> &nbsp; 1 / ( k + rank<sub>m</sub>(d) )
+        </div>
+        <div class="formula-legend">
+          <span>m</span> — each retrieval method (dense, sparse, …)<br>
+          <span>rank<sub>m</sub>(d)</span> — position of document <em>d</em> in method <em>m</em>'s list (1 = best)<br>
+          <span>k</span> — small smoothing constant (typically 60)<br>
+          A document ranked highly by <strong>multiple</strong> methods wins, even if no single method placed it first.
+        </div>
+      </div>
+
+      <p>Concrete intuition: suppose dense ranks <code>[D1, D2, D3, D4, D5]</code> and sparse ranks <code>[D5, D3, D1, D4, D2]</code>. RRF doesn't pick D1 (the dense winner) or D5 (the sparse winner) — it picks <strong>D3</strong>, the document both methods agreed was good even though neither put it first. <em>Consistent across methods</em> often beats <em>top of one method</em>.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">⚙️</span> RRF in Qdrant</h2>
+      <p>Qdrant has RRF built in via <code>FusionQuery</code>. Both prefetches run, and the final query is "fuse the prefetched lists":</p>
+
+      <div class="code-block">
+        <div class="code-label">Hybrid search with RRF fusion</div>
+        <pre><span class="k">def</span> <span class="f">rrf_search</span>(query, limit=<span class="n">1</span>):
+    <span class="k">return</span> client.<span class="f">query_points</span>(
+        collection_name=<span class="s">"zoomcamp-sparse-and-dense"</span>,
+        prefetch=[
+            models.<span class="cl">Prefetch</span>(
+                query=models.<span class="cl">Document</span>(text=query, model=<span class="s">"jinaai/jina-embeddings-v2-small-en"</span>),
+                using=<span class="s">"jina-small"</span>,
+                limit=(<span class="n">5</span> * limit)
+            ),
+            models.<span class="cl">Prefetch</span>(
+                query=models.<span class="cl">Document</span>(text=query, model=<span class="s">"Qdrant/bm25"</span>),
+                using=<span class="s">"bm25"</span>,
+                limit=(<span class="n">5</span> * limit)
+            ),
+        ],
+        query=models.<span class="cl">FusionQuery</span>(fusion=models.Fusion.RRF),
+        with_payload=<span class="k">True</span>
+    )</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔄</span> Fusion vs Reranking</h2>
+      <p><span class="term">Reranking</span> is the broader term — anything that re-orders an initial candidate set. Fusion is one specific kind of reranking, but reranking can be much more:</p>
+
+      <ul>
+        <li><strong>Cross-encoders</strong> — a model that consumes (query, document) jointly and scores them. Far more accurate than dense embeddings, far too slow to run on the whole corpus, perfect as a reranker over the top-k.</li>
+        <li><strong>Multivectors / late-interaction models</strong> (ColBERT, ColPali) — represent each document as ~hundreds of small vectors and use a custom similarity (<em>MaxSim</em>). Resource-heavy but quality-superior; supported in Qdrant alongside named vectors.</li>
+        <li><strong>Business rules</strong> — promote vendors you have contracts with, demote out-of-stock items, hard-pin editorial picks. These are rerankers too.</li>
+      </ul>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">When Hybrid Search Helps</div>
+          <ul>
+            <li>Mixed-style queries (keywords + sentences)</li>
+            <li>Domain with proper nouns, IDs, codes</li>
+            <li>Chatbot UX with broad audience</li>
+            <li>You don't know your query distribution yet</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Watch Out</div>
+          <ul>
+            <li>Two retrievers = two latency budgets</li>
+            <li>Two upserts = more storage</li>
+            <li>Quality gains need real evaluation, not cherry-picked queries</li>
+            <li>RRF requires sane <em>k</em> and prefetch limits</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">Hybrid search is a <strong>family</strong>, not a single algorithm — multi-stage rerank, RRF fusion, cross-encoder rerank, business-rule rerank, late-interaction multivector. Pick based on query distribution, latency budget, and what your evaluation set actually tells you.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>16 · Key Takeaways</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> What to Remember</h2>
+      <ul>
+        <li>Vector search compares <strong>meaning, not tokens</strong>. Same idea phrased differently still matches; cross-modal queries become possible.</li>
+        <li><strong>Cosine similarity</strong> is the default distance metric for dense text embeddings — confirm it on the model card before configuring the collection.</li>
+        <li>The two phases of a vector search system are <strong>offline indexing</strong> (embed + insert) and <strong>online query</strong> (embed query + nearest-neighbour search). The same model must be used in both.</li>
+        <li>Qdrant boils down to two entities — <span class="term">points</span> (id + vector + optional payload) and <span class="term">collections</span> (named groups of points with one vector configuration).</li>
+        <li>Decide <strong>what to embed</strong> (the searchable content) and <strong>what to keep as payload</strong> (categorical or filterable metadata) <em>before</em> picking a model.</li>
+        <li><span class="term">FastEmbed</span> handles model download, local inference, and serialisation — pass <code>models.Document(text=..., model=...)</code> and the client does the rest.</li>
+        <li>Vector search at scale is <strong>approximate</strong> — Qdrant's Filterable HNSW gives sub-linear queries while preserving high recall under payload filters.</li>
+        <li>The <strong>dashboard's Visualize tab</strong> is invaluable for understanding your data: 2D projections expose clusters, gaps, and surprises before you write any query.</li>
+        <li>Filters (<code>must</code>, <code>should</code>, <code>must_not</code>, ranges, …) make semantic search <em>contextual</em> — the same query can return different answers depending on user, region, or product.</li>
+        <li>RAG is <strong>three modular steps</strong> — search, build prompt, LLM. Swapping retrievers is a one-function change; everything else stays the same.</li>
+        <li>For RAG, embed <strong>question + answer together</strong>: the query may match either side, and combining them gives the embedding more surface to score against.</li>
+        <li>Use distinct names — <code>qd_client</code> vs <code>openai_client</code> — to keep Qdrant and OpenAI clients from colliding once both live in the same notebook.</li>
+        <li><strong>Sparse vectors (BM25)</strong> excel at exact matches, identifiers, and proper nouns; <strong>dense vectors</strong> excel at meaning. Real query distributions need both.</li>
+        <li>BM25 is statistical, not neural — <em>seconds</em> to index thousands of documents and a strong baseline you should always have on hand.</li>
+        <li>Dense and BM25 scores are <strong>not directly comparable</strong>. Hybrid search either avoids the issue (RRF, which uses ranks) or trains a model to do the combining.</li>
+        <li>Qdrant's <strong>universal query API</strong> (<code>query_points</code> with <code>prefetch</code>) collapses retrieve-then-rerank pipelines into a single call.</li>
+        <li><strong>Reciprocal Rank Fusion</strong> rewards documents ranked highly by <em>multiple</em> methods — consistency beats winning a single list.</li>
+        <li><strong>Reranking</strong> is broader than fusion: cross-encoders, multivector / late-interaction models, and even business rules are all rerankers.</li>
+        <li>Vector search is the foundation, not the ceiling — Qdrant also powers <strong>hybrid search</strong>, recommendation, discovery, and unstructured data analysis.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>17 · Resources</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Further Reading &amp; Code</h2>
+      <ul>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/02-vector-search/sematic_search.ipynb" style="color:#a5b4fc;">DataTalksClub · semantic_search.ipynb</a> — the source notebook this page is based on.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/02-vector-search/rag-starter.ipynb" style="color:#a5b4fc;">DataTalksClub · rag-starter.ipynb</a> — minsearch-based RAG starting point used in §14.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/02-vector-search/rag.ipynb" style="color:#a5b4fc;">DataTalksClub · rag.ipynb</a> — full RAG with vector search swapped in for §14.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/02-vector-search/hybrid_search.ipynb" style="color:#a5b4fc;">DataTalksClub · hybrid_search.ipynb</a> — sparse, dense, multi-stage and RRF — the source for §15.</li>
+        <li><a href="https://qdrant.tech/" style="color:#a5b4fc;">qdrant.tech</a> — Qdrant documentation, articles, and dashboard guides.</li>
+        <li><a href="https://qdrant.tech/articles/dedicated-vector-search/" style="color:#a5b4fc;">"Built for Vector Search"</a> — why dedicated vector engines exist.</li>
+        <li><a href="https://qdrant.tech/documentation/concepts/collections/" style="color:#a5b4fc;">Qdrant collections reference</a> — full vector configuration parameters.</li>
+        <li><a href="https://qdrant.tech/articles/filtrable-hnsw/" style="color:#a5b4fc;">Filterable HNSW</a> — technical deep-dive on Qdrant's vector index.</li>
+        <li><a href="https://qdrant.tech/articles/vector-search-filtering/" style="color:#a5b4fc;">Filtering Guide</a> — full reference for <code>must</code>, <code>should</code>, ranges, geo, etc.</li>
+        <li><a href="https://github.com/qdrant/fastembed" style="color:#a5b4fc;">qdrant/fastembed</a> — the embedding library used in this notebook.</li>
+        <li><a href="https://huggingface.co/jinaai/jina-embeddings-v2-small-en" style="color:#a5b4fc;">jina-embeddings-v2-small-en</a> — model card for the embedding used here.</li>
+        <li><a href="https://qdrant.tech/articles/hybrid-search/" style="color:#a5b4fc;">Hybrid search</a> — combining sparse keyword and dense vector retrieval.</li>
+        <li><a href="https://en.wikipedia.org/wiki/Okapi_BM25" style="color:#a5b4fc;">Okapi BM25 (Wikipedia)</a> — full mathematical breakdown of term frequency, IDF, and length normalisation.</li>
+        <li><a href="https://qdrant.tech/documentation/concepts/hybrid-queries/" style="color:#a5b4fc;">Qdrant hybrid queries</a> — full reference for <code>prefetch</code>, <code>FusionQuery</code>, and named vectors.</li>
+        <li><a href="https://qdrant.tech/articles/late-interaction-models/" style="color:#a5b4fc;">Late-interaction models</a> — ColBERT, ColPali, and multivector reranking in Qdrant.</li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RAG Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
