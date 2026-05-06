@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Evaluation — RAG</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Formula block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Numbered steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── RAG flow diagram ── */
+    .rag-flow { display:grid; grid-template-columns: repeat(4, 1fr); gap:0.6rem; margin:1rem 0; }
+    .rag-step { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:0.85rem 0.6rem; text-align:center; font-size:0.8rem; color:#cbd5e1; }
+    .rag-step .num { display:block; font-size:0.65rem; font-weight:700; letter-spacing:0.1em; color:#6366f1; margin-bottom:0.35rem; text-transform:uppercase; }
+    .rag-step strong { color:#a5b4fc; display:block; margin-bottom:0.25rem; }
+    .rag-step.evaluated { border-color:#4ade80; }
+    .rag-step.evaluated .num { color:#4ade80; }
+    .rag-step.upcoming { border-color:#6366f1; background:#1a1f3a; }
+
+    /* ── Offline vs online comparison ── */
+    .eval-grid { display:grid; grid-template-columns: 1fr 1fr; gap:0.9rem; margin-top:0.5rem; }
+    .eval-card { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .eval-card .label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#a5b4fc; margin-bottom:0.5rem; }
+    .eval-card p { margin:0.35rem 0; color:#cbd5e1; font-size:0.88rem; }
+
+    /* ── Method cards (cosine, llm-as-judge) ── */
+    .method-grid { display:grid; grid-template-columns: 1fr 1fr; gap:0.9rem; margin-top:0.7rem; }
+    .method-card { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .method-card .name { font-family:'Courier New',monospace; color:#a5b4fc; font-weight:700; font-size:0.9rem; margin-bottom:0.35rem; }
+    .method-card p { margin:0.3rem 0; color:#cbd5e1; font-size:0.85rem; line-height:1.55; }
+    .method-card .tag { display:inline-block; background:#1e2130; border:1px solid #2d3148; border-radius:6px; padding:0.15rem 0.5rem; font-size:0.7rem; color:#94a3b8; margin-right:0.3rem; margin-top:0.3rem; }
+
+    /* ── Code block ── */
+    .code-block { background:#0d1117; border:1px solid #2d3148; border-radius:10px; padding:1.1rem 1.3rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block .code-label { font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.7rem; }
+    .code-block pre { margin:0; font-family:'Courier New',monospace; font-size:0.82rem; line-height:1.7; color:#e2e8f0; white-space:pre; }
+    .code-block pre .c  { color:#475569; }
+    .code-block pre .k  { color:#c084fc; }
+    .code-block pre .f  { color:#60a5fa; }
+    .code-block pre .s  { color:#4ade80; }
+    .code-block pre .n  { color:#f59e0b; }
+    .code-block pre .cl { color:#fbbf24; }
+
+    @media (max-width: 540px) {
+      .rag-flow { grid-template-columns: 1fr 1fr; }
+      .eval-grid { grid-template-columns: 1fr; }
+      .method-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RAG Project Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Evaluation · Monitoring · Offline · Online</p>
+      <h1>RAG Evaluation — Offline &amp; Online</h1>
+      <p>Beyond retrieval — how do you evaluate the <em>whole</em> RAG system, including the prompt and the LLM? An overview of offline vs online evaluation, plus the two foundational offline techniques: answer-cosine similarity and LLM-as-a-judge.</p>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Recap — Where We Are in the RAG Series</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> The Three Steps, Revisited</h2>
+      <p>Across the previous modules we built a complete RAG pipeline as a small, modular function:</p>
+
+      <div class="code-block">
+        <div class="code-label">The recurring rag(query) shape</div>
+        <pre><span class="k">def</span> <span class="f">rag</span>(query):
+    search_results = <span class="f">search</span>(query)              <span class="c"># module 1, 2 — text / vector / hybrid</span>
+    prompt         = <span class="f">build_prompt</span>(query, search_results)
+    answer         = <span class="f">llm</span>(prompt)                    <span class="c"># module 2 — OpenAI or alternative</span>
+    <span class="k">return</span> answer</pre>
+      </div>
+
+      <p>Each step has been explored independently:</p>
+
+      <div class="rag-flow">
+        <div class="rag-step evaluated"><span class="num">M1</span><strong>Search</strong>minsearch · ES · Qdrant</div>
+        <div class="rag-step"><span class="num">M2</span><strong>Build Prompt</strong>Inject context</div>
+        <div class="rag-step"><span class="num">M2</span><strong>LLM Call</strong>OpenAI / open-source</div>
+        <div class="rag-step evaluated"><span class="num">M3</span><strong>Retrieval Eval</strong>HR · MRR</div>
+      </div>
+
+      <p>In <a href="retrieval-evaluation.html" style="color:#a5b4fc;">module 3</a> we evaluated the <strong>search</strong> step in isolation — Hit Rate and MRR against a ground-truth dataset of synthetic queries. That answers <em>"is the retriever finding the right documents?"</em> — but says nothing about the rest of the pipeline.</p>
+
+      <div class="callout">Retrieval is <strong>necessary</strong> but not <strong>sufficient</strong> for a good RAG system. A perfect retriever paired with a bad prompt or a hallucinating LLM still gives bad answers. We need to evaluate the <em>whole</em> system end-to-end.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Open Questions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">❓</span> What's Left to Measure</h2>
+      <p>Module 3's metrics covered the retrieval box. Everything to the right of it is still untested:</p>
+
+      <ul>
+        <li><strong>Is our prompt good?</strong> — Different prompt templates, system messages, and context-formatting strategies all change the answer quality. None are obviously best a priori.</li>
+        <li><strong>Is the LLM the right one?</strong> — GPT-4o vs GPT-4o-mini vs Claude vs an open-source 70B model. Quality, latency, and cost all trade against each other.</li>
+        <li><strong>How good is the answer the user actually sees?</strong> — Even with perfect retrieval and a strong LLM, the final answer may be incomplete, hallucinated, or off-topic.</li>
+        <li><strong>Is the system getting better or worse over time?</strong> — Models drift, prompts get edited, source data changes. You cannot manage what you don't watch.</li>
+      </ul>
+
+      <p>These questions need <strong>different metrics</strong> and a different evaluation methodology than HR/MRR. That methodology splits cleanly along one axis: <em>do we measure before or after deployment?</em></p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Offline vs Online Evaluation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> Two Modes, Different Roles</h2>
+      <p>Every production ML system — RAG included — gets evaluated twice: once <strong>before deployment</strong> on a fixed dataset, and once <strong>after deployment</strong> on real user traffic. Neither replaces the other; they answer different questions.</p>
+
+      <div class="eval-grid">
+        <div class="eval-card">
+          <div class="label">Offline Evaluation</div>
+          <p><strong>Before deployment.</strong> Run the system on a fixed dataset, compute metrics, compare against a baseline.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Examples:</em> Hit Rate, MRR (retrieval) · Cosine similarity between answers · LLM-as-a-judge.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Strength:</em> reproducible, cheap to iterate, runs in CI. <em>Weakness:</em> dataset bias, may not reflect real user behaviour.</p>
+        </div>
+        <div class="eval-card">
+          <div class="label">Online Evaluation</div>
+          <p><strong>After deployment.</strong> Watch real users, collect feedback, run controlled experiments, monitor health.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Examples:</em> A/B tests on business metrics · Thumbs-up / thumbs-down · Click-through rates · System health dashboards.</p>
+          <p style="color:#94a3b8;font-size:0.82rem;"><em>Strength:</em> ground truth from real users. <em>Weakness:</em> needs traffic, slow to iterate, expensive to get wrong.</p>
+        </div>
+      </div>
+
+      <div class="callout">Offline evaluation tells you <strong>"the new version is probably better"</strong>. Online evaluation tells you <strong>"the new version is actually better for real users"</strong>. Ship the offline winner, then confirm online — never skip either.</div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🩺</span> Monitoring Lives Alongside Online Eval</h2>
+      <p><span class="term">Monitoring</span> is the continuous form of online evaluation. Where A/B tests answer "is variant B better?", monitoring answers "is the system healthy <em>right now</em>?" — and it covers both system-level signals (CPU, latency, error rate) and quality signals (user feedback, answer length distribution, refusal rate).</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Offline RAG Evaluation — Two Foundational Methods</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Reusing the Ground Truth</h2>
+      <p>The synthetic ground truth from <a href="retrieval-evaluation.html" style="color:#a5b4fc;">module 3</a> already gives us thousands of <code>(question, expected_document)</code> pairs. Each pair carries an <strong>original answer</strong> — the FAQ entry the question was rephrased from. That answer is the reference point for evaluating <em>generation</em> quality.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">The evaluation triangle</div>
+        <div class="formula-main">
+          question &nbsp;→&nbsp; rag(question) &nbsp;=&nbsp; <strong>generated_answer</strong><br>
+          question &nbsp;↦&nbsp; expected_doc &nbsp;.text &nbsp;=&nbsp; <strong>original_answer</strong>
+        </div>
+        <div class="formula-legend">
+          For every ground-truth row we now have <em>two</em> answers — the original and the LLM-generated one. The whole game is to measure how close they are.
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🛠️</span> Two Techniques, Different Trade-offs</h2>
+      <div class="method-grid">
+        <div class="method-card">
+          <div class="name">Cosine similarity</div>
+          <p>Embed both answers, take cosine similarity of the vectors. Higher = more semantically aligned.</p>
+          <span class="tag">cheap</span><span class="tag">deterministic</span><span class="tag">needs reference</span>
+        </div>
+        <div class="method-card">
+          <div class="name">LLM-as-a-judge</div>
+          <p>Ask an LLM to rate how well the generated answer matches the original (or just answers the question).</p>
+          <span class="tag">flexible</span><span class="tag">costly</span><span class="tag">reference optional</span>
+        </div>
+      </div>
+
+      <p>Both produce per-query scores you average across the dataset. Cosine similarity is what you reach for first — fast, free, and reproducible. LLM-as-a-judge is the heavier hammer for nuanced quality dimensions cosine cannot capture (factuality, helpfulness, tone).</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Method 1 — Cosine Similarity Between Answers</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> The Idea</h2>
+      <p>Run the full <code>rag(question)</code> on every ground-truth row to produce a generated answer. Embed both the <strong>original answer</strong> and the <strong>generated answer</strong> with the same embedding model. Take the cosine similarity. Average across queries.</p>
+
+      <ol class="algo-steps">
+        <li>For each ground-truth row, look up the original answer (the FAQ entry the row was generated from).</li>
+        <li>Run <code>generated_answer = rag(row["question"])</code>.</li>
+        <li>Embed both answers with the same model used in retrieval (e.g. <code>multi-qa-MiniLM-L6-cos-v1</code>).</li>
+        <li>Compute <code>cosine(embed(original), embed(generated))</code> ∈ [-1, 1].</li>
+        <li>Average across all rows → one number per <em>(retriever, prompt, LLM)</em> configuration.</li>
+      </ol>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📏</span> What the Number Means</h2>
+      <ul>
+        <li><strong>Higher = more semantically aligned.</strong> The LLM is producing answers that say similar things to the source FAQ entry.</li>
+        <li><strong>Embedding-space, not surface-level.</strong> Paraphrases, reordering, and added/removed wording all stay close — exact-string match would be unfairly strict.</li>
+        <li><strong>Comparable across configurations.</strong> Swap the LLM, swap the prompt, swap the retriever — same metric, same dataset, apples-to-apples.</li>
+      </ul>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">When Cosine Works</div>
+          <ul>
+            <li>You have a reference / original answer per query</li>
+            <li>You want a fast, cheap, deterministic score</li>
+            <li>You want to compare many configurations (prompt sweeps, model sweeps)</li>
+            <li>Quality differences are big enough to register in semantic similarity</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Where It Fails</div>
+          <ul>
+            <li>Two answers can be semantically similar but one is factually wrong</li>
+            <li>Tone, helpfulness, and specificity are invisible to cosine</li>
+            <li>Embedding model bias becomes evaluation bias</li>
+            <li>Useless when no reference answer exists</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Method 2 — LLM-as-a-Judge</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> The Idea</h2>
+      <p>Cosine similarity captures <em>"are these saying similar things?"</em>. It cannot capture <em>"does this actually answer the question?"</em> or <em>"is this factually correct?"</em>. For those, ask another LLM.</p>
+
+      <p><span class="term">LLM-as-a-judge</span> is a structured prompt that hands the judge model the inputs and asks for a graded score (or a verdict like <code>RELEVANT / PARTLY_RELEVANT / NON_RELEVANT</code>). It comes in two flavours depending on whether a reference answer exists:</p>
+
+      <div class="method-grid">
+        <div class="method-card">
+          <div class="name">With reference</div>
+          <p>"Here is the original answer. Here is the LLM's answer. How similar / how good?"</p>
+          <span class="tag">used when ground-truth exists</span>
+        </div>
+        <div class="method-card">
+          <div class="name">Without reference</div>
+          <p>"Here is the question. Here is the answer. Does it actually answer the question?"</p>
+          <span class="tag">used in production / open-domain</span>
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📝</span> The Pattern</h2>
+      <ol class="algo-steps">
+        <li>Build a clear judging prompt — system role + criteria + a structured output format (typically JSON with <code>verdict</code> and <code>explanation</code>).</li>
+        <li>For each ground-truth row, pass <code>(question, original_answer, generated_answer)</code> — or just <code>(question, generated_answer)</code> when no reference exists — into the judge LLM.</li>
+        <li>Parse the judge's response. Aggregate verdicts across the dataset (% RELEVANT, average score, etc.).</li>
+        <li>Spot-check a sample by hand — judge models hallucinate too. Calibration matters.</li>
+      </ol>
+
+      <div class="callout">LLM-as-a-judge is <strong>flexible but biased</strong>. Stronger judges (GPT-4-class) correlate well with human ratings on most dimensions, but they share the prompt-style biases of every LLM. Always cross-check a sample manually — and never use the same model as judge and as the system being judged.</div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">💸</span> Cost &amp; Reproducibility</h2>
+      <ul>
+        <li><strong>Cost</strong> — one judge call per evaluated row. For a 4,600-row dataset on GPT-4o-class, expect single-digit to low-double-digit dollars per full eval pass.</li>
+        <li><strong>Cache verdicts</strong> by <code>(question, generated_answer)</code> hash — repeated re-runs of identical inputs should not pay twice.</li>
+        <li><strong>Pin the judge model and prompt</strong> in your eval logs. Switching either changes the metric — note it the same way you'd note an evaluation-set version.</li>
+        <li><strong>Sample, don't always full-run</strong> — judge a stratified sample of 200–500 rows for fast iteration; reserve the full sweep for major releases.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Step 1 — Setup &amp; Reuse from Module 3</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">♻️</span> Everything We Already Have</h2>
+      <p>Offline RAG evaluation does not need a new dataset, a new index, or a new retriever — it reuses everything from <a href="retrieval-evaluation.html" style="color:#a5b4fc;">module 3</a>. Three artefacts go into the harness:</p>
+
+      <div class="rag-flow" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="rag-step"><span class="num">From M3</span><strong>documents-with-ids.json</strong>FAQ corpus with stable hash IDs</div>
+        <div class="rag-step"><span class="num">From M3</span><strong>ground-truth-data.csv</strong>~4,627 synthetic (question, course, doc_id) rows</div>
+        <div class="rag-step"><span class="num">From Vector Search</span><strong>question_text_vector index</strong>The best-performing embedding strategy</div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📥</span> Loading the Inputs</h2>
+      <div class="code-block">
+        <div class="code-label">Load corpus, ground truth, build doc_index</div>
+        <pre><span class="k">import</span> json, pandas <span class="k">as</span> pd
+
+<span class="k">with</span> <span class="f">open</span>(<span class="s">"documents-with-ids.json"</span>) <span class="k">as</span> f_in:
+    documents = json.<span class="f">load</span>(f_in)
+
+df_ground_truth = pd.<span class="f">read_csv</span>(<span class="s">"ground-truth-data.csv"</span>)
+ground_truth    = df_ground_truth.<span class="f">to_dict</span>(orient=<span class="s">"records"</span>)
+
+doc_index = {d[<span class="s">"id"</span>]: d <span class="k">for</span> d <span class="k">in</span> documents}     <span class="c"># O(1) lookup by ID</span></pre>
+      </div>
+
+      <p>The <code>doc_index</code> is the bridge between a ground-truth row and its <em>original answer</em> — given <code>row["document"]</code>, we look up <code>doc_index[row["document"]]["text"]</code>. That string is the reference for the cosine / judge comparison.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🧠</span> Re-using the Best Retriever</h2>
+      <p>From the vector-search evaluation, <code>question_text_vector</code> won decisively (HR ≈ 0.94 / MRR ≈ 0.85). Drop in the same embedding model, the same Elasticsearch KNN function, and the same per-query encoder.</p>
+
+      <div class="code-block">
+        <div class="code-label">The vector retriever from earlier modules</div>
+        <pre><span class="k">from</span> sentence_transformers <span class="k">import</span> SentenceTransformer
+
+model = <span class="cl">SentenceTransformer</span>(<span class="s">"multi-qa-MiniLM-L6-cos-v1"</span>)
+
+<span class="k">def</span> <span class="f">elastic_search_knn</span>(field, vector, course):
+    knn = {<span class="s">"field"</span>: field, <span class="s">"query_vector"</span>: vector,
+           <span class="s">"k"</span>: <span class="n">5</span>, <span class="s">"num_candidates"</span>: <span class="n">10000</span>,
+           <span class="s">"filter"</span>: {<span class="s">"term"</span>: {<span class="s">"course"</span>: course}}}
+    body = {<span class="s">"knn"</span>: knn,
+            <span class="s">"_source"</span>: [<span class="s">"text"</span>, <span class="s">"section"</span>, <span class="s">"question"</span>, <span class="s">"course"</span>, <span class="s">"id"</span>]}
+    response = es_client.<span class="f">search</span>(index=index_name, body=body)
+    <span class="k">return</span> [hit[<span class="s">"_source"</span>] <span class="k">for</span> hit <span class="k">in</span> response[<span class="s">"hits"</span>][<span class="s">"hits"</span>]]
+
+<span class="k">def</span> <span class="f">question_text_vector</span>(q):
+    v_q = model.<span class="f">encode</span>(q[<span class="s">"question"</span>])
+    <span class="k">return</span> <span class="f">elastic_search_knn</span>(<span class="s">"question_text_vector"</span>, v_q, q[<span class="s">"course"</span>])</pre>
+      </div>
+
+      <div class="callout">Module 3 evaluated the retriever; modules 1–2 built the prompt and the LLM call. <strong>Offline RAG eval just glues them back together</strong> and compares the final answer to the original answer the question was generated from.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Step 2 — A RAG Function That Takes a Dict</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔌</span> Two Small Generalisations</h2>
+      <p>The original <code>rag(query: str)</code> from module 1 needs two tweaks before it can be evaluated at scale:</p>
+
+      <ol class="algo-steps">
+        <li><strong>Take a dict, not a string.</strong> Each ground-truth row carries <code>question</code> and <code>course</code>. Passing the whole dict avoids re-deriving the course from elsewhere and matches the shape <code>question_text_vector</code> already expects.</li>
+        <li><strong>Make the LLM model a parameter.</strong> Hard-coding <code>"gpt-4o"</code> means we cannot compare configurations. Default to a strong model; allow callers to swap in cheaper ones for cost / latency sweeps.</li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">build_prompt + llm + rag — generalised</div>
+        <pre><span class="k">from</span> openai <span class="k">import</span> OpenAI
+client = <span class="cl">OpenAI</span>()
+
+<span class="k">def</span> <span class="f">build_prompt</span>(query, search_results):
+    template = <span class="s">"""You're a course teaching assistant. Answer the QUESTION based on the
+CONTEXT from the FAQ database. Use only the facts from the CONTEXT.
+
+QUESTION: {question}
+
+CONTEXT:
+{context}"""</span>.<span class="f">strip</span>()
+    context = <span class="s">""</span>
+    <span class="k">for</span> doc <span class="k">in</span> search_results:
+        context += <span class="s">f"section: {doc['section']}\nquestion: {doc['question']}\nanswer: {doc['text']}\n\n"</span>
+    <span class="k">return</span> template.<span class="f">format</span>(question=query, context=context).<span class="f">strip</span>()
+
+<span class="k">def</span> <span class="f">llm</span>(prompt, model=<span class="s">"gpt-4o"</span>):                  <span class="c"># model is now a parameter</span>
+    response = client.chat.completions.<span class="f">create</span>(
+        model=model,
+        messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: prompt}]
+    )
+    <span class="k">return</span> response.choices[<span class="n">0</span>].message.content
+
+<span class="k">def</span> <span class="f">rag</span>(query: <span class="cl">dict</span>, model=<span class="s">"gpt-4o"</span>) -&gt; <span class="cl">str</span>:        <span class="c"># dict, not string</span>
+    search_results = <span class="f">question_text_vector</span>(query)
+    prompt         = <span class="f">build_prompt</span>(query[<span class="s">"question"</span>], search_results)
+    <span class="k">return</span> <span class="f">llm</span>(prompt, model=model)</pre>
+      </div>
+
+      <p>That single <code>model=</code> parameter is what enables every comparison in the rest of these notes — GPT-4o vs GPT-3.5-turbo vs GPT-4o-mini, all driven from the same <code>rag(...)</code> call site.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Step 3 — Toy Cosine Example on One Row</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Sanity-Check Before Spending Money</h2>
+      <p>Before iterating over 4,627 rows at GPT-4o pricing, verify the cosine pipeline works on a single ground-truth row. The recipe is exactly what §5 described, just instantiated.</p>
+
+      <div class="code-block">
+        <div class="code-label">Single-row cosine demonstration</div>
+        <pre>record         = ground_truth[<span class="n">10</span>]                              <span class="c"># any row</span>
+original_doc   = doc_index[record[<span class="s">"document"</span>]]
+answer_orig    = original_doc[<span class="s">"text"</span>]                            <span class="c"># reference answer</span>
+
+answer_llm     = <span class="f">rag</span>(record)                                    <span class="c"># run the full RAG pipeline</span>
+
+v_llm          = model.<span class="f">encode</span>(answer_llm)
+v_orig         = model.<span class="f">encode</span>(answer_orig)
+
+similarity     = v_llm.<span class="f">dot</span>(v_orig)                              <span class="c"># cosine since model normalises</span>
+<span class="f">print</span>(similarity)
+<span class="c"># → 0.84 (typical for a sensible answer; 1.0 = identical, 0.0 = unrelated)</span></pre>
+      </div>
+
+      <p>Two implementation details worth knowing:</p>
+      <ul>
+        <li><code>multi-qa-MiniLM-L6-cos-v1</code> outputs <strong>L2-normalised</strong> embeddings, so the dot product equals the cosine similarity. No need for an explicit <code>cosine</code> function.</li>
+        <li>Cosine values land in <code>[-1, 1]</code> in theory, but for sensible Q&amp;A answers compared with a Q&amp;A-trained embedder, expect <code>[0.4, 0.95]</code> in practice. Anything below ~0.3 deserves a manual look.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Step 4 — Generating Answers Across the Dataset</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> The Cache-as-You-Go Pattern (Again)</h2>
+      <p>Same lesson as §9 of <a href="retrieval-evaluation.html" style="color:#a5b4fc;">retrieval-evaluation.html</a>: when a loop is going to call OpenAI 4,627 times, make it <strong>resumable</strong>. Store every result in a dict keyed by row index, and skip indices that already have a value. Define the storage dict in a <em>separate cell</em> from the loop, so a re-run of the loop doesn't wipe the cache.</p>
+
+      <div class="code-block">
+        <div class="code-label">Cell 1 — define the cache (run once)</div>
+        <pre><span class="k">from</span> tqdm.auto <span class="k">import</span> tqdm
+answers = {}                                  <span class="c"># index → {answer_llm, answer_orig, document}</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Cell 2 — the resumable generation loop</div>
+        <pre><span class="k">for</span> i, record <span class="k">in</span> <span class="f">tqdm</span>(<span class="f">enumerate</span>(ground_truth), total=<span class="f">len</span>(ground_truth)):
+    <span class="k">if</span> i <span class="k">in</span> answers:
+        <span class="k">continue</span>
+
+    answer_llm    = <span class="f">rag</span>(record)                              <span class="c"># model defaults to gpt-4o</span>
+    doc_id        = record[<span class="s">"document"</span>]
+    answer_orig   = doc_index[doc_id][<span class="s">"text"</span>]
+
+    answers[i] = {
+        <span class="s">"answer_llm"</span>:  answer_llm,
+        <span class="s">"answer_orig"</span>: answer_orig,
+        <span class="s">"document"</span>:    doc_id
+    }</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">⏱️</span> What the Sequential Run Costs</h2>
+      <ul>
+        <li><strong>Time</strong> — almost <strong>3 hours</strong> end-to-end on a single thread. The OpenAI API itself isn't slow; one-request-at-a-time discipline is.</li>
+        <li><strong>Money</strong> — about <strong>$10</strong> on GPT-4o for the full ground-truth dataset.</li>
+        <li><strong>Reliability</strong> — sequential runs survive transient errors gracefully thanks to the cache. Parallel runs that crash mid-way <em>without</em> a cache lose everything.</li>
+      </ul>
+
+      <div class="callout">Sequential generation with a per-row cache is the safe default for first runs of a new evaluation pipeline. Optimise for <strong>survival</strong> first, throughput second.</div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📦</span> Persist the Results</h2>
+      <p>Build a flat list aligned with <code>ground_truth</code>, merge in the question / course / document fields, and dump to CSV. The output rows now contain everything needed to run cosine similarity, LLM-as-a-judge, or any other answer-level metric — without ever calling the LLM again.</p>
+
+      <div class="code-block">
+        <div class="code-label">Build aligned results and save</div>
+        <pre>results_gpt4o = [<span class="k">None</span>] * <span class="f">len</span>(ground_truth)
+
+<span class="k">for</span> i, value <span class="k">in</span> answers.<span class="f">items</span>():
+    results_gpt4o[i] = value.<span class="f">copy</span>()
+    results_gpt4o[i].<span class="f">update</span>(ground_truth[i])         <span class="c"># adds question, course</span>
+
+df_gpt4o = pd.<span class="cl">DataFrame</span>(results_gpt4o)
+df_gpt4o.<span class="f">to_csv</span>(<span class="s">"data/results-gpt4o.csv"</span>, index=<span class="k">False</span>)</pre>
+      </div>
+
+      <p>The resulting frame columns: <code>answer_llm</code>, <code>answer_orig</code>, <code>document</code>, <code>question</code>, <code>course</code>. That's the canonical shape every offline-eval metric in the rest of this notebook (and the next video) will consume.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Step 5 — Speeding It Up: Threads &amp; Cheaper Models</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧵</span> Parallel Calls With ThreadPoolExecutor</h2>
+      <p>OpenAI's API is I/O-bound — most of the wall time is spent waiting for the server, not running Python. The straightforward speed-up is a thread pool that issues several requests in flight at once. Six concurrent workers is a sensible default; higher numbers risk hitting rate limits, which kills the run completely.</p>
+
+      <div class="code-block">
+        <div class="code-label">map_progress — parallel iterator with a tqdm bar</div>
+        <pre><span class="k">from</span> concurrent.futures <span class="k">import</span> ThreadPoolExecutor
+
+pool = <span class="cl">ThreadPoolExecutor</span>(max_workers=<span class="n">6</span>)
+
+<span class="k">def</span> <span class="f">map_progress</span>(pool, seq, f):
+    results = []
+    <span class="k">with</span> <span class="f">tqdm</span>(total=<span class="f">len</span>(seq)) <span class="k">as</span> progress:
+        futures = [pool.<span class="f">submit</span>(f, x) <span class="k">for</span> x <span class="k">in</span> seq]
+        <span class="k">for</span> fut <span class="k">in</span> futures:
+            results.<span class="f">append</span>(fut.<span class="f">result</span>())
+            progress.<span class="f">update</span>(<span class="n">1</span>)
+    <span class="k">return</span> results</pre>
+      </div>
+
+      <p>Refactor the per-row work into a single <code>process_record</code> that the pool can <code>submit</code>:</p>
+
+      <div class="code-block">
+        <div class="code-label">process_record — one row of the eval</div>
+        <pre><span class="k">def</span> <span class="f">process_record</span>(rec):
+    model       = <span class="s">"gpt-3.5-turbo"</span>                       <span class="c"># cheaper, faster</span>
+    answer_llm  = <span class="f">rag</span>(rec, model=model)
+    doc_id      = rec[<span class="s">"document"</span>]
+    answer_orig = doc_index[doc_id][<span class="s">"text"</span>]
+
+    <span class="k">return</span> {
+        <span class="s">"answer_llm"</span>:  answer_llm,
+        <span class="s">"answer_orig"</span>: answer_orig,
+        <span class="s">"document"</span>:    doc_id,
+        <span class="s">"question"</span>:    rec[<span class="s">"question"</span>],
+        <span class="s">"course"</span>:      rec[<span class="s">"course"</span>],
+    }
+
+results_gpt35 = <span class="f">map_progress</span>(pool, ground_truth, process_record)
+df_gpt35      = pd.<span class="cl">DataFrame</span>(results_gpt35)
+df_gpt35.<span class="f">to_csv</span>(<span class="s">"data/results-gpt35.csv"</span>, index=<span class="k">False</span>)</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📉</span> What Two Switches Buy</h2>
+      <p>Combining parallelism (six workers) with a smaller model (<code>gpt-3.5-turbo</code>) on the same 4,627-row eval:</p>
+
+      <table>
+        <thead>
+          <tr><th>Configuration</th><th>Wall time</th><th>Cost</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GPT-4o · sequential</td><td>~3 hours</td><td>~$10</td></tr>
+          <tr><td>GPT-3.5-turbo · 6 threads</td><td><strong>~6m 32s</strong></td><td><strong>~$0.79</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p>That's roughly <strong>30× faster and 12× cheaper</strong>. Whether the quality holds up is a question that <em>only the cosine and judge metrics can answer</em> — which is exactly the point of having an offline evaluator. Without it, "is GPT-3.5-turbo good enough?" is a vibe; with it, it's a number.</p>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">When to Parallelise</div>
+          <ul>
+            <li>You have a stable pipeline you've already run sequentially once</li>
+            <li>Rate limits are generous (corporate / paid tier)</li>
+            <li>The cost of re-running on failure is acceptable</li>
+            <li>You're sweeping many configurations and time matters</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">When to Stay Sequential</div>
+          <ul>
+            <li>First run of a new pipeline — surface bugs before scaling them</li>
+            <li>Tight rate limits — parallel calls just trigger throttling</li>
+            <li>Per-call cost is significant — failures lose more money</li>
+            <li>You need deterministic, debuggable execution order</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">The same <code>rag(query, model=...)</code> signature now powers <strong>three configurations</strong> (GPT-4o, GPT-3.5-turbo, and later GPT-4o-mini) on the <strong>same</strong> dataset. Three CSV files in, three rows in a comparison table out — the next video computes cosine and the LLM-as-judge metrics on top.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Step 6 — Computing Cosine Across the Dataset</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> A→Q→A' Cosine Similarity</h2>
+      <p>Each ground-truth row carries an <strong>original answer</strong> <code>A</code>; from <code>A</code> we synthetically generated a <strong>question</strong> <code>Q</code> back in module 3; through the RAG pipeline that <code>Q</code> produced a <strong>regenerated answer</strong> <code>A'</code>. The metric computes <code>cosine(A, A')</code> per row and aggregates across the dataset. Loosely, "the closer A' lands to A in embedding space, the better the system answered its own paraphrased question."</p>
+
+      <div class="rag-flow" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="rag-step"><span class="num">A</span><strong>Original answer</strong><code>doc_index[doc_id]["text"]</code></div>
+        <div class="rag-step"><span class="num">Q</span><strong>Synthetic question</strong>From the ground-truth row</div>
+        <div class="rag-step"><span class="num">A'</span><strong>RAG-generated answer</strong>From <code>rag(record, model=...)</code></div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔁</span> Loading Saved Results &amp; Computing Per Row</h2>
+      <p>If you're picking up from a fresh kernel, load the CSVs you wrote in §10 / §11 and convert them back to record dicts. Each metric is one function applied to each row; <code>tqdm</code> shows progress.</p>
+
+      <div class="code-block">
+        <div class="code-label">Reload results & compute cosine row-by-row</div>
+        <pre><span class="c"># continuing in same notebook → df_gpt4o is already in memory</span>
+<span class="c"># fresh notebook → df_gpt4o = pd.read_csv("data/results-gpt4o.csv")</span>
+
+results_gpt4o = df_gpt4o.<span class="f">to_dict</span>(orient=<span class="s">"records"</span>)
+
+<span class="k">def</span> <span class="f">compute_similarity</span>(record):
+    answer_orig = record[<span class="s">"answer_orig"</span>]
+    answer_llm  = record[<span class="s">"answer_llm"</span>]
+    v_llm       = model.<span class="f">encode</span>(answer_llm)
+    v_orig      = model.<span class="f">encode</span>(answer_orig)
+    <span class="k">return</span> v_llm.<span class="f">dot</span>(v_orig)               <span class="c"># L2-normalised → cosine</span>
+
+similarity = []
+<span class="k">for</span> record <span class="k">in</span> <span class="f">tqdm</span>(results_gpt4o):
+    similarity.<span class="f">append</span>(<span class="f">compute_similarity</span>(record))
+
+df_gpt4o[<span class="s">"cosine"</span>] = similarity        <span class="c"># attach metric column</span>
+df_gpt4o[<span class="s">"cosine"</span>].<span class="f">describe</span>()</pre>
+      </div>
+
+      <p>The full sweep takes roughly <strong>5 minutes</strong> — pure CPU work on the embedder, no API calls. Repeat the same three lines for the other two CSVs, naming the columns <code>similarity_35</code> and <code>similarity_4o_mini</code>.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">⚡</span> A Speed-Up You Can Do Later</h2>
+      <p>Each <em>original answer</em> is repeated several times in the ground truth — module 3 generated <strong>five questions per FAQ entry</strong>, so <code>encode(answer_orig)</code> recomputes the same vector five times. Pre-computing one embedding per unique <code>doc_id</code> cuts work by ~5×:</p>
+
+      <div class="code-block">
+        <div class="code-label">Optional optimisation — cache encodings of original answers</div>
+        <pre>orig_vecs = {                                        <span class="c"># compute once per unique doc</span>
+    doc_id: model.<span class="f">encode</span>(d[<span class="s">"text"</span>])
+    <span class="k">for</span> doc_id, d <span class="k">in</span> doc_index.<span class="f">items</span>()
+}
+
+<span class="k">def</span> <span class="f">compute_similarity_fast</span>(record):
+    v_llm  = model.<span class="f">encode</span>(record[<span class="s">"answer_llm"</span>])
+    v_orig = orig_vecs[record[<span class="s">"document"</span>]]
+    <span class="k">return</span> v_llm.<span class="f">dot</span>(v_orig)</pre>
+      </div>
+
+      <p>Skipped in the live demo for clarity, but worth knowing exists when the dataset gets larger.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📊</span> Reading the <code>describe()</code></h2>
+      <p>For GPT-4o on this 1,830-row ground-truth set:</p>
+
+      <table>
+        <thead><tr><th>Statistic</th><th>Value</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><code>count</code></td><td>1830</td><td>One cosine per ground-truth row</td></tr>
+          <tr><td><code>mean</code></td><td>0.679</td><td>Headline metric: averaged answer-level similarity</td></tr>
+          <tr><td><code>50%</code> (median)</td><td>0.735</td><td>Often more informative than mean — robust to bad pairs</td></tr>
+          <tr><td><code>std</code></td><td>0.218</td><td>Spread of quality across rows</td></tr>
+          <tr><td><code>min</code></td><td>−0.153</td><td>Yes, <em>negative</em> — the bottom tail of broken pairs</td></tr>
+          <tr><td><code>max</code></td><td>0.995</td><td>Near-identical answers (bounded by 1.0)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">Negative cosine values aren't a bug. They mark <strong>genuinely bad ground-truth pairs</strong> — usually a question whose synthetic phrasing made it ambiguous, or an original answer the LLM no longer recognises as relevant. The right reaction is to inspect a sample, not to clip the scores.</div>
+
+      <p>For each model the recipe is identical — three calls produce three <code>describe()</code> outputs that go straight into the comparison in §14.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · Step 7 — Visualising the Distribution</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> Why Plot, Not Just Average</h2>
+      <p>A single mean hides the tails. Two systems can have identical means but very different distributions — one with a heavy left tail of catastrophic failures, another with steady mid-quality answers. Overlaying KDE plots makes that obvious in seconds.</p>
+
+      <div class="code-block">
+        <div class="code-label">Three-way KDE overlay with seaborn</div>
+        <pre><span class="k">import</span> seaborn <span class="k">as</span> sns
+<span class="k">import</span> matplotlib.pyplot <span class="k">as</span> plt
+
+sns.<span class="f">distplot</span>(df_gpt4o[<span class="s">"cosine"</span>],      label=<span class="s">"4o"</span>)
+sns.<span class="f">distplot</span>(df_gpt35[<span class="s">"cosine"</span>],      label=<span class="s">"3.5"</span>)
+sns.<span class="f">distplot</span>(df_gpt4o_mini[<span class="s">"cosine"</span>], label=<span class="s">"4o-mini"</span>)
+
+plt.<span class="f">title</span>(<span class="s">"RAG LLM performance — A→Q→A' cosine"</span>)
+plt.<span class="f">legend</span>()
+plt.<span class="f">show</span>()</pre>
+      </div>
+
+      <p>What to look at on the plot:</p>
+      <ul>
+        <li><strong>Mode location</strong> — where most of the answers cluster. A higher mode means most rows are good.</li>
+        <li><strong>Right shoulder</strong> — the share of near-perfect answers (cosine &gt; 0.85). Heavier is better.</li>
+        <li><strong>Left tail</strong> — the share of bad answers (cosine &lt; 0.4). Even one model with a thicker left tail is risky in production, even if its mean looks fine.</li>
+        <li><strong>Overlap</strong> — when two distributions overlap heavily, the practical difference between them is small. Use cost / latency as the tie-breaker.</li>
+      </ul>
+
+      <p><code>sns.distplot</code> is deprecated in modern seaborn; for new code prefer <code>sns.kdeplot(..., fill=True)</code> or <code>sns.histplot(..., kde=True, stat="density")</code>. The interpretation is identical.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Step 8 — Three-Model Cosine Comparison</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🥇</span> The Headline Numbers</h2>
+      <p>Same ground truth (n = 1,830), same retriever, same prompt — only the answer-generation LLM changes:</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Mean cosine</th>
+            <th>Median</th>
+            <th>Std</th>
+            <th>Min</th>
+            <th>Max</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>gpt-4o</strong></td><td>0.679</td><td>0.735</td><td>0.218</td><td>−0.153</td><td>0.995</td></tr>
+          <tr><td><strong>gpt-3.5-turbo</strong></td><td>0.658</td><td>0.715</td><td>0.226</td><td>−0.169</td><td>1.000</td></tr>
+          <tr><td><strong>gpt-4o-mini</strong></td><td><strong>0.680</strong></td><td>0.734</td><td>0.216</td><td>−0.142</td><td>0.983</td></tr>
+        </tbody>
+      </table>
+
+      <p>What the table actually says:</p>
+      <ul>
+        <li><strong>GPT-4o vs GPT-4o-mini</strong> — the means and medians match in the third decimal. Practically <strong>identical quality</strong>.</li>
+        <li><strong>GPT-3.5-turbo vs GPT-4o</strong> — about <strong>2 percentage points</strong> worse on both mean and median. Distributions overlap heavily; for many use-cases the gap is acceptable.</li>
+        <li><strong>std and the tails</strong> — all three have similar spread; none has a pathologically heavier left tail than the others.</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">💸</span> Cost, Speed &amp; Operational Cost</h2>
+      <p>Quality alone doesn't pick a model in production. Add the budget axes:</p>
+
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Wall time</th><th>Cost</th><th>Threading</th><th>Rate-limit feel</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>gpt-4o</td><td>~3 hours</td><td>~$10</td><td>Sequential (1 thread)</td><td>Strict</td></tr>
+          <tr><td>gpt-3.5-turbo</td><td>~6m 32s</td><td>~$0.79</td><td>6 threads</td><td>Generous</td></tr>
+          <tr><td>gpt-4o-mini</td><td>~1 hour</td><td><strong>~$0.28</strong></td><td>Sequential (rate-limited)</td><td>Strict on free / personal tier</td></tr>
+        </tbody>
+      </table>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎯</span> The Recommendation</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Why GPT-4o-mini Wins Here</div>
+          <ul>
+            <li>Cosine quality matches GPT-4o (mean 0.680 vs 0.679, median essentially equal)</li>
+            <li><strong>~36× cheaper</strong> than GPT-4o ($0.28 vs $10) and cheaper than GPT-3.5-turbo too</li>
+            <li>Distribution overlay shows it sitting on top of the GPT-4o curve</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">The One Caveat</div>
+          <ul>
+            <li>Tighter rate limits than GPT-3.5-turbo on personal accounts → can't naively crank <code>max_workers=6</code></li>
+            <li>Forced single-threaded run → 1 hour wall time vs 6 minutes for GPT-3.5-turbo</li>
+            <li>Corporate / paid keys typically have higher limits, removing the constraint</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">Without the cosine harness this entire decision would be a vibe call. With it, "ship GPT-4o-mini" becomes <strong>three numbers and a distribution plot</strong> — exactly the kind of thing offline evaluation is for.</div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🧪</span> Beyond Picking a Model</h2>
+      <p>The same harness answers other configuration questions with no extra plumbing:</p>
+      <ul>
+        <li><strong>Prompt changes</strong> — tweak <code>build_prompt</code>, re-run on the ground truth, compare cosine distributions before and after.</li>
+        <li><strong>Retriever swaps</strong> — replace <code>question_text_vector</code> with hybrid search or a different embedder; the rest of the pipeline is unchanged.</li>
+        <li><strong>Temperature / decoding params</strong> — pass through <code>llm()</code> the same way as the model parameter and sweep.</li>
+        <li><strong>Context-window experiments</strong> — change top-<code>k</code>, change context formatting, see whether answer-level quality moves.</li>
+      </ul>
+
+      <p>Cosine alone won't catch every failure mode — semantically different but factually wrong answers can still score high. That's why the next video adds <strong>LLM-as-a-judge</strong> on top of this same generated dataset. Two complementary metrics on a fixed corpus is the standard offline-eval pattern.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>15 · Step 9 — LLM-as-a-Judge: Two Prompt Variants</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Why a Second Metric</h2>
+      <p>Cosine similarity grades by <em>semantic distance</em>. Two answers can be cosine-close because they share vocabulary, even when one is factually wrong. <span class="term">LLM-as-a-judge</span> grades by <em>relevance</em> — does the generated answer actually solve the question? — and the answer is a small string label, not a continuous score, which makes failures easy to inspect by hand.</p>
+
+      <p>The same <code>(answer_orig, question, answer_llm)</code> rows from §10 / §11 feed straight into this new metric. No new dataset, no new retrieval — just a new prompt around the same data.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔀</span> Two Prompts, Two Use-Cases</h2>
+      <p>Two situations call for two judging prompts:</p>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Prompt 1 — A→Q→A' (with reference)</div>
+          <ul>
+            <li>Inputs: <strong>original answer</strong>, generated question, generated answer</li>
+            <li>Use-case: offline evaluation only — needs the gold answer</li>
+            <li>Stronger signal — the judge can directly compare two answers</li>
+            <li>The "did we recover the right thing?" question</li>
+          </ul>
+        </div>
+        <div class="reward-item good">
+          <div class="label">Prompt 2 — Q→A' (no reference)</div>
+          <ul>
+            <li>Inputs: <strong>only</strong> the question and generated answer</li>
+            <li>Use-case: works <strong>online</strong> too — there is no original answer for real-user traffic</li>
+            <li>Weaker (no reference) but always available</li>
+            <li>The "did we answer this user's question?" question</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">Prompt 1 is for the offline harness; <strong>Prompt 2 is the one that ports to production</strong> for real-time monitoring of generated answers — the very signal Grafana / Postgres dashboards in the next module will surface.</div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📝</span> Both Prompts Verbatim</h2>
+      <p>The course author asked GPT to write these prompts (meta-prompting), then iterated until the output was strictly parseable JSON. Three properties of a good judging prompt are visible here: a clear role, a fixed label vocabulary, and a strict output schema.</p>
+
+      <div class="code-block">
+        <div class="code-label">prompt1_template — with reference answer</div>
+        <pre>prompt1_template = <span class="s">"""
+You are an expert evaluator for a Retrieval-Augmented Generation (RAG) system.
+Your task is to analyze the relevance of the generated answer compared to the original answer provided.
+Based on the relevance and similarity of the generated answer to the original answer, you will classify
+it as "NON_RELEVANT", "PARTLY_RELEVANT", or "RELEVANT".
+
+Here is the data for evaluation:
+
+Original Answer: {answer_orig}
+Generated Question: {question}
+Generated Answer: {answer_llm}
+
+Please analyze the content and context of the generated answer in relation to the original
+answer and provide your evaluation in parsable JSON without using code blocks:
+
+{{
+  "Relevance": "NON_RELEVANT" | "PARTLY_RELEVANT" | "RELEVANT",
+  "Explanation": "[Provide a brief explanation for your evaluation]"
+}}
+"""</span>.<span class="f">strip</span>()</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">prompt2_template — no reference, online-friendly</div>
+        <pre>prompt2_template = <span class="s">"""
+You are an expert evaluator for a Retrieval-Augmented Generation (RAG) system.
+Your task is to analyze the relevance of the generated answer to the given question.
+Based on the relevance of the generated answer, you will classify it
+as "NON_RELEVANT", "PARTLY_RELEVANT", or "RELEVANT".
+
+Here is the data for evaluation:
+
+Question: {question}
+Generated Answer: {answer_llm}
+
+Please analyze the content and context of the generated answer in relation to the question
+and provide your evaluation in parsable JSON without using code blocks:
+
+{{
+  "Relevance": "NON_RELEVANT" | "PARTLY_RELEVANT" | "RELEVANT",
+  "Explanation": "[Provide a brief explanation for your evaluation]"
+}}
+"""</span>.<span class="f">strip</span>()</pre>
+      </div>
+
+      <p>The double curly braces (<code>{{</code> and <code>}}</code>) escape the Python <code>.format(...)</code> placeholders so the literal JSON braces survive prompt assembly. The single-brace fields (<code>{answer_orig}</code>, <code>{question}</code>, <code>{answer_llm}</code>) match the column names in the results CSV — every record dict can <code>**record</code> straight into <code>.format(**record)</code>.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>16 · Step 10 — Sampling, Building Prompts &amp; JSON Discipline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Sample, Don't Sweep</h2>
+      <p>Cosine on every row is cheap (CPU only). LLM-as-judge on every row is <em>another</em> 1,830 LLM calls — for a metric that only needs a representative sample to be informative. <strong>n = 150 with a fixed random seed</strong> gives reproducible numbers fast enough to iterate on the prompt itself.</p>
+
+      <div class="code-block">
+        <div class="code-label">Reproducible sample → list of dicts</div>
+        <pre>df_sample = df_gpt4o_mini.<span class="f">sample</span>(n=<span class="n">150</span>, random_state=<span class="n">1</span>)   <span class="c"># seed → reproducible</span>
+samples   = df_sample.<span class="f">to_dict</span>(orient=<span class="s">"records"</span>)         <span class="c"># dicts that .format(**record) into the prompt</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔁</span> The Judging Loop</h2>
+      <p>Same shape as every other LLM loop in this notebook — build prompt, call <code>llm()</code>, append the raw string. JSON parsing happens in a <em>second</em> pass so a single bad row doesn't lose the whole batch.</p>
+
+      <div class="code-block">
+        <div class="code-label">Run prompt 1 across the sample</div>
+        <pre>evaluations = []
+<span class="k">for</span> record <span class="k">in</span> <span class="f">tqdm</span>(samples):
+    prompt     = prompt1_template.<span class="f">format</span>(**record)
+    evaluation = <span class="f">llm</span>(prompt, model=<span class="s">"gpt-4o-mini"</span>)
+    evaluations.<span class="f">append</span>(evaluation)                       <span class="c"># raw string for now</span></pre>
+      </div>
+
+      <p>For 150 rows this finishes in roughly <strong>3 minutes</strong> on GPT-4o-mini.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🧱</span> The JSON Block-Tag Bug</h2>
+      <p>First-pass parsing fails on a handful of rows because the model wraps its JSON in a Markdown code fence:</p>
+
+      <pre style="background:#151823;border:1px solid #2d3148;border-radius:8px;padding:0.9rem 1.1rem;color:#cbd5e1;font-size:0.85rem;line-height:1.55;overflow-x:auto;">```json
+{
+  "Relevance": "RELEVANT",
+  "Explanation": "..."
+}
+```</pre>
+
+      <p>Same failure mode as ground-truth generation in module 3. Two fixes, applied together:</p>
+
+      <ol class="algo-steps">
+        <li><strong>Patch the prompt</strong> — add <code>"in parsable JSON without using code blocks"</code> directly to the instruction line. This is what the verbatim prompts in §15 already include.</li>
+        <li><strong>Track failures by index</strong> — when a row still slips through, fix that single string in place rather than re-running the whole batch. The notebook used a manual <code>answers[i] = "..."</code> patch and re-parsed.</li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">Two-pass parsing — survive single-row failures</div>
+        <pre><span class="k">import</span> json
+
+json_evaluations = []
+<span class="k">for</span> i, raw <span class="k">in</span> <span class="f">enumerate</span>(evaluations):
+    <span class="k">try</span>:
+        json_evaluations.<span class="f">append</span>(json.<span class="f">loads</span>(raw))
+    <span class="k">except</span> json.<span class="cl">JSONDecodeError</span> <span class="k">as</span> e:
+        <span class="f">print</span>(<span class="s">f"row {i}: {e}"</span>)            <span class="c"># inspect, fix manually, retry</span></pre>
+      </div>
+
+      <div class="callout">Whenever an LLM is supposed to emit structured output, run prompts on a <strong>sample first</strong>, parse, and only then scale up. Catching format bugs at row 5 instead of row 1,830 saves both money and the will to live.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>17 · Step 11 — Prompt 1 Results &amp; Inspecting Failures</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Aggregate the Labels</h2>
+      <p>With <code>json_evaluations</code> as a list of <code>{Relevance, Explanation}</code> dicts, summarisation is one <code>value_counts()</code> away.</p>
+
+      <div class="code-block">
+        <div class="code-label">Build the evaluations frame & count categories</div>
+        <pre>df_evaluations = pd.<span class="cl">DataFrame</span>(json_evaluations)
+df_evaluations.Relevance.<span class="f">value_counts</span>()</pre>
+      </div>
+
+      <table>
+        <thead><tr><th>Relevance</th><th>Count</th><th>Share</th></tr></thead>
+        <tbody>
+          <tr><td><strong>RELEVANT</strong></td><td>124</td><td>~83%</td></tr>
+          <tr><td>PARTLY_RELEVANT</td><td>16</td><td>~11%</td></tr>
+          <tr><td><strong>NON_RELEVANT</strong></td><td>10</td><td>~7%</td></tr>
+        </tbody>
+      </table>
+
+      <p>For GPT-4o-mini on a 150-row sample of the ground truth: roughly <strong>83% relevant, 11% partly, 7% non-relevant</strong>. That ~7% non-relevant slice is where the value of this metric lives.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔍</span> Inspecting What Went Wrong</h2>
+      <p>Filter the frame to the failures and read the <code>Explanation</code> field. Each one is a free-text diagnostic from the judge — much easier to act on than a low cosine score.</p>
+
+      <div class="code-block">
+        <div class="code-label">Pull the failure rows for inspection</div>
+        <pre>df_evaluations[df_evaluations.Relevance == <span class="s">"NON_RELEVANT"</span>]</pre>
+      </div>
+
+      <p>Sample explanations from the run (paraphrased):</p>
+      <ul>
+        <li><em>"The generated answer discusses a pip version error related to scikit-learn, which is not directly connected to the original answer focused on Docker build error."</em></li>
+        <li><em>"The generated answer does not address the specific question..."</em></li>
+        <li><em>"The generated answer incorrectly states that..."</em></li>
+        <li><em>"The generated answer addresses a different issue..."</em></li>
+      </ul>
+
+      <p>Three failure-mode patterns recur across most NON_RELEVANT rows:</p>
+      <ol class="algo-steps">
+        <li><strong>Retrieval miss</strong> — the right document wasn't in the top-k, so the LLM answered from an unrelated context. Fix: revisit retriever, top-k, hybrid weights.</li>
+        <li><strong>Prompt drift</strong> — the LLM took a tangentially related context and ran with it. Fix: tighten the prompt, add "answer ONLY using the context" guards.</li>
+        <li><strong>Question ambiguity</strong> — the synthetic question itself was bad. Fix: improve the ground-truth-generation prompt; consider filtering low-quality rows.</li>
+      </ol>
+
+      <div class="callout">Cosine returns a <strong>number</strong>; LLM-as-a-judge returns a <strong>diagnostic</strong>. The two metrics complement each other — cosine for tracking trend lines across runs, judge for actually <em>understanding</em> what's broken.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>18 · Step 12 — Prompt 2: The Online-Friendly Judge</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌐</span> Same Loop, Reference Removed</h2>
+      <p>Prompt 2 is identical mechanically — the only change is the prompt template (no <code>answer_orig</code>) and the output frame name. Crucially, this is the version that can run in production: real users supply only the question; there is no gold answer to compare against.</p>
+
+      <div class="code-block">
+        <div class="code-label">Run prompt 2 across the same sample</div>
+        <pre>evaluations_2 = []
+<span class="k">for</span> record <span class="k">in</span> <span class="f">tqdm</span>(samples):
+    prompt     = prompt2_template.<span class="f">format</span>(**record)
+    evaluation = <span class="f">llm</span>(prompt, model=<span class="s">"gpt-4o-mini"</span>)
+    evaluations_2.<span class="f">append</span>(evaluation)
+
+json_evaluations_2 = [json.<span class="f">loads</span>(s) <span class="k">for</span> s <span class="k">in</span> evaluations_2]
+df_evaluations_2   = pd.<span class="cl">DataFrame</span>(json_evaluations_2)
+df_evaluations_2.Relevance.<span class="f">value_counts</span>()</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📉</span> Prompt 1 vs Prompt 2 — Same Sample</h2>
+      <p>Without a reference answer, the judge is generally <strong>more permissive</strong> — it can only score "does this answer the question?" not "does this match the reference?" On the same 150-row sample:</p>
+
+      <table>
+        <thead>
+          <tr><th>Variant</th><th>Inputs to judge</th><th>NON_RELEVANT count</th><th>Online-usable?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Prompt 1 (A→Q→A')</td><td>question + answer_orig + answer_llm</td><td>10 / 150</td><td>No — needs gold answer</td></tr>
+          <tr><td>Prompt 2 (Q→A')</td><td>question + answer_llm</td><td>3 / 150</td><td><strong>Yes</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p>The fact that prompt 2 still flags some answers as NON_RELEVANT — even with no reference to compare against — is the punchline: a no-reference judge is <em>useful enough</em> to detect off-topic answers in production traffic. It won't catch every failure (some plausibly-worded but wrong answers slip through), but it surfaces the worst rows for human review.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">💾</span> Persist Both Frames</h2>
+      <div class="code-block">
+        <div class="code-label">Save the evaluation results</div>
+        <pre>df_evaluations.<span class="f">to_csv</span>(<span class="s">"data/evaluations-aqa.csv"</span>, index=<span class="k">False</span>)   <span class="c"># prompt 1</span>
+df_evaluations_2.<span class="f">to_csv</span>(<span class="s">"data/evaluations-qa.csv"</span>,  index=<span class="k">False</span>)   <span class="c"># prompt 2</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🪜</span> What This Sets Up Next</h2>
+      <p>The non-relevant rows from prompt 2 are exactly the events a production system wants to catch <strong>online</strong>:</p>
+      <ul>
+        <li>Wire prompt 2 into the live RAG service — rate every generated answer at request time, asynchronously.</li>
+        <li>Log <code>(question, answer_llm, Relevance, Explanation)</code> tuples to <strong>Postgres</strong>.</li>
+        <li>Surface the <code>NON_RELEVANT</code> rate (and recent failure explanations) on a <strong>Grafana</strong> dashboard.</li>
+        <li>Trigger alerts when the failure rate crosses a threshold — your retriever or your prompt has just regressed.</li>
+      </ul>
+
+      <div class="callout">The same prompt that grades the offline sample becomes the online quality monitor — <strong>one judge, two contexts</strong>. That's why the no-reference variant exists at all.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>19 · Online Evaluation — A Quick Tour</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📡</span> What Real Users Tell You</h2>
+      <p>Once the system is deployed, users become the evaluation set. The patterns:</p>
+
+      <div class="rag-flow" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="rag-step"><span class="num">A/B Test</span><strong>Compare variants</strong>Split traffic, measure business metrics</div>
+        <div class="rag-step"><span class="num">Feedback</span><strong>Thumbs up/down</strong>Direct quality signal from users</div>
+        <div class="rag-step"><span class="num">Monitoring</span><strong>System health</strong>Latency, errors, refusal rate</div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔬</span> A/B Tests</h2>
+      <p>Split traffic between the current system (control) and a new variant (treatment). Measure <strong>business metrics</strong> downstream — task completion rate, session length, conversion, retention — not the offline metrics. Statistically rigorous, slow to read, the gold standard for "did this change actually help?".</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">👍</span> User Feedback (Thumbs / Stars)</h2>
+      <p>The lightest-weight online signal. Add a <code>thumbs-up</code> / <code>thumbs-down</code> next to every generated answer. Aggregate over time, slice by query type, and you get a per-cohort quality trend. Easy to wire up; biased (only some users click), but directionally informative.</p>
+
+      <p>Implementing user feedback is <strong>a recurring topic in LLM-Zoomcamp</strong> — it's the simplest thing that gives a continuous quality signal in production.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📊</span> Monitoring</h2>
+      <p>Continuous observation of system health. Two layers:</p>
+      <ul>
+        <li><strong>Infrastructure layer</strong> — CPU, memory, request latency, error rate, queue depth. Standard SRE concerns; existing tooling (Prometheus, Datadog, Grafana) just works.</li>
+        <li><strong>Quality layer</strong> — LLM-specific. Average answer length, refusal rate, token usage per query, retrieval hit-rate on production traffic, user-feedback rate. These need custom dashboards.</li>
+      </ul>
+
+      <div class="callout">Monitoring and online evaluation <strong>blur into each other</strong> in production — both watch live traffic, both compute metrics over time. The line is fuzzy on purpose: "is the system healthy?" and "is the system answering well?" should be visible on the same dashboard.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>20 · The Plan</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗺️</span> What Comes Next</h2>
+      <ol class="algo-steps">
+        <li><strong>Generate answers across the ground truth</strong> — run <code>rag(...)</code> on every row for several model configurations, save aligned CSVs. <em>✓ done in §7 – §11 for GPT-4o, GPT-3.5-turbo, GPT-4o-mini.</em></li>
+        <li><strong>Compute cosine similarity</strong> — embed each <code>(answer_orig, answer_llm)</code> pair, take the dot product, summarise with a distribution and a mean, compare configurations. <em>✓ done in §12 – §14; GPT-4o-mini wins on price-quality.</em></li>
+        <li><strong>LLM-as-a-judge</strong> — design the judging prompt (with and without reference), run, validate against a manual sample. <em>✓ done in §15 – §18; ~83% RELEVANT on prompt 1, prompt 2 ready for online use.</em></li>
+        <li><strong>Online — user feedback</strong> — wire thumbs-up / thumbs-down into the RAG app; aggregate and dashboard the signal.</li>
+        <li><strong>Online — monitoring</strong> — system + quality metrics, dashboards, alerts on the dimensions that matter.</li>
+        <li><strong>Online — A/B testing patterns</strong> — out of scope for this course but worth knowing the shape; pointers in the resources below.</li>
+      </ol>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>21 · Key Takeaways</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> What to Remember</h2>
+      <ul>
+        <li>Retrieval evaluation (HR, MRR) measures only the search step. The full RAG system needs <strong>end-to-end evaluation</strong> covering prompt quality, LLM choice, and final answer quality.</li>
+        <li>Every production system splits evaluation into <strong>offline</strong> (before deployment, on a fixed dataset) and <strong>online</strong> (after deployment, on real users). Neither replaces the other.</li>
+        <li>Offline evaluation is reproducible and cheap; online evaluation is realistic but slow. Ship the offline winner, then <em>confirm</em> online.</li>
+        <li>Reuse the synthetic ground truth from module 3 — it provides <code>(question, original_answer)</code> pairs for free.</li>
+        <li><strong>Cosine similarity</strong> between original and generated answers is the deterministic, cheap, first-pass offline metric.</li>
+        <li>Cosine fails on factuality, tone, and helpfulness — it sees only semantic alignment.</li>
+        <li><strong>LLM-as-a-judge</strong> covers what cosine can't, in two variants — with reference (closer to ground truth) and without (closer to production usage).</li>
+        <li>Pin the judge model + prompt + sample size in eval logs. Treat the judge as part of the metric.</li>
+        <li>Online tools — A/B testing, user feedback (thumbs), monitoring dashboards — answer different questions: "is variant B better?", "did users like this?", "is it healthy?".</li>
+        <li>Monitoring spans <strong>infrastructure</strong> (latency, errors) and <strong>quality</strong> (refusal rate, feedback rate, answer length). Both belong on the same dashboard.</li>
+        <li>Implementation in upcoming videos: cosine similarity, then LLM-as-a-judge, then user-feedback wiring, then monitoring.</li>
+        <li>Offline RAG eval reuses everything from module 3 — same corpus, same ground truth, same retriever. Only the answer-comparison step is new.</li>
+        <li>Generalise the RAG function to take a <strong>dict</strong> (<code>question</code> + <code>course</code>) and a <strong>model</strong> parameter — both are needed to run multiple configurations through the same harness.</li>
+        <li>Always sanity-check the cosine pipeline on a <strong>single row</strong> before unleashing it on thousands at GPT-4o pricing.</li>
+        <li>Cache LLM outputs in a dict keyed by row index, defined in a separate cell. Loops crash; you should not lose 2 hours of API calls when they do.</li>
+        <li>For Q&amp;A-trained, L2-normalised embedders (e.g. <code>multi-qa-MiniLM-L6-cos-v1</code>), the <strong>dot product equals cosine similarity</strong> — no need for a wrapper function.</li>
+        <li>First run sequentially, then parallelise. <code>ThreadPoolExecutor</code> with 6 workers turns ~3 hours into ~6 minutes for I/O-bound LLM calls — but only after the pipeline is debugged.</li>
+        <li>The model parameter on <code>rag(...)</code> turns "is GPT-3.5-turbo good enough?" from a vibe into a measurable comparison: GPT-3.5-turbo is <strong>~30× faster and ~12× cheaper</strong> than GPT-4o on this benchmark; quality is what you measure next.</li>
+        <li>Persist results as flat CSVs with columns <code>answer_llm, answer_orig, document, question, course</code>. Every downstream metric (cosine, judge, custom) reads the same shape.</li>
+        <li><strong>A→Q→A' cosine</strong> — embed both answers, dot-product, attach as a <code>cosine</code> column, run <code>describe()</code>. Five minutes of CPU, no API calls.</li>
+        <li>Negative cosine values are not bugs — they flag genuinely bad ground-truth pairs (ambiguous synthetic question or off-topic reference). Sample and inspect, don't clip.</li>
+        <li>Each original answer repeats five times in the ground truth (5 questions per FAQ entry). Pre-computing one embedding per <code>doc_id</code> gives ~5× speed-up when datasets get larger.</li>
+        <li>Always overlay the distributions, not just the means — two systems with the same mean can have very different left tails.</li>
+        <li>On this dataset, <strong>GPT-4o-mini matches GPT-4o quality</strong> (mean 0.680 vs 0.679, median essentially equal) at <strong>~36× lower cost</strong>. GPT-3.5-turbo is ~2 percentage points behind on both stats.</li>
+        <li>Cosine alone won't catch <em>fluent-but-wrong</em> answers — that's what LLM-as-a-judge in the next video covers.</li>
+        <li><strong>Two judging prompts</strong>: prompt 1 (A→Q→A') uses the original answer as a reference and is offline-only; prompt 2 (Q→A') has no reference and can run online on real-user traffic.</li>
+        <li>Sample <strong>n = 150 with a fixed seed</strong> for the judge — full sweeps are unnecessary for a metric whose value is a label, not a score.</li>
+        <li>LLMs love wrapping JSON in Markdown code fences. Add <em>"in parsable JSON without using code blocks"</em> to the prompt and parse in a second pass so single-row failures don't take the batch down.</li>
+        <li>On GPT-4o-mini answers: ~83% RELEVANT, ~11% PARTLY_RELEVANT, ~7% NON_RELEVANT. The 7% slice is where the metric pays for itself — each row comes with a human-readable diagnostic.</li>
+        <li>Three recurring failure modes the explanations expose: <strong>retrieval misses</strong>, <strong>prompt drift</strong>, and <strong>question ambiguity</strong>. Each maps to a different fix.</li>
+        <li>Cosine returns a number; the judge returns a diagnostic. Use cosine for trend lines across runs, judge for understanding what's broken.</li>
+        <li>The no-reference judge (prompt 2) is what feeds the future <strong>Grafana / Postgres</strong> production dashboard — same prompt, two contexts.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>22 · Resources</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Further Reading</h2>
+      <ul>
+        <li><a href="retrieval-evaluation.html" style="color:#a5b4fc;">Retrieval Evaluation</a> — module 3 prerequisite covering HR / MRR, ground-truth generation, and the evaluator harness reused here.</li>
+        <li><a href="rag-continued.html" style="color:#a5b4fc;">RAG Continued</a> — the modular <code>rag(query)</code> function whose generation step is now under the microscope.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp" style="color:#a5b4fc;">DataTalksClub · llm-zoomcamp</a> — upstream course with the offline / online evaluation notebooks.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/03-evaluation/rag_evaluation/offline-rag-evaluation.ipynb" style="color:#a5b4fc;">offline-rag-evaluation.ipynb</a> — the source notebook for §7 – §11 (setup, dict-shaped RAG, generation loops, threaded speed-up).</li>
+        <li><a href="https://docs.python.org/3/library/concurrent.futures.html" style="color:#a5b4fc;">Python · <code>concurrent.futures</code></a> — official reference for the <code>ThreadPoolExecutor</code> pattern in §11.</li>
+        <li><a href="https://platform.openai.com/docs/guides/rate-limits" style="color:#a5b4fc;">OpenAI · rate limits</a> — the constraint that decides how aggressive your <code>max_workers</code> can be.</li>
+        <li><a href="https://seaborn.pydata.org/generated/seaborn.kdeplot.html" style="color:#a5b4fc;">seaborn · <code>kdeplot</code></a> — modern replacement for the deprecated <code>distplot</code> used in the live demo.</li>
+        <li><a href="https://www.sbert.net/docs/pretrained_models.html" style="color:#a5b4fc;">SBERT · pretrained models</a> — context for why <code>multi-qa-MiniLM-L6-cos-v1</code> outputs L2-normalised vectors (so dot product = cosine).</li>
+        <li><a href="https://arxiv.org/abs/2306.05685" style="color:#a5b4fc;">Zheng et al. · <em>Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</em> (2023)</a> — the reference paper on LLM-based evaluation, including bias mitigation and reproducibility.</li>
+        <li><a href="https://huggingface.co/learn/cookbook/en/llm_judge" style="color:#a5b4fc;">Hugging Face · Cookbook · LLM-as-a-Judge</a> — practical recipes for designing judging prompts, running them, and validating against human labels.</li>
+        <li><a href="https://platform.openai.com/docs/guides/structured-outputs" style="color:#a5b4fc;">OpenAI · Structured Outputs</a> — modern alternative to "please return parsable JSON" prompt-engineering: schema-enforced JSON output that eliminates the code-block escape bug entirely.</li>
+        <li><a href="https://arxiv.org/abs/2306.05685" style="color:#a5b4fc;">Judging LLM-as-a-Judge with MT-Bench (Zheng et al., 2023)</a> — foundational paper on using LLMs as quality judges, with bias analysis.</li>
+        <li><a href="https://arxiv.org/abs/2305.13711" style="color:#a5b4fc;">G-Eval: NLG Evaluation Using GPT-4 with Better Human Alignment</a> — another widely-cited LLM-as-judge methodology.</li>
+        <li><a href="https://docs.ragas.io/" style="color:#a5b4fc;">Ragas</a> — popular open-source framework for RAG-specific offline metrics (faithfulness, answer relevance, context precision).</li>
+        <li><a href="https://github.com/explodinggradients/ragas" style="color:#a5b4fc;">explodinggradients/ragas</a> — Ragas source repository.</li>
+        <li><a href="https://www.deepeval.com/" style="color:#a5b4fc;">DeepEval</a> — pytest-style framework for LLM evaluation, supports both offline metrics and LLM-as-judge.</li>
+        <li><a href="https://www.evidentlyai.com/blog/llm-evaluation-framework" style="color:#a5b4fc;">EvidentlyAI · LLM Evaluation Framework</a> — practitioner-focused overview of offline + online LLM eval patterns.</li>
+        <li><a href="https://exp-platform.com/" style="color:#a5b4fc;">Microsoft · Experimentation Platform</a> — A/B testing fundamentals and pitfalls; good background for the online side.</li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RAG Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

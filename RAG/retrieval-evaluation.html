@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retrieval Evaluation — RAG</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Formula block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Numbered steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Code block ── */
+    .code-block { background:#0d1117; border:1px solid #2d3148; border-radius:10px; padding:1.1rem 1.3rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block .code-label { font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.7rem; }
+    .code-block pre { margin:0; font-family:'Courier New',monospace; font-size:0.82rem; line-height:1.7; color:#e2e8f0; white-space:pre; }
+    .code-block pre .c  { color:#475569; }
+    .code-block pre .k  { color:#c084fc; }
+    .code-block pre .f  { color:#60a5fa; }
+    .code-block pre .s  { color:#4ade80; }
+    .code-block pre .n  { color:#f59e0b; }
+    .code-block pre .cl { color:#fbbf24; }
+
+    /* ── Retrieval flow / pipeline ── */
+    .pipeline { display:grid; grid-template-columns: repeat(4, 1fr); gap:0.6rem; margin:1rem 0; }
+    .pipe-step { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:0.85rem 0.6rem; text-align:center; font-size:0.8rem; color:#cbd5e1; }
+    .pipe-step .num { display:block; font-size:0.65rem; font-weight:700; letter-spacing:0.1em; color:#6366f1; margin-bottom:0.35rem; text-transform:uppercase; }
+    .pipe-step strong { color:#a5b4fc; display:block; margin-bottom:0.25rem; }
+
+    /* ── Comparison cards (similar to .search-types) ── */
+    .source-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.9rem; margin-top:0.5rem; }
+    .source-card { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .source-card .label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#a5b4fc; margin-bottom:0.5rem; }
+    .source-card p { margin:0.35rem 0; color:#cbd5e1; font-size:0.85rem; }
+
+    /* ── Ground-truth row visual ── */
+    .gt-row { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:0.9rem 1.1rem; margin:0.6rem 0; }
+    .gt-row .gt-query { color:#c7d2fe; font-style:italic; margin-bottom:0.45rem; font-size:0.92rem; }
+    .gt-row .gt-label { font-size:0.65rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-right:0.5rem; }
+    .gt-row .gt-doc { display:inline-block; background:#1e2130; border:1px solid #2d3148; border-radius:6px; padding:0.2rem 0.55rem; margin:0.15rem 0.3rem 0.15rem 0; font-family:'Courier New',monospace; font-size:0.78rem; color:#a5b4fc; }
+
+    /* ── Metric mini-cards grid ── */
+    .metric-grid { display:grid; grid-template-columns: 1fr 1fr; gap:0.7rem; margin-top:0.7rem; }
+    .metric-card { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:0.85rem 1rem; }
+    .metric-card .name { font-family:'Courier New',monospace; color:#a5b4fc; font-weight:700; font-size:0.88rem; margin-bottom:0.25rem; }
+    .metric-card p { margin:0; color:#94a3b8; font-size:0.82rem; line-height:1.55; }
+    .metric-card.featured { border-color:#6366f1; background:#1a1f3a; }
+    .metric-card.featured .name { color:#c7d2fe; }
+    .metric-card.featured p { color:#cbd5e1; }
+
+    @media (max-width: 540px) {
+      .pipeline { grid-template-columns: 1fr 1fr; }
+      .source-grid { grid-template-columns: 1fr; }
+      .metric-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RAG Project Index</a>
+
+    <!-- ── Header ── -->
+    <header class="notes-header">
+      <p class="tag">Evaluation · Ground Truth · Ranking Metrics</p>
+      <h1>Retrieval Evaluation</h1>
+      <p>How do you actually know which retriever is best? An overview of why evaluation matters in RAG, what a ground-truth dataset looks like, where to get one, and which ranking metrics make sense for the FAQ-style problem at hand.</p>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · Why Evaluate Retrieval</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> "It Depends" Is Not an Answer</h2>
+      <p>By now you've seen several ways to do the <strong>R</strong> in RAG — <code>minsearch</code> as a toy in-memory index, Elasticsearch with text search, and Qdrant with vector search. A natural question follows: <em>which one is best?</em></p>
+
+      <p>The honest reply is <strong>"it depends"</strong> — on the dataset, the query distribution, the latency budget, and what your users actually care about. But "it depends" is only useful if you can <strong>turn it into a number</strong>. That's what evaluation does.</p>
+
+      <div class="pipeline">
+        <div class="pipe-step"><span class="num">1</span><strong>Pick a retriever</strong>minsearch · ES · Qdrant · hybrid</div>
+        <div class="pipe-step"><span class="num">2</span><strong>Run all queries</strong>From a labelled dataset</div>
+        <div class="pipe-step"><span class="num">3</span><strong>Score the results</strong>Compare to known relevant docs</div>
+        <div class="pipe-step"><span class="num">4</span><strong>Compare retrievers</strong>Highest score wins for your data</div>
+      </div>
+
+      <div class="callout">Without evaluation, choosing a retriever is folklore. With evaluation, it's a measurement. <strong>Same retriever wins on different data sets for different reasons</strong> — that's why "best in general" doesn't exist.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · The Tunable Surface</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> So Many Knobs, So Little Time</h2>
+      <p>Even within a single retriever, the search behaviour is shaped by a long list of choices. Without a ground-truth dataset, every one of these is a guess.</p>
+
+      <ul>
+        <li><strong>Search type</strong> — pure text, pure vector, hybrid (BM25 + dense), multi-stage rerank.</li>
+        <li><strong>Field selection</strong> — index <code>question</code>, <code>text</code>, <code>section</code> separately or together?</li>
+        <li><strong>Field boosts</strong> — does <code>question: 3</code> beat <code>question: 5</code>? Should <code>section</code> get a small <code>0.5</code> boost or be excluded entirely?</li>
+        <li><strong>Filters</strong> — hard filters by <code>course</code>, soft filters by <code>section</code>.</li>
+        <li><strong>Top-k</strong> — how many candidates does the LLM actually need?</li>
+        <li><strong>Embedding model</strong> — Jina, MiniLM, BGE, Cohere, OpenAI. Different vector spaces, different qualities.</li>
+        <li><strong>Vector database</strong> — Qdrant, Elasticsearch, FAISS, Milvus, Weaviate, Pinecone.</li>
+        <li><strong>Indexing strategy</strong> — embed only the answer, only the question, both concatenated, or chunked differently.</li>
+      </ul>
+
+      <p>The <strong>combinatorial explosion</strong> is not theoretical — every one of these makes a real difference on real data. The only way to navigate it is to fix everything else and measure one change at a time against a stable, labelled benchmark.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Ground Truth — The Centerpiece</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> What a Gold-Standard Dataset Looks Like</h2>
+      <p>Retrieval evaluation needs a <span class="term">ground-truth dataset</span> (also called <em>gold-standard data</em> or <em>relevance judgments</em>). For each query, it lists the documents that <strong>should</strong> appear in the search results.</p>
+
+      <div class="gt-row">
+        <div class="gt-query">"I just discovered the course, can I still join?"</div>
+        <span class="gt-label">Relevant</span>
+        <span class="gt-doc">doc_1</span>
+        <span class="gt-doc">doc_10</span>
+        <span class="gt-doc">doc_11</span>
+      </div>
+
+      <div class="gt-row">
+        <div class="gt-query">"How do I run Kafka?"</div>
+        <span class="gt-label">Relevant</span>
+        <span class="gt-doc">doc_42</span>
+        <span class="gt-doc">doc_117</span>
+      </div>
+
+      <p>A useful evaluation set is hundreds to thousands of (query → relevant docs) entries. With it, every retriever's output can be compared against the truth: did the relevant documents show up at all? At the top? In the top-k?</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Schema of a ground-truth row</div>
+        <div class="formula-main">
+          ( query &nbsp;,&nbsp; relevant_doc_ids )
+        </div>
+        <div class="formula-legend">
+          <span>query</span> — the text a user might submit.<br>
+          <span>relevant_doc_ids</span> — the set of documents the system <em>should</em> retrieve. Sometimes one ID, sometimes many. Sometimes graded (highly relevant / partially relevant / not relevant).
+        </div>
+      </div>
+
+      <div class="callout">The ground-truth dataset is the <strong>compass</strong> for every retrieval decision you make. Spend more time on getting it right than on tuning hyperparameters — a clean compass beats a fast guess.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Where Ground Truth Comes From</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏭</span> Three Sources, Different Trade-Offs</h2>
+
+      <div class="source-grid">
+        <div class="source-card">
+          <div class="label">User Feedback</div>
+          <p>Implicit (clicks, dwell time, "thumbs up") or explicit (ratings) signals from a deployed system.</p>
+          <p style="color:#94a3b8;font-size:0.78rem;"><em>Pros:</em> real, free, scales with traffic.<br><em>Cons:</em> needs production traffic, biased toward what was already shown.</p>
+        </div>
+        <div class="source-card">
+          <div class="label">Human Annotators</div>
+          <p>People (in-house experts or external annotators) read query + document pairs and judge relevance.</p>
+          <p style="color:#94a3b8;font-size:0.78rem;"><em>Pros:</em> high quality, gold standard for benchmarks.<br><em>Cons:</em> slow, expensive, hard to scale to thousands of queries.</p>
+        </div>
+        <div class="source-card">
+          <div class="label">LLM-Generated</div>
+          <p>An LLM generates plausible queries from each document and names which documents the query points to.</p>
+          <p style="color:#94a3b8;font-size:0.78rem;"><em>Pros:</em> cheap, fast, scales well.<br><em>Cons:</em> noisy — biased by the LLM's own preferences.</p>
+        </div>
+      </div>
+
+      <p>In a mature production system, you typically <strong>sample data from real traffic</strong> and have annotators (or an LLM) label the relevance. Without a deployment, you can't sample anything — so for these notes, we generate ground truth synthetically with an LLM, then use it to compare retrievers.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Why Synthetic Ground Truth Works Here</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🤖</span> The LLM-as-User Trick</h2>
+      <p>The FAQ dataset has a special structure: each entry is already a <code>(question, answer)</code> pair. We <strong>know</strong> that <em>this</em> question maps to <em>this</em> answer. But real users won't phrase questions exactly like the FAQ author did.</p>
+
+      <p>The trick: ask an LLM to <strong>rephrase each FAQ question</strong> into 5 different ways a real user might ask it. Each rephrasing is a synthetic query, and we already know its relevant document — the original FAQ entry. That gives us thousands of <code>(synthetic query → known document)</code> pairs, virtually for free.</p>
+
+      <ol class="algo-steps">
+        <li>Take an FAQ document <code>(question, answer, course, section)</code>.</li>
+        <li>Prompt an LLM: "Generate 5 alternative ways a student might phrase this question."</li>
+        <li>Each generated query inherits the original document ID as its <strong>relevant doc</strong>.</li>
+        <li>Repeat across all FAQ entries → ground-truth dataset of size <code>5 × |corpus|</code>.</li>
+        <li>Use this dataset to evaluate every retriever you want to compare.</li>
+      </ol>
+
+      <div class="callout">Synthetic ground truth is <strong>noisy but consistent</strong>. The absolute scores may be optimistic, but <em>relative</em> comparisons between retrievers stay meaningful — which is exactly what we need to pick the best one.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>6 · Step 1 — Stable Document IDs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🆔</span> Why IDs Come First</h2>
+      <p>Ground-truth rows are <code>(query, relevant_doc_id)</code>. To <em>name</em> the relevant document, every record in the knowledge base needs a stable identifier — one that is the same today, tomorrow, and after the next FAQ refresh.</p>
+
+      <p>The naïve approach is just to assign a sequential number:</p>
+
+      <div class="code-block">
+        <div class="code-label">Sequential IDs — convenient but fragile</div>
+        <pre><span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="f">len</span>(documents)):
+    documents[i][<span class="s">"id"</span>] = i</pre>
+      </div>
+
+      <p>This breaks the moment the FAQ is reordered, an entry is added, or one is deleted — every downstream <code>relevant_doc_id</code> in the ground-truth set silently points to the wrong document. Useless for any system that will be re-indexed.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🥇</span> The Ideal — IDs from the Source</h2>
+      <p>The best identifier is one the source itself already maintains. The DataTalksClub FAQs are Google Docs; each heading has an anchor <strong>ID inside the URL</strong> that survives renaming the heading. Had the corpus been parsed via the Google Docs API instead of <code>python-docx</code> on a downloaded <code>.docx</code> file, those anchor IDs would have been kept and the problem would already be solved.</p>
+
+      <p>Since the IDs are gone, second-best is to <strong>derive a stable hash from the content itself</strong>.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔐</span> Content-Hash IDs</h2>
+      <p>Combine fields that uniquely identify a record (course + question + a slice of the answer text), MD5-hash the result, and take the first 8 hex characters. The ID does not depend on row order — only on content.</p>
+
+      <div class="code-block">
+        <div class="code-label">Stable, content-derived 8-char IDs</div>
+        <pre><span class="k">import</span> hashlib
+
+<span class="k">def</span> <span class="f">generate_document_id</span>(doc):
+    combined = <span class="s">f"{doc['course']}-{doc['question']}-{doc['text'][:10]}"</span>
+    hash_object = hashlib.<span class="f">md5</span>(combined.<span class="f">encode</span>())
+    <span class="k">return</span> hash_object.<span class="f">hexdigest</span>()[:<span class="n">8</span>]
+
+<span class="k">for</span> doc <span class="k">in</span> documents:
+    doc[<span class="s">"id"</span>] = <span class="f">generate_document_id</span>(doc)</pre>
+      </div>
+
+      <p>Worth noting:</p>
+      <ul>
+        <li><strong>Why include the first 10 chars of the answer?</strong> Some FAQ entries share the exact same question heading. Adding a slice of the answer text breaks ties without making the ID depend on tiny edits across the whole answer.</li>
+        <li><strong>Why MD5 and not a longer hash?</strong> We're not signing anything — we just need a deterministic short identifier. 8 hex chars = 16<sup>8</sup> ≈ 4 billion buckets, plenty for a few thousand FAQ rows.</li>
+        <li><strong>Trade-off</strong> — content hashes change when the question or first 10 chars of the answer are edited. Acceptable here; not acceptable for systems where stability across edits is required (those need source IDs).</li>
+      </ul>
+
+      <div class="callout">Pick the most stable ID source you have access to. <strong>Source IDs &gt; content hashes &gt; sequential numbers.</strong> An unstable ID is worse than no ID — it lets bugs hide in plain sight.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>7 · Step 2 — Detecting Duplicate IDs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Hash Collisions vs Real Duplicates</h2>
+      <p>Hash IDs can collide for two completely different reasons:</p>
+
+      <ul>
+        <li><strong>True content duplicates</strong> — two FAQ entries with the same course + question + answer prefix. The hash is doing its job; the data is just dirty.</li>
+        <li><strong>Same heading, different answers</strong> — same question text and course but different answer bodies. Including the answer prefix in the hash usually breaks these apart.</li>
+      </ul>
+
+      <p>Either way, you want to <em>see</em> the collisions before generating a ground-truth dataset built on top of them.</p>
+
+      <div class="code-block">
+        <div class="code-label">Group by ID with defaultdict — surface collisions</div>
+        <pre><span class="k">from</span> collections <span class="k">import</span> defaultdict
+
+hashes = <span class="cl">defaultdict</span>(<span class="cl">list</span>)
+<span class="k">for</span> doc <span class="k">in</span> documents:
+    hashes[doc[<span class="s">"id"</span>]].<span class="f">append</span>(doc)
+
+<span class="f">print</span>(<span class="f">len</span>(hashes), <span class="f">len</span>(documents))      <span class="c"># (947, 948) → one collision</span>
+
+<span class="k">for</span> doc_id, items <span class="k">in</span> hashes.<span class="f">items</span>():
+    <span class="k">if</span> <span class="f">len</span>(items) &gt; <span class="n">1</span>:
+        <span class="f">print</span>(doc_id, <span class="f">len</span>(items))
+        <span class="c"># 593f7569 2 — same question, identical first 10 chars of answer</span></pre>
+      </div>
+
+      <p><code>defaultdict(list)</code> is the canonical Python pattern for "group by" — every new key is initialised to an empty list, so <code>append</code> just works without an <code>if</code> check. Comparing <code>len(hashes)</code> to <code>len(documents)</code> tells you instantly how many collisions you have.</p>
+
+      <p>For the FAQ corpus, the lone surviving collision is a real <em>data duplicate</em> — two near-identical entries that differ only by an annotation suffix. The pragmatic fix would be to dedupe the source data; the practical fix is to shrug and move on. Real-world data is dirty.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">💾</span> Persist the Tagged Documents</h2>
+      <p>Save the ID-tagged corpus once so the rest of the pipeline (and you, six months from now) can re-use it without re-running the hash.</p>
+
+      <div class="code-block">
+        <div class="code-label">documents-with-ids.json</div>
+        <pre><span class="k">import</span> json
+
+<span class="k">with</span> <span class="f">open</span>(<span class="s">"documents-with-ids.json"</span>, <span class="s">"wt"</span>) <span class="k">as</span> f_out:
+    json.<span class="f">dump</span>(documents, f_out, indent=<span class="n">2</span>)</pre>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>8 · Step 3 — The Question-Generation Prompt</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📝</span> Prompt Engineering for Synthetic Queries</h2>
+      <p>The whole approach turns on one prompt: ask an LLM to <em>impersonate a student</em> and write the kinds of questions that student might ask, given an FAQ entry as context. Three details matter more than they look.</p>
+
+      <div class="code-block">
+        <div class="code-label">prompt_template</div>
+        <pre>prompt_template = <span class="s">"""</span>
+<span class="s">You emulate a student who's taking our course.</span>
+<span class="s">Formulate 5 questions this student might ask based on a FAQ record. The record</span>
+<span class="s">should contain the answer to the questions, and the questions should be complete and not too short.</span>
+<span class="s">If possible, use as fewer words as possible from the record.</span>
+
+<span class="s">The record:</span>
+
+<span class="s">section: {section}</span>
+<span class="s">question: {question}</span>
+<span class="s">answer: {text}</span>
+
+<span class="s">Provide the output in parsable JSON without using code blocks:</span>
+
+<span class="s">["question1", "question2", ..., "question5"]</span>
+<span class="s">"""</span>.<span class="f">strip</span>()</pre>
+      </div>
+
+      <ol class="algo-steps">
+        <li><strong>"Complete and not too short"</strong> — without it, the LLM produces telegraphic 3-word fragments that don't resemble real student questions. Forces realistic phrasing.</li>
+        <li><strong>"Use as fewer words as possible from the record"</strong> — the entire <em>point</em> of synthetic ground truth is to test retrieval against queries phrased differently from the source. If the LLM copies the FAQ wording, text-search wins by accident and you learn nothing.</li>
+        <li><strong>"Parsable JSON without using code blocks"</strong> — without it, GPT-4 returns the JSON wrapped in <code>```json … ```</code> markdown fences, which <code>json.loads</code> cannot parse. Removing the fences in the prompt is much cleaner than stripping them in post-processing.</li>
+      </ol>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔌</span> Calling the LLM</h2>
+      <div class="code-block">
+        <div class="code-label">generate_questions(doc)</div>
+        <pre><span class="k">from</span> openai <span class="k">import</span> OpenAI
+client = <span class="cl">OpenAI</span>()
+
+<span class="k">def</span> <span class="f">generate_questions</span>(doc):
+    prompt = prompt_template.<span class="f">format</span>(**doc)         <span class="c"># section, question, text → slots</span>
+    response = client.chat.completions.<span class="f">create</span>(
+        model=<span class="s">"gpt-4o"</span>,
+        messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: prompt}]
+    )
+    <span class="k">return</span> response.choices[<span class="n">0</span>].message.content     <span class="c"># raw JSON string</span></pre>
+      </div>
+
+      <p>Note: <code>prompt_template.format(**doc)</code> works because the FAQ dicts already contain the keys <code>section</code>, <code>question</code>, and <code>text</code> — the template's slot names match the schema exactly.</p>
+
+      <div class="callout">A good synthetic-data prompt tells the LLM <strong>who it is</strong> (a student), <strong>what to produce</strong> (5 questions), <strong>what shape the output must take</strong> (raw JSON, no code blocks), and <strong>what to avoid</strong> (copying words). Skip any of these and you spend the next hour cleaning data instead of evaluating retrievers.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>9 · Step 4 — The Generation Loop</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Cache-as-You-Go</h2>
+      <p>Generating questions for ~950 FAQ entries means ~950 OpenAI calls. Things will go wrong: rate limits, transient network errors, your laptop sleeping. The pattern that survives all of these is the same: <strong>store every result keyed by document ID, and skip IDs that are already done</strong>.</p>
+
+      <div class="code-block">
+        <div class="code-label">Resumable generation loop</div>
+        <pre><span class="k">from</span> tqdm.auto <span class="k">import</span> tqdm
+
+results = {}                                          <span class="c"># doc_id → raw JSON string</span>
+
+<span class="k">for</span> doc <span class="k">in</span> <span class="f">tqdm</span>(documents):
+    doc_id = doc[<span class="s">"id"</span>]
+    <span class="k">if</span> doc_id <span class="k">in</span> results:                          <span class="c"># already generated → skip</span>
+        <span class="k">continue</span>
+    results[doc_id] = <span class="f">generate_questions</span>(doc)</pre>
+      </div>
+
+      <ul>
+        <li><strong>Resume after rate limits</strong> — when the loop dies 30% through, restart it: every previously-completed ID is found in <code>results</code> and skipped instantly.</li>
+        <li><strong>Free deduplication</strong> — when two FAQ entries collide on the same hash (the duplicate from §7), the LLM is only called once for them, saving an API request.</li>
+        <li><strong>Cost in practice</strong> — with GPT-4o on the ~950-document FAQ, the full generation comes out to about <strong>$4</strong> end-to-end. Use <code>gpt-4o-mini</code> if budget matters more than quality.</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🥒</span> Persist the Raw Output</h2>
+      <p>Pickle the results so you never have to pay the LLM cost twice. Plain JSON works too; pickle is just convenient when the keys are hex-string doc IDs and the values are unparsed strings.</p>
+
+      <div class="code-block">
+        <div class="code-label">Save / restore generated questions</div>
+        <pre><span class="k">import</span> pickle
+
+<span class="k">with</span> <span class="f">open</span>(<span class="s">"results.bin"</span>, <span class="s">"wb"</span>) <span class="k">as</span> f_out:
+    pickle.<span class="f">dump</span>(results, f_out)
+
+<span class="c"># Later — load without re-calling the LLM:</span>
+<span class="k">with</span> <span class="f">open</span>(<span class="s">"results.bin"</span>, <span class="s">"rb"</span>) <span class="k">as</span> f_in:
+    results = pickle.<span class="f">load</span>(f_in)</pre>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>10 · Step 5 — From Raw Output to Ground-Truth CSV</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📤</span> Parsing JSON (And Patching the One That Breaks)</h2>
+      <p>Even with "no code blocks" in the prompt, the LLM occasionally returns invalid JSON — a stray apostrophe inside a string, a missing comma, a literal smart quote. The realistic flow:</p>
+
+      <ol class="algo-steps">
+        <li>Try to <code>json.loads</code> every result.</li>
+        <li>For the 1–2 that fail, print the offending string, fix it by hand, and reinject the cleaned JSON into <code>results[doc_id]</code>.</li>
+        <li>Re-run the parse loop. Now everything passes.</li>
+      </ol>
+
+      <div class="code-block">
+        <div class="code-label">Parse all generated JSON strings</div>
+        <pre>parsed_results = {}
+<span class="k">for</span> doc_id, json_questions <span class="k">in</span> results.<span class="f">items</span>():
+    parsed_results[doc_id] = json.<span class="f">loads</span>(json_questions)
+
+<span class="c"># If it fails on one — manually fix that single string:</span>
+<span class="c"># results["abcd1234"] = json.dumps(["fixed q1", "fixed q2", ...])</span></pre>
+      </div>
+
+      <p>Spending five minutes patching two malformed responses is far cheaper than re-running the entire $4 generation just to dodge them.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🧱</span> Building the Final Triples</h2>
+      <p>Each generated question becomes one ground-truth row: <code>(question, course, document_id)</code>. To attach the course, build a quick dictionary from doc ID to full document — an O(1) lookup instead of scanning the list each time.</p>
+
+      <div class="code-block">
+        <div class="code-label">doc_index for fast lookup</div>
+        <pre>doc_index = {d[<span class="s">"id"</span>]: d <span class="k">for</span> d <span class="k">in</span> documents}
+
+final_results = []
+<span class="k">for</span> doc_id, questions <span class="k">in</span> parsed_results.<span class="f">items</span>():
+    course = doc_index[doc_id][<span class="s">"course"</span>]
+    <span class="k">for</span> q <span class="k">in</span> questions:
+        final_results.<span class="f">append</span>((q, course, doc_id))</pre>
+      </div>
+
+      <p>For ~948 FAQ entries × 5 questions each, this yields roughly <strong>4,700 ground-truth rows</strong>.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🗂️</span> Save as CSV</h2>
+      <div class="code-block">
+        <div class="code-label">ground-truth-data.csv</div>
+        <pre><span class="k">import</span> pandas <span class="k">as</span> pd
+
+df = pd.<span class="cl">DataFrame</span>(final_results, columns=[<span class="s">"question"</span>, <span class="s">"course"</span>, <span class="s">"document"</span>])
+df.<span class="f">to_csv</span>(<span class="s">"ground-truth-data.csv"</span>, index=<span class="k">False</span>)</pre>
+      </div>
+
+      <div class="formula-block">
+        <div class="formula-label">Sample rows of ground-truth-data.csv</div>
+        <div class="formula-main">
+          When does the course begin? &nbsp;,&nbsp; data-engineering-zoomcamp &nbsp;,&nbsp; c02e79ef<br>
+          How can I get the course schedule? &nbsp;,&nbsp; data-engineering-zoomcamp &nbsp;,&nbsp; c02e79ef<br>
+          Where can I find the prerequisites for this course? &nbsp;,&nbsp; data-engineering-zoomcamp &nbsp;,&nbsp; 1f6520ca
+        </div>
+        <div class="formula-legend">
+          Each row is a synthetic <em>(query, expected document)</em> pair. Five rows per FAQ entry, all sharing the same <code>document</code> ID — that's our gold-standard answer for evaluation.
+        </div>
+      </div>
+
+      <div class="callout">The CSV is the <strong>output of phase one</strong> of evaluation. Every retriever — minsearch, Elasticsearch text, vector search, hybrid — will be run against the same <code>question</code> column, and scored by whether it returns the corresponding <code>document</code> ID in its top-k.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>11 · Ranking Evaluation Metrics — The Landscape</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Why "Ranking" and Not Just "Accuracy"</h2>
+      <p>Search and recommender systems return a <strong>ranked list</strong>: for a given query, every document gets a relevance score, and the top-k are returned in order. Evaluation needs to reward not just "the relevant document was found" but "the relevant document was found <em>at the top</em>".</p>
+
+      <p>The standard ranking metrics — there are many — measure different facets of this. None is universally best; pick based on what your downstream system actually needs.</p>
+
+      <div class="metric-grid">
+        <div class="metric-card featured">
+          <div class="name">Hit Rate @ k</div>
+          <p>Did <strong>any</strong> relevant document appear in the top-k? Binary, simplest. Used in these notes.</p>
+        </div>
+        <div class="metric-card featured">
+          <div class="name">MRR — Mean Reciprocal Rank</div>
+          <p>Average of <code>1 / rank-of-first-relevant</code>. Rewards finding the first relevant doc as early as possible. Used in these notes.</p>
+        </div>
+        <div class="metric-card">
+          <div class="name">Precision @ k</div>
+          <p>Fraction of top-k that are relevant. Cares about <em>how many</em> good results are in the top-k.</p>
+        </div>
+        <div class="metric-card">
+          <div class="name">Recall @ k</div>
+          <p>Fraction of all relevant docs that show up in the top-k. Cares about coverage.</p>
+        </div>
+        <div class="metric-card">
+          <div class="name">MAP — Mean Average Precision</div>
+          <p>Averages precision at every rank where a relevant doc appears. Penalises burying good results.</p>
+        </div>
+        <div class="metric-card">
+          <div class="name">nDCG @ k</div>
+          <p>Normalised Discounted Cumulative Gain. Rewards higher placement; supports graded relevance. The de-facto standard.</p>
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎯</span> Why Hit Rate &amp; MRR for the FAQ Problem</h2>
+      <p>For the FAQ-style RAG setup the choice is simple:</p>
+      <ul>
+        <li>Each query in the synthetic dataset has <strong>exactly one</strong> relevant document (the original FAQ entry it was rephrased from). Recall and precision become coarse with single-target queries — Hit Rate captures it cleanly.</li>
+        <li>The downstream LLM only sees the top few results — pushing the relevant doc to <em>position 1</em> matters far more than including it at position 4. <strong>MRR</strong> rewards exactly this.</li>
+        <li>Both are easy to compute, easy to explain, and easy to plot retriever-by-retriever.</li>
+      </ul>
+
+      <p>Other metrics are not wrong — they're tuned for different problems. nDCG shines when relevance is <em>graded</em> (highly / partially / not relevant). MAP shines when each query has many relevant docs. Pick based on the shape of <em>your</em> data.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>12 · Hit Rate — Did We Find It?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> The Simplest Possible Metric</h2>
+      <p><span class="term">Hit Rate at k</span> asks one yes/no question per query: <strong>did at least one relevant document appear in the top-k results?</strong> Average across all queries to get the dataset-wide hit rate.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Hit Rate @ k</div>
+        <div class="formula-main">
+          HR@k &nbsp;=&nbsp; (1 / |Q|) · Σ<sub>q∈Q</sub> &nbsp; <strong>1</strong>[ hit(q, k) ]
+        </div>
+        <div class="formula-legend">
+          <span>Q</span> — set of queries in the evaluation set.<br>
+          <span>hit(q, k)</span> — true if at least one relevant doc appears among the top-<em>k</em> results for query <em>q</em>.<br>
+          <span>1[·]</span> — indicator function: 1 if the condition is true, 0 otherwise.<br>
+          Range: <code>[0, 1]</code>. <code>1.0</code> means every query found its relevant doc.
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Hit Rate in three lines</div>
+        <pre><span class="k">def</span> <span class="f">hit_rate</span>(relevance_per_query):
+    <span class="c"># relevance_per_query: list of lists of bools, one per query</span>
+    <span class="c"># Each inner list = is each retrieved doc relevant?</span>
+    <span class="k">return</span> <span class="f">sum</span>(<span class="f">any</span>(r) <span class="k">for</span> r <span class="k">in</span> relevance_per_query) / <span class="f">len</span>(relevance_per_query)</pre>
+      </div>
+
+      <ul>
+        <li><strong>Strength</strong> — easy to interpret. "Our retriever finds the answer 87% of the time."</li>
+        <li><strong>Limit</strong> — ignores rank within the top-k. A relevant doc at position 1 looks identical to position 5.</li>
+        <li><strong>Best for</strong> — first-pass benchmarking, RAG where the LLM can read all top-k anyway.</li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>13 · MRR — Did We Find It Quickly?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🥇</span> Reward Putting the Relevant Doc First</h2>
+      <p><span class="term">Mean Reciprocal Rank</span> looks at the <em>position</em> of the first relevant document. The earlier it appears, the higher the score: position 1 → <code>1.0</code>, position 2 → <code>0.5</code>, position 5 → <code>0.2</code>, never appears → <code>0.0</code>.</p>
+
+      <div class="formula-block">
+        <div class="formula-label">Mean Reciprocal Rank</div>
+        <div class="formula-main">
+          MRR &nbsp;=&nbsp; (1 / |Q|) · Σ<sub>q∈Q</sub> &nbsp; 1 / rank<sub>q</sub>
+        </div>
+        <div class="formula-legend">
+          <span>rank<sub>q</sub></span> — position of the first relevant doc for query <em>q</em> (1-indexed). Use ∞ if no relevant doc appears in the top-k.<br>
+          Range: <code>[0, 1]</code>. Heavily skewed toward top placements — the gap between rank 1 and rank 2 is the same as between rank 2 and infinity.
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">MRR in five lines</div>
+        <pre><span class="k">def</span> <span class="f">mrr</span>(relevance_per_query):
+    total = <span class="n">0.0</span>
+    <span class="k">for</span> r <span class="k">in</span> relevance_per_query:                         <span class="c"># r = [True, False, ...]</span>
+        <span class="k">for</span> rank, hit <span class="k">in</span> <span class="f">enumerate</span>(r, start=<span class="n">1</span>):
+            <span class="k">if</span> hit:
+                total += <span class="n">1</span> / rank
+                <span class="k">break</span>
+    <span class="k">return</span> total / <span class="f">len</span>(relevance_per_query)</pre>
+      </div>
+
+      <ul>
+        <li><strong>Strength</strong> — directly captures "is the answer the first thing the LLM sees?" The whole reason rankings exist.</li>
+        <li><strong>Limit</strong> — only considers the <em>first</em> relevant doc. Doesn't reward retrieving multiple relevant docs.</li>
+        <li><strong>Best for</strong> — single-target evaluation (like our synthetic FAQ set), and any system where users only look at the top result.</li>
+      </ul>
+
+      <div class="callout">Hit Rate and MRR together cover most of what matters in a RAG retriever: <strong>did we find it?</strong> (Hit Rate) and <strong>did we find it fast?</strong> (MRR).</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>14 · Step 6 — Building the Relevance Set</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> One Pass Over Ground Truth</h2>
+      <p>With <code>ground-truth-data.csv</code> (~4,627 synthetic queries) and a retriever in hand, evaluation reduces to one loop. For each ground-truth row, run the retriever, ask <strong>"is the expected document anywhere in the top-k?"</strong>, and record a list of booleans — one bool per returned result.</p>
+
+      <div class="pipeline">
+        <div class="pipe-step"><span class="num">Per query</span><strong>Run retriever</strong>top-k results</div>
+        <div class="pipe-step"><span class="num">Per result</span><strong>Compare IDs</strong><code>d.id == doc_id</code></div>
+        <div class="pipe-step"><span class="num">Per query</span><strong>Append</strong>list of bools</div>
+        <div class="pipe-step"><span class="num">All queries</span><strong>relevance_total</strong>list of lists</div>
+      </div>
+
+      <p>Importantly, this requires the corpus to be indexed with the <strong>same stable IDs</strong> we generated in §6 — the search results must carry the <code>id</code> field so we can match them against the ground-truth row's expected document.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔧</span> Indexing With IDs in Elasticsearch</h2>
+      <p>The ID is added as a <code>keyword</code> field — exact-match, not tokenised. We could rely on Elasticsearch's built-in <code>_id</code>, but storing the ID in the document body is simpler and means the rest of the code stays unchanged.</p>
+
+      <div class="code-block">
+        <div class="code-label">Index settings — id as keyword</div>
+        <pre><span class="k">from</span> elasticsearch <span class="k">import</span> Elasticsearch
+<span class="k">from</span> tqdm.auto <span class="k">import</span> tqdm
+
+es_client = <span class="cl">Elasticsearch</span>(<span class="s">"http://localhost:9200"</span>)
+
+index_name = <span class="s">"course-questions"</span>
+index_settings = {
+    <span class="s">"settings"</span>: {<span class="s">"number_of_shards"</span>: <span class="n">1</span>, <span class="s">"number_of_replicas"</span>: <span class="n">0</span>},
+    <span class="s">"mappings"</span>: {
+        <span class="s">"properties"</span>: {
+            <span class="s">"text"</span>:     {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"section"</span>:  {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"question"</span>: {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"course"</span>:   {<span class="s">"type"</span>: <span class="s">"keyword"</span>},
+            <span class="s">"id"</span>:       {<span class="s">"type"</span>: <span class="s">"keyword"</span>}      <span class="c"># exact match</span>
+        }
+    }
+}
+
+es_client.indices.<span class="f">delete</span>(index=index_name, ignore_unavailable=<span class="k">True</span>)
+es_client.indices.<span class="f">create</span>(index=index_name, body=index_settings)
+
+<span class="k">for</span> doc <span class="k">in</span> <span class="f">tqdm</span>(documents):
+    es_client.<span class="f">index</span>(index=index_name, document=doc)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">elastic_search — multi_match with course filter</div>
+        <pre><span class="k">def</span> <span class="f">elastic_search</span>(query, course):
+    search_query = {
+        <span class="s">"size"</span>: <span class="n">5</span>,
+        <span class="s">"query"</span>: {
+            <span class="s">"bool"</span>: {
+                <span class="s">"must"</span>: {
+                    <span class="s">"multi_match"</span>: {
+                        <span class="s">"query"</span>:  query,
+                        <span class="s">"fields"</span>: [<span class="s">"question^3"</span>, <span class="s">"text"</span>, <span class="s">"section"</span>],
+                        <span class="s">"type"</span>:   <span class="s">"best_fields"</span>
+                    }
+                },
+                <span class="s">"filter"</span>: {<span class="s">"term"</span>: {<span class="s">"course"</span>: course}}
+            }
+        }
+    }
+    response = es_client.<span class="f">search</span>(index=index_name, body=search_query)
+    <span class="k">return</span> [hit[<span class="s">"_source"</span>] <span class="k">for</span> hit <span class="k">in</span> response[<span class="s">"hits"</span>][<span class="s">"hits"</span>]]</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📥</span> Load the Ground Truth</h2>
+      <p>The CSV becomes a list of dicts — one per query — so iteration is a one-liner.</p>
+
+      <div class="code-block">
+        <div class="code-label">CSV → list of records</div>
+        <pre><span class="k">import</span> pandas <span class="k">as</span> pd
+
+df_ground_truth = pd.<span class="f">read_csv</span>(<span class="s">"ground-truth-data.csv"</span>)
+ground_truth    = df_ground_truth.<span class="f">to_dict</span>(orient=<span class="s">"records"</span>)
+<span class="c"># [{'question': 'When does the course begin?', 'course': 'data-engineering-zoomcamp', 'document': 'c02e79ef'}, ...]</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">⚙️</span> The Relevance Loop</h2>
+      <div class="code-block">
+        <div class="code-label">Build relevance_total — one list of bools per query</div>
+        <pre>relevance_total = []
+
+<span class="k">for</span> q <span class="k">in</span> <span class="f">tqdm</span>(ground_truth):
+    doc_id    = q[<span class="s">"document"</span>]
+    results   = <span class="f">elastic_search</span>(query=q[<span class="s">"question"</span>], course=q[<span class="s">"course"</span>])
+    relevance = [d[<span class="s">"id"</span>] == doc_id <span class="k">for</span> d <span class="k">in</span> results]
+    relevance_total.<span class="f">append</span>(relevance)</pre>
+      </div>
+
+      <p>The output structure is exactly what the metric functions in §12–§13 expect: a <code>list[list[bool]]</code> where each inner list has length-5 (top-5 results). Elasticsearch is fast — about <strong>~100 queries per second</strong> on a single shard — so all 4,627 rows finish in roughly a minute.</p>
+
+      <div class="callout">In single-target retrieval (one relevant doc per query), <strong>Hit Rate equals Recall</strong>. The terms get used interchangeably here; with multi-target queries they diverge.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>15 · Step 7 — Evaluating Text Retrievers</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧮</span> Worked Example — 12 Queries by Hand</h2>
+      <p>Before running on 4,600+ rows, sanity-check the metric functions on a tiny hand-built example. Each row is a length-5 boolean — the top-5 results for one query, with <code>True</code> meaning "this result is the expected document".</p>
+
+      <div class="code-block">
+        <div class="code-label">Toy relevance_total — 12 queries</div>
+        <pre>example = [
+    [<span class="k">True</span>,  <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># rank 1 → 1.0</span>
+    [<span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># miss   → 0</span>
+    [<span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># miss   → 0</span>
+    [<span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># miss   → 0</span>
+    [<span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># miss   → 0</span>
+    [<span class="k">True</span>,  <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># rank 1 → 1.0</span>
+    [<span class="k">True</span>,  <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># rank 1 → 1.0</span>
+    [<span class="k">True</span>,  <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># rank 1 → 1.0</span>
+    [<span class="k">True</span>,  <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># rank 1 → 1.0</span>
+    [<span class="k">True</span>,  <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># rank 1 → 1.0</span>
+    [<span class="k">False</span>, <span class="k">False</span>, <span class="k">True</span>,  <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># rank 3 → 1/3</span>
+    [<span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>, <span class="k">False</span>],   <span class="c"># miss   → 0</span>
+]
+
+<span class="c"># 7 of 12 queries hit at least once → Hit Rate = 7/12 ≈ 0.583</span>
+<span class="c"># Sum of reciprocal ranks = 6·1 + 1/3 = 6.333... → MRR = 6.333.../12 ≈ 0.528</span></pre>
+      </div>
+
+      <p>Plugging this into the helpers from §12–§13 gives <code>hit_rate(example) ≈ 0.583</code> and <code>mrr(example) ≈ 0.528</code> — the slight gap reflects the one query that found the answer at rank 3 instead of rank 1.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📊</span> Elasticsearch Numbers</h2>
+      <p>Run on the real <code>relevance_total</code> from §14:</p>
+
+      <div class="code-block">
+        <div class="code-label">Elasticsearch — text-search baseline</div>
+        <pre><span class="f">hit_rate</span>(relevance_total), <span class="f">mrr</span>(relevance_total)
+<span class="c"># → (0.7396, 0.6032)</span></pre>
+      </div>
+
+      <p><strong>74% of queries</strong> find their expected answer in the top-5; the average reciprocal rank is <strong>0.60</strong>, so on average the relevant doc is somewhere between rank 1 and rank 2. Solid, not perfect — the remaining 26% miss outright, and even when found, the relevant document isn't always at the top.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">⚖️</span> Versus minsearch</h2>
+      <p>Same evaluation, different retriever. <code>minsearch</code> is the toy in-memory TF-IDF index from <a href="search-engine.html" style="color:#a5b4fc;">module 1</a> — it accepts an extra <code>id</code> field as a keyword field so results carry the same identifiers Elasticsearch produces.</p>
+
+      <div class="code-block">
+        <div class="code-label">minsearch with id as keyword</div>
+        <pre><span class="k">import</span> minsearch
+
+index = minsearch.<span class="cl">Index</span>(
+    text_fields=[<span class="s">"question"</span>, <span class="s">"text"</span>, <span class="s">"section"</span>],
+    keyword_fields=[<span class="s">"course"</span>, <span class="s">"id"</span>]
+)
+index.<span class="f">fit</span>(documents)
+
+<span class="k">def</span> <span class="f">minsearch_search</span>(query, course):
+    <span class="k">return</span> index.<span class="f">search</span>(
+        query=query,
+        filter_dict={<span class="s">"course"</span>: course},
+        boost_dict={<span class="s">"question"</span>: <span class="n">3.0</span>, <span class="s">"section"</span>: <span class="n">0.5</span>},
+        num_results=<span class="n">5</span>
+    )</pre>
+      </div>
+
+      <p>Run the same loop, swap <code>elastic_search</code> for <code>minsearch_search</code>:</p>
+
+      <div class="code-block">
+        <div class="code-label">minsearch — TF-IDF in-memory index</div>
+        <pre><span class="f">hit_rate</span>(relevance_total), <span class="f">mrr</span>(relevance_total)
+<span class="c"># → (0.7722, 0.6615)</span></pre>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Retriever</th><th>Hit Rate @ 5</th><th>MRR @ 5</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Elasticsearch (BM25, multi_match, <code>question^3</code>)</td><td>0.7396</td><td>0.6032</td></tr>
+          <tr><td>minsearch (TF-IDF, <code>question</code>: 3, <code>section</code>: 0.5)</td><td><strong>0.7722</strong></td><td><strong>0.6615</strong></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">On <em>this</em> dataset, the toy in-memory index <strong>beats</strong> the production-grade search engine by ~3–6 points. That's not a knock on Elasticsearch — it's a reminder that "best in general" rarely applies. The lesson is to <strong>measure on your data</strong> rather than reach for the heaviest tool by default.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>16 · Step 8 — A Reusable Evaluator</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">♻️</span> One Function, Any Retriever</h2>
+      <p>The two evaluation runs above were nearly identical — only the inner search call differed. The natural refactor is a generic <code>evaluate(ground_truth, search_function)</code> that takes the retriever as a parameter. Pass any callable that maps a ground-truth row to a list of result dicts.</p>
+
+      <div class="code-block">
+        <div class="code-label">evaluate — drop-in any search function</div>
+        <pre><span class="k">def</span> <span class="f">evaluate</span>(ground_truth, search_function):
+    relevance_total = []
+    <span class="k">for</span> q <span class="k">in</span> <span class="f">tqdm</span>(ground_truth):
+        doc_id    = q[<span class="s">"document"</span>]
+        results   = <span class="f">search_function</span>(q)
+        relevance = [d[<span class="s">"id"</span>] == doc_id <span class="k">for</span> d <span class="k">in</span> results]
+        relevance_total.<span class="f">append</span>(relevance)
+
+    <span class="k">return</span> {
+        <span class="s">"hit_rate"</span>: <span class="f">hit_rate</span>(relevance_total),
+        <span class="s">"mrr"</span>:      <span class="f">mrr</span>(relevance_total),
+    }</pre>
+      </div>
+
+      <p>The <code>search_function</code> takes the whole row dict instead of fixed positional arguments — that way each retriever can pull whatever fields it needs (<code>question</code>, <code>course</code>, possibly more for filtered or hybrid searches).</p>
+
+      <div class="code-block">
+        <div class="code-label">Calling evaluate for each retriever</div>
+        <pre><span class="f">evaluate</span>(ground_truth, <span class="k">lambda</span> q: <span class="f">elastic_search</span>(q[<span class="s">"question"</span>], q[<span class="s">"course"</span>]))
+<span class="c"># → {'hit_rate': 0.7396, 'mrr': 0.6032}</span>
+
+<span class="f">evaluate</span>(ground_truth, <span class="k">lambda</span> q: <span class="f">minsearch_search</span>(q[<span class="s">"question"</span>], q[<span class="s">"course"</span>]))
+<span class="c"># → {'hit_rate': 0.7722, 'mrr': 0.6615}</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎚️</span> Tuning Hyperparameters with the Evaluator</h2>
+      <p>The whole point of the evaluator is to <em>measure</em> rather than guess. Try changing one thing — drop the <code>section</code> field, raise <code>question</code> boost from 3 to 5 — and re-run.</p>
+
+      <div class="code-block">
+        <div class="code-label">A speculative tweak — does it help?</div>
+        <pre><span class="k">def</span> <span class="f">minsearch_search_tweaked</span>(query, course):
+    <span class="k">return</span> index.<span class="f">search</span>(
+        query=query,
+        filter_dict={<span class="s">"course"</span>: course},
+        boost_dict={<span class="s">"question"</span>: <span class="n">5.0</span>},        <span class="c"># bumped, no section</span>
+        num_results=<span class="n">5</span>
+    )
+
+<span class="f">evaluate</span>(ground_truth, <span class="k">lambda</span> q: <span class="f">minsearch_search_tweaked</span>(q[<span class="s">"question"</span>], q[<span class="s">"course"</span>]))
+<span class="c"># → both metrics drop. Revert.</span></pre>
+      </div>
+
+      <p>The "obvious" change makes things <strong>worse</strong>. Without the evaluator that wouldn't be visible — gut feeling and cherry-picked queries cannot tell you that the section field, with a tiny boost of 0.5, was actually pulling its weight.</p>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">What This Setup Buys You</div>
+          <ul>
+            <li>One number per retriever — apples-to-apples comparison</li>
+            <li>Easy to swap retrievers (text, vector, hybrid) into the same harness</li>
+            <li>Hyperparameter changes become measurements, not opinions</li>
+            <li>Reproducible: same CSV, same metrics, anyone can re-run</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Watch Out</div>
+          <ul>
+            <li>Synthetic ground truth is biased — the LLM's idea of "a student question" isn't a student</li>
+            <li>Single-target queries underestimate retrievers that bring back multiple correct docs</li>
+            <li>Re-running tweaks one at a time gets messy fast — graduate to <a href="https://mlflow.org/" style="color:#a5b4fc;">MLflow</a> or similar for serious tuning</li>
+            <li>The 25% of queries the system misses deserve manual review — they often expose data issues, not retrieval ones</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">A retrieval evaluator is an <strong>experimentation flywheel</strong>: try a tweak, measure, decide, commit. It turns "I think hybrid is better" into "<em>hybrid lifts MRR from 0.60 to 0.71 on our 4,627-query benchmark</em>" — the second sentence is the one that survives a code review.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>17 · Evaluating Vector Search — The Setup</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> What Changes vs Text Evaluation</h2>
+      <p>Vector search swaps lexical matching for semantic similarity, but the <strong>evaluation harness from §14–§16 stays untouched</strong>. Same <code>ground-truth-data.csv</code>, same <code>evaluate(ground_truth, search_function)</code>, same Hit Rate and MRR. Only the inner <code>search_function</code> changes — and that's the whole point of the modular design.</p>
+
+      <p>Three new design choices appear in the vector path that don't exist in the text path:</p>
+
+      <ol class="algo-steps">
+        <li><strong>Which embedding model?</strong> — small fast (MiniLM, 384-dim), strong general-purpose (BGE, E5, mxbai-large, 768–1024-dim), domain-specific (BioBERT, SciBERT, code-search models), or proprietary (OpenAI <code>text-embedding-3-*</code>, Cohere). Different vector spaces, different qualities.</li>
+        <li><strong>Which field to embed?</strong> — the <code>question</code>, the answer <code>text</code>, or their concatenation. This single choice typically moves Hit Rate by 5–15 points on Q&amp;A data.</li>
+        <li><strong>Exact vs approximate KNN?</strong> — exact (brute-force) is the ceiling on retrieval quality. ANN (HNSW, IVF) trades a sliver of recall for orders-of-magnitude speed. <strong>Always evaluate both</strong> when you care about quality.</li>
+      </ol>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎯</span> Industry-Standard Evaluation Protocol</h2>
+      <p>The IR community has converged on a small set of practices for benchmarking dense retrievers. Stick to them and your numbers will be comparable to MTEB / BEIR results that practitioners trust.</p>
+
+      <ul>
+        <li><strong>Freeze the ground truth</strong> — version it (<code>ground-truth-data-v1.csv</code>), do not regenerate it between experiments. Otherwise you are measuring the LLM's mood, not your retriever.</li>
+        <li><strong>Cache embeddings</strong> — encode the corpus once, save vectors to disk (<code>.npy</code>, parquet, or directly into the index). A 950-doc test set is fast; a million-doc corpus is not.</li>
+        <li><strong>Evaluate exact KNN first</strong> — this is your retrieval quality ceiling. ANN tuning happens <em>after</em>, comparing against this number.</li>
+        <li><strong>Report top-k for k in {1, 5, 10}</strong> — Hit Rate@1 and MRR@10 are common defaults. RAG systems usually consume top-3 to top-10.</li>
+        <li><strong>Hold one variable constant per run</strong> — model, field, k, hybrid weights. Otherwise diff attribution becomes guesswork.</li>
+        <li><strong>Track everything</strong> — model name, embedding-field, index params, k, num_candidates, ANN type, and the resulting metrics. MLflow, Weights &amp; Biases, or even a CSV all work.</li>
+        <li><strong>Pair quality with latency</strong> — P50 / P95 query latency matters as much as MRR for production. A 0.02 MRR gain that doubles latency is rarely worth it.</li>
+      </ul>
+
+      <div class="callout">Vector search evaluation is <strong>three separate sweeps</strong> — embedding model, embedding field, retrieval method (vector / hybrid / rerank) — held against a frozen ground-truth and pinned to the same metrics. Anything else is wishful thinking.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>18 · Step 9 — Embedding the Corpus</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Picking and Loading an Embedding Model</h2>
+      <p>For an FAQ Q&amp;A corpus, a strong CPU-friendly default is <code>multi-qa-MiniLM-L6-cos-v1</code> from sentence-transformers — explicitly trained for Q&amp;A retrieval, 384 dimensions, normalised for cosine similarity. It is the <code>scikit-learn LogisticRegression</code> of dense retrieval: simple, fast, surprisingly hard to beat.</p>
+
+      <div class="code-block">
+        <div class="code-label">Load the embedding model</div>
+        <pre><span class="k">from</span> sentence_transformers <span class="k">import</span> SentenceTransformer
+
+model = <span class="cl">SentenceTransformer</span>(<span class="s">"multi-qa-MiniLM-L6-cos-v1"</span>)   <span class="c"># 384 dims, cosine</span>
+EMBEDDING_DIM = <span class="n">384</span></pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🎚️</span> Three Embedding Strategies</h2>
+      <p>For each FAQ document, compute three different vectors. This lets us evaluate which field carries the most retrieval signal — a fundamental design question that almost no one asks because the answer is "it depends".</p>
+
+      <div class="source-grid">
+        <div class="source-card">
+          <div class="label">question_vector</div>
+          <p>Embeds the FAQ question only. Tends to win when synthetic queries are <em>question-like</em>.</p>
+        </div>
+        <div class="source-card">
+          <div class="label">text_vector</div>
+          <p>Embeds the answer only. Tends to win when queries are <em>statement-like</em> ("the course has started, can I join?").</p>
+        </div>
+        <div class="source-card">
+          <div class="label">question_text_vector</div>
+          <p>Embeds <code>question + " " + text</code>. Usually a safe winner across query styles — more surface area to match against.</p>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-label">Compute and attach all three vectors</div>
+        <pre><span class="k">from</span> tqdm.auto <span class="k">import</span> tqdm
+
+<span class="k">for</span> doc <span class="k">in</span> <span class="f">tqdm</span>(documents):
+    question = doc[<span class="s">"question"</span>]
+    text     = doc[<span class="s">"text"</span>]
+
+    doc[<span class="s">"question_vector"</span>]      = model.<span class="f">encode</span>(question).<span class="f">tolist</span>()
+    doc[<span class="s">"text_vector"</span>]          = model.<span class="f">encode</span>(text).<span class="f">tolist</span>()
+    doc[<span class="s">"question_text_vector"</span>] = model.<span class="f">encode</span>(question + <span class="s">" "</span> + text).<span class="f">tolist</span>()</pre>
+      </div>
+
+      <p>For ~948 documents, three encodings each, this finishes in a couple of minutes on CPU. For larger corpora, batch the inputs (<code>model.encode(batch, batch_size=64)</code>) and use a GPU — encoding cost dominates everything downstream.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🗄️</span> Indexing Dense Vectors in Elasticsearch</h2>
+      <p>Elasticsearch's <code>dense_vector</code> field stores vectors and (with <code>index: true</code>) builds an HNSW graph for ANN search. Three vector fields = three independent HNSW indexes you can switch between at query time.</p>
+
+      <div class="code-block">
+        <div class="code-label">Mapping with three dense_vector fields</div>
+        <pre>index_settings = {
+    <span class="s">"settings"</span>: {<span class="s">"number_of_shards"</span>: <span class="n">1</span>, <span class="s">"number_of_replicas"</span>: <span class="n">0</span>},
+    <span class="s">"mappings"</span>: {
+        <span class="s">"properties"</span>: {
+            <span class="s">"text"</span>:     {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"section"</span>:  {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"question"</span>: {<span class="s">"type"</span>: <span class="s">"text"</span>},
+            <span class="s">"course"</span>:   {<span class="s">"type"</span>: <span class="s">"keyword"</span>},
+            <span class="s">"id"</span>:       {<span class="s">"type"</span>: <span class="s">"keyword"</span>},
+
+            <span class="s">"question_vector"</span>: {
+                <span class="s">"type"</span>: <span class="s">"dense_vector"</span>,
+                <span class="s">"dims"</span>: EMBEDDING_DIM,
+                <span class="s">"index"</span>: <span class="k">True</span>,
+                <span class="s">"similarity"</span>: <span class="s">"cosine"</span>
+            },
+            <span class="s">"text_vector"</span>:          {<span class="s">"type"</span>: <span class="s">"dense_vector"</span>, <span class="s">"dims"</span>: EMBEDDING_DIM, <span class="s">"index"</span>: <span class="k">True</span>, <span class="s">"similarity"</span>: <span class="s">"cosine"</span>},
+            <span class="s">"question_text_vector"</span>: {<span class="s">"type"</span>: <span class="s">"dense_vector"</span>, <span class="s">"dims"</span>: EMBEDDING_DIM, <span class="s">"index"</span>: <span class="k">True</span>, <span class="s">"similarity"</span>: <span class="s">"cosine"</span>}
+        }
+    }
+}
+
+index_name = <span class="s">"course-questions-vectors"</span>
+es_client.indices.<span class="f">delete</span>(index=index_name, ignore_unavailable=<span class="k">True</span>)
+es_client.indices.<span class="f">create</span>(index=index_name, body=index_settings)
+
+<span class="k">for</span> doc <span class="k">in</span> <span class="f">tqdm</span>(documents):
+    es_client.<span class="f">index</span>(index=index_name, document=doc)</pre>
+      </div>
+
+      <p>Three knobs in the <code>dense_vector</code> spec are worth understanding because they show up in every vector database, just under different names:</p>
+      <ul>
+        <li><code>dims</code> — must match the model's output (here 384). A mismatch is a silent rejection.</li>
+        <li><code>index: true</code> — build an HNSW graph for ANN. Without it, every search is brute-force linear scan.</li>
+        <li><code>similarity</code> — <code>cosine</code>, <code>dot_product</code>, or <code>l2_norm</code>. <strong>Must match how the model was trained</strong>; pick wrong and your scores are nonsense.</li>
+      </ul>
+
+      <div class="callout">Vector indexing is mostly about <strong>book-keeping discipline</strong> — match dims, match similarity, version the model, freeze the ground truth. The math is identical across libraries; the bugs come from mismatches.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>19 · Step 10 — KNN Search and the First Numbers</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> The Vector Search Function</h2>
+      <p>Elasticsearch's KNN query takes the field, the query vector, top-<code>k</code>, a <code>num_candidates</code> parameter that controls HNSW exploration, and an optional metadata filter. It returns the same hit shape as text search — the rest of the harness does not care.</p>
+
+      <div class="code-block">
+        <div class="code-label">elastic_search_knn — generic over which vector field to search</div>
+        <pre><span class="k">def</span> <span class="f">elastic_search_knn</span>(field, vector, course):
+    knn = {
+        <span class="s">"field"</span>:          field,                <span class="c"># question_vector, text_vector, ...</span>
+        <span class="s">"query_vector"</span>:   vector,
+        <span class="s">"k"</span>:              <span class="n">5</span>,
+        <span class="s">"num_candidates"</span>: <span class="n">10000</span>,                <span class="c"># HNSW recall knob — higher = better recall, slower</span>
+        <span class="s">"filter"</span>: {<span class="s">"term"</span>: {<span class="s">"course"</span>: course}}
+    }
+    search_query = {
+        <span class="s">"knn"</span>: knn,
+        <span class="s">"_source"</span>: [<span class="s">"text"</span>, <span class="s">"section"</span>, <span class="s">"question"</span>, <span class="s">"course"</span>, <span class="s">"id"</span>]
+    }
+    response = es_client.<span class="f">search</span>(index=index_name, body=search_query)
+    <span class="k">return</span> [hit[<span class="s">"_source"</span>] <span class="k">for</span> hit <span class="k">in</span> response[<span class="s">"hits"</span>][<span class="s">"hits"</span>]]</pre>
+      </div>
+
+      <p><code>num_candidates</code> is the HNSW analogue of "how many neighbours to explore before returning the top-k". Industry-standard default is <code>10 × k</code> for fast tier (latency-bound) and <code>100 × k</code> or higher for the quality tier — same model, two indexes, route by SLA.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔌</span> Plug Into the Existing Evaluator</h2>
+      <p>The evaluator from §16 already takes the row dict; we just write a new lambda that encodes the question and forwards to KNN. Nothing else changes.</p>
+
+      <div class="code-block">
+        <div class="code-label">Evaluate question_vector retrieval</div>
+        <pre><span class="k">def</span> <span class="f">question_vector_knn</span>(q):
+    vec = model.<span class="f">encode</span>(q[<span class="s">"question"</span>]).<span class="f">tolist</span>()
+    <span class="k">return</span> <span class="f">elastic_search_knn</span>(<span class="s">"question_vector"</span>, vec, q[<span class="s">"course"</span>])
+
+<span class="f">evaluate</span>(ground_truth, question_vector_knn)
+<span class="c"># → {'hit_rate': 0.7728, 'mrr': 0.6592}</span></pre>
+      </div>
+
+      <p>Already on par with minsearch — and we've used the simplest possible embedding strategy. The full benefit shows up when we switch fields.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🧊</span> Exact vs Approximate — Sanity Check</h2>
+      <p>To know whether ANN is silently costing you recall, run the same query with <code>script_score</code> (brute-force exact KNN) on a sample of the ground truth. The gap between exact and ANN — <strong>recall@k loss</strong> — is the price you pay for HNSW's speed.</p>
+
+      <div class="code-block">
+        <div class="code-label">Exact KNN via script_score (slow but ground truth)</div>
+        <pre>exact = {
+    <span class="s">"size"</span>: <span class="n">5</span>,
+    <span class="s">"query"</span>: {
+        <span class="s">"script_score"</span>: {
+            <span class="s">"query"</span>: {<span class="s">"term"</span>: {<span class="s">"course"</span>: course}},
+            <span class="s">"script"</span>: {
+                <span class="s">"source"</span>: <span class="s">"cosineSimilarity(params.query_vector, 'question_vector') + 1.0"</span>,
+                <span class="s">"params"</span>: {<span class="s">"query_vector"</span>: vec}
+            }
+        }
+    }
+}</pre>
+      </div>
+
+      <p>If exact KNN beats your ANN configuration by &gt;1–2 points, increase <code>num_candidates</code>, raise HNSW <code>m</code> / <code>ef_construction</code>, or accept the trade-off explicitly. Just make sure you <em>know</em> what the trade-off is.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>20 · Step 11 — Comparing Embedding Strategies &amp; Hybrid Search</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪜</span> Three Strategies, Same Harness</h2>
+      <p>Run <code>evaluate</code> three times — one per vector field — using the cached embeddings already stored in the index. The lambdas are identical except for the field name and which text is encoded into the query vector.</p>
+
+      <div class="code-block">
+        <div class="code-label">Sweep over embedding strategies</div>
+        <pre><span class="k">def</span> <span class="f">vector_knn</span>(field, encode_text):
+    <span class="k">def</span> <span class="f">_search</span>(q):
+        vec = model.<span class="f">encode</span>(<span class="f">encode_text</span>(q)).<span class="f">tolist</span>()
+        <span class="k">return</span> <span class="f">elastic_search_knn</span>(field, vec, q[<span class="s">"course"</span>])
+    <span class="k">return</span> _search
+
+<span class="f">evaluate</span>(ground_truth, <span class="f">vector_knn</span>(<span class="s">"question_vector"</span>,      <span class="k">lambda</span> q: q[<span class="s">"question"</span>]))
+<span class="f">evaluate</span>(ground_truth, <span class="f">vector_knn</span>(<span class="s">"text_vector"</span>,          <span class="k">lambda</span> q: q[<span class="s">"question"</span>]))
+<span class="f">evaluate</span>(ground_truth, <span class="f">vector_knn</span>(<span class="s">"question_text_vector"</span>, <span class="k">lambda</span> q: q[<span class="s">"question"</span>]))</pre>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Retriever</th><th>Hit Rate @ 5</th><th>MRR @ 5</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Elasticsearch (BM25 multi_match) <em>— from §15</em></td><td>0.7396</td><td>0.6032</td></tr>
+          <tr><td>minsearch (TF-IDF) <em>— from §15</em></td><td>0.7722</td><td>0.6615</td></tr>
+          <tr><td>KNN — <code>question_vector</code></td><td>0.7728</td><td>0.6592</td></tr>
+          <tr><td>KNN — <code>text_vector</code></td><td>0.8275</td><td>0.7062</td></tr>
+          <tr><td>KNN — <code>question_text_vector</code></td><td><strong>0.9398</strong></td><td><strong>0.8516</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p>The numbers above are typical of what this benchmark reports with <code>multi-qa-MiniLM-L6-cos-v1</code>. Three lessons that generalise far beyond this dataset:</p>
+
+      <ul>
+        <li><strong>Embedding choice swamps retriever choice.</strong> The jump from <code>question_vector</code> to <code>question_text_vector</code> (+17 HR points) dwarfs the gap between Elasticsearch BM25 and minsearch TF-IDF (+3 HR points).</li>
+        <li><strong>Concatenation usually wins for Q&amp;A.</strong> Both sides of the (question, answer) pair contribute matchable signal. This is why module 2's RAG section embedded <code>question + " " + text</code>.</li>
+        <li><strong>"Field engineering" is real.</strong> What you put into the embedder matters more than which embedder you use, up to a point.</li>
+      </ul>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🪢</span> Hybrid Search — BM25 + Dense Together</h2>
+      <p>Vector search misses on <strong>exact tokens</strong> — model names, course codes, library identifiers. BM25 misses on <strong>paraphrases</strong>. Hybrid search runs both and combines them. Elasticsearch supports this directly via the <code>knn</code> + <code>query</code> compound search; rank fusion (RRF) is built into ES 8.9+.</p>
+
+      <div class="code-block">
+        <div class="code-label">Hybrid search — BM25 + KNN combined</div>
+        <pre><span class="k">def</span> <span class="f">elastic_search_hybrid</span>(field, query, vector, course):
+    knn = {
+        <span class="s">"field"</span>: field, <span class="s">"query_vector"</span>: vector,
+        <span class="s">"k"</span>: <span class="n">5</span>, <span class="s">"num_candidates"</span>: <span class="n">10000</span>,
+        <span class="s">"filter"</span>: {<span class="s">"term"</span>: {<span class="s">"course"</span>: course}},
+        <span class="s">"boost"</span>: <span class="n">0.5</span>                                    <span class="c"># weight of vector signal</span>
+    }
+    keyword = {
+        <span class="s">"bool"</span>: {
+            <span class="s">"must"</span>: {<span class="s">"multi_match"</span>: {
+                <span class="s">"query"</span>:  query,
+                <span class="s">"fields"</span>: [<span class="s">"question^3"</span>, <span class="s">"text"</span>, <span class="s">"section"</span>],
+                <span class="s">"type"</span>:   <span class="s">"best_fields"</span>,
+                <span class="s">"boost"</span>:  <span class="n">0.5</span>                              <span class="c"># weight of keyword signal</span>
+            }},
+            <span class="s">"filter"</span>: {<span class="s">"term"</span>: {<span class="s">"course"</span>: course}}
+        }
+    }
+    body = {<span class="s">"size"</span>: <span class="n">5</span>, <span class="s">"query"</span>: keyword, <span class="s">"knn"</span>: knn,
+            <span class="s">"_source"</span>: [<span class="s">"text"</span>, <span class="s">"section"</span>, <span class="s">"question"</span>, <span class="s">"course"</span>, <span class="s">"id"</span>]}
+    response = es_client.<span class="f">search</span>(index=index_name, body=body)
+    <span class="k">return</span> [hit[<span class="s">"_source"</span>] <span class="k">for</span> hit <span class="k">in</span> response[<span class="s">"hits"</span>][<span class="s">"hits"</span>]]</pre>
+      </div>
+
+      <p>The two <code>boost</code> values combine linearly into the final score. They become hyperparameters — sweep them with the same evaluator. For corpora with a healthy mix of natural-language and keyword-style queries, hybrid usually adds another 1–3 points on top of the best dense strategy.</p>
+
+      <p>For a less ad-hoc combination, use <strong>Reciprocal Rank Fusion</strong> (RRF) — score-free, robust, and what production systems converge to. Elasticsearch 8.9+ exposes it directly:</p>
+
+      <div class="code-block">
+        <div class="code-label">RRF in Elasticsearch (8.9+)</div>
+        <pre>body = {
+    <span class="s">"retriever"</span>: {
+        <span class="s">"rrf"</span>: {
+            <span class="s">"retrievers"</span>: [
+                {<span class="s">"standard"</span>: {<span class="s">"query"</span>: keyword[<span class="s">"bool"</span>]}},
+                {<span class="s">"knn"</span>:      knn}
+            ],
+            <span class="s">"rank_window_size"</span>: <span class="n">50</span>,
+            <span class="s">"rank_constant"</span>:    <span class="n">60</span>
+        }
+    },
+    <span class="s">"size"</span>: <span class="n">5</span>
+}</pre>
+      </div>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">🔁</span> Reranking — The Final Layer</h2>
+      <p>Once a dense retriever returns 50–100 strong candidates, a <span class="term">cross-encoder reranker</span> (e.g. <code>BAAI/bge-reranker-base</code>, <code>cross-encoder/ms-marco-MiniLM-L-6-v2</code>) reads (query, doc) pairs jointly and re-scores them. Cross-encoders are far more accurate than bi-encoders but linear in candidates — perfect as a final stage on the retriever's top-50.</p>
+
+      <div class="code-block">
+        <div class="code-label">Plug a cross-encoder reranker into the harness</div>
+        <pre><span class="k">from</span> sentence_transformers <span class="k">import</span> CrossEncoder
+
+reranker = <span class="cl">CrossEncoder</span>(<span class="s">"cross-encoder/ms-marco-MiniLM-L-6-v2"</span>)
+
+<span class="k">def</span> <span class="f">vector_then_rerank</span>(q, top_n=<span class="n">50</span>):
+    vec        = model.<span class="f">encode</span>(q[<span class="s">"question"</span>]).<span class="f">tolist</span>()
+    candidates = <span class="f">elastic_search_knn</span>(<span class="s">"question_text_vector"</span>, vec, q[<span class="s">"course"</span>])[:top_n]
+    pairs      = [(q[<span class="s">"question"</span>], c[<span class="s">"text"</span>]) <span class="k">for</span> c <span class="k">in</span> candidates]
+    scores     = reranker.<span class="f">predict</span>(pairs)
+    ranked     = [c <span class="k">for</span> _, c <span class="k">in</span> <span class="f">sorted</span>(<span class="f">zip</span>(scores, candidates), reverse=<span class="k">True</span>)]
+    <span class="k">return</span> ranked[:<span class="n">5</span>]
+
+<span class="f">evaluate</span>(ground_truth, vector_then_rerank)</pre>
+      </div>
+
+      <p>For RAG production deployments at scale, the <strong>retrieve → fuse → rerank → top-k</strong> pattern is the de-facto standard. Each layer is independently swappable, independently measurable, and (with the harness from §16) independently tunable.</p>
+
+      <h2 style="margin-top:1.6rem;"><span class="icon">📈</span> What "Done" Looks Like</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Vector Eval Checklist</div>
+          <ul>
+            <li>Frozen, versioned ground truth</li>
+            <li>Same metrics across all runs (HR + MRR or HR@k + nDCG@k)</li>
+            <li>Embedding model and field swept independently</li>
+            <li>Exact KNN computed on a sample as quality ceiling</li>
+            <li>Hybrid (BM25 + dense, or RRF) measured</li>
+            <li>P50 / P95 latency tracked alongside quality</li>
+            <li>Results logged in MLflow / W&amp;B / a CSV</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Smells of an Unrigorous Eval</div>
+          <ul>
+            <li>"This embedding model felt better" — no numbers</li>
+            <li>Different ground-truth set each comparison</li>
+            <li>Cherry-picked queries demoed in a slide</li>
+            <li>Quality reported, latency hidden</li>
+            <li>ANN tuned without an exact-KNN baseline</li>
+            <li>Hybrid weights eyeballed, not swept</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">Vector search evaluation is <strong>boring on purpose</strong>. The discipline of "freeze the data, fix the metrics, sweep one variable" is what separates a credible benchmark from a marketing graph. Boring beats persuasive — it survives audit.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>21 · The Plan</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗺️</span> Where This Series Is Going</h2>
+      <ol class="algo-steps">
+        <li><strong>Generate ground truth</strong> with an LLM from the existing FAQ dataset — rephrase each question into multiple synthetic user queries and inherit the source document as the relevant target. <em>✓ done in §6 – §10.</em></li>
+        <li><strong>Pick metrics</strong> — Hit Rate and MRR for this single-target setup. Hold them stable so retrievers can be compared apples-to-apples. <em>✓ defined in §11 – §13.</em></li>
+        <li><strong>Run text retrievers</strong> against <code>ground-truth-data.csv</code> — Elasticsearch (BM25 multi_match) at <strong>HR 0.74 / MRR 0.60</strong>, minsearch (TF-IDF) at <strong>HR 0.77 / MRR 0.66</strong>. <em>✓ done in §14 – §16.</em></li>
+        <li><strong>Run vector retrievers</strong> — three embedding strategies on the same harness, with <code>question_text_vector</code> winning at <strong>HR 0.94 / MRR 0.85</strong>. <em>✓ done in §17 – §20.</em></li>
+        <li><strong>Stack hybrid &amp; reranking</strong> — combine BM25 + dense via RRF, then add a cross-encoder reranker on the top-50 for the final 1–3 points. The pattern is <em>retrieve → fuse → rerank</em>.</li>
+        <li><strong>Compare and tune</strong> — fix one variable at a time (boosts, fields, top-k, embedding model, ANN params), measure, decide. The evaluator from §16 is the experimentation flywheel.</li>
+        <li><strong>Pick a winner</strong> for <em>this</em> dataset — and remember, "winner here" doesn't mean "winner everywhere".</li>
+      </ol>
+
+      <div class="callout">Evaluation makes retrieval choices <strong>defensible</strong>. Instead of "I think hybrid search is better", you can say <em>"hybrid search lifts MRR from 0.61 to 0.74 on our 5,000-query benchmark"</em> — and the second sentence is the one that survives a code review.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>22 · Key Takeaways</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💡</span> What to Remember</h2>
+      <ul>
+        <li>The "best" retriever depends on data, query distribution, and downstream usage. Evaluation turns "it depends" into a number.</li>
+        <li>A retrieval system has a <strong>huge tunable surface</strong> — search type, fields, boosts, filters, top-k, embedding model, vector database, indexing strategy. Without ground truth, every choice is a guess.</li>
+        <li>A <strong>ground-truth dataset</strong> is rows of <code>(query, relevant_doc_ids)</code>. Hundreds to thousands of rows make benchmarking meaningful.</li>
+        <li>Three sources of ground truth — <strong>user feedback</strong>, <strong>human annotators</strong>, <strong>LLM generation</strong> — with different cost / quality / scalability trade-offs.</li>
+        <li>Without production traffic, <strong>LLM-generated ground truth</strong> is a practical default: rephrase known FAQ questions into synthetic user queries.</li>
+        <li>Synthetic ground truth is <em>noisy in absolute terms</em> but <em>consistent for relative comparisons</em> — exactly what's needed to pick a retriever.</li>
+        <li>Search is a <strong>ranking</strong> problem. Rewarding "found" is not enough; reward "found <em>early</em>".</li>
+        <li><strong>Hit Rate</strong> answers "did we find it?". <strong>MRR</strong> answers "did we find it first?". Together they cover the FAQ-style retrieval problem cleanly.</li>
+        <li>Other metrics — Precision@k, Recall@k, MAP, nDCG — are not wrong, they're tuned for different shapes of data (multi-target queries, graded relevance, …).</li>
+        <li>Evaluation makes retrieval decisions <strong>defensible</strong>: "MRR went from 0.61 to 0.74" survives scrutiny; "I think this is better" doesn't.</li>
+        <li>Always tag documents with <strong>stable IDs</strong> before generating ground truth. Source IDs &gt; content hashes &gt; sequential numbers — sequential IDs silently break every time the corpus is reordered.</li>
+        <li><strong>Content-hash IDs</strong> (MD5 of <code>course + question + first 10 chars of answer</code>, truncated to 8 hex chars) are stable across re-indexing and free to compute.</li>
+        <li>Use <code>defaultdict(list)</code> + a length comparison to surface duplicate IDs immediately — collisions reveal either dirty source data or a too-narrow hash input.</li>
+        <li>The <strong>question-generation prompt</strong> needs three hidden levers: "complete and not too short" (no telegraphic fragments), "use as fewer words as possible from the record" (force paraphrasing), and "no code blocks" (clean JSON).</li>
+        <li>Make the generation loop <strong>resumable from cache</strong> — keyed by doc ID, with <code>if doc_id in results: continue</code>. Rate limits and crashes become non-events.</li>
+        <li>Persist raw LLM output (pickle or JSON) before parsing. Fix the 1–2 malformed responses by hand instead of paying to regenerate the whole batch.</li>
+        <li>The deliverable is a flat CSV: <code>(question, course, document)</code>. Every retriever scores against the same column, every comparison is reproducible.</li>
+        <li>Index the corpus with an explicit <strong>id</strong> field (mapped as <code>keyword</code> in Elasticsearch, listed in <code>keyword_fields</code> for minsearch) so result documents carry the same identifiers the ground truth references.</li>
+        <li>The relevance loop produces a <code>list[list[bool]]</code> — one inner list per query, one bool per top-k result. <strong>Hit Rate ≡ Recall</strong> when each query has exactly one relevant document.</li>
+        <li>Sanity-check metric implementations with a <strong>tiny hand-built example</strong> first. Off-by-one errors hide trivially in a 4,000-row run.</li>
+        <li>On the FAQ benchmark, <strong>minsearch (TF-IDF) outscores Elasticsearch (BM25 multi_match)</strong> by ~3–6 points — <em>"production-grade tool"</em> is not the same as <em>"best for this data"</em>. Always measure.</li>
+        <li>Refactor the evaluation loop into a generic <code>evaluate(ground_truth, search_function)</code>. New retrievers become a one-line <code>lambda</code>; comparisons stay apples-to-apples.</li>
+        <li>Tuning blind hurts: dropping the <code>section</code> field and bumping <code>question</code> boost from 3 to 5 <em>lowered</em> both metrics. The evaluator catches regressions opinions can't.</li>
+        <li>For more than a handful of tuning experiments, graduate to <strong>experiment tracking</strong> (MLflow, etc.) — Jupyter is fine until it isn't.</li>
+        <li>The 20–25% of queries the retriever misses deserve a <strong>manual look</strong>. Often the LLM-generated query is nonsense, not the retriever's fault.</li>
+        <li>Vector evaluation re-uses the same harness — only the inner <code>search_function</code> changes. Modular design pays off here.</li>
+        <li><strong>Field engineering beats model engineering</strong> on Q&amp;A data. <code>question_text_vector</code> beat <code>question_vector</code> by ~17 HR points; the gap between any two reasonable models on the same field is usually smaller.</li>
+        <li>Match the model's training similarity in the index (<code>cosine</code> / <code>dot_product</code> / <code>l2_norm</code>). A mismatch silently corrupts every score.</li>
+        <li><strong>Always evaluate exact KNN as a ceiling</strong> on a sample of queries — ANN parameters (<code>num_candidates</code>, HNSW <code>m</code> / <code>ef_construction</code>) trade recall for speed, and you should know the cost.</li>
+        <li>Hybrid (BM25 + dense, weighted or RRF-fused) typically adds 1–3 points on top of the best dense strategy, especially on corpora with mixed query styles.</li>
+        <li>For production, the <strong>retrieve → fuse → rerank</strong> stack with a cross-encoder reranker on the top-50 is the de-facto standard. Each layer is independently tunable.</li>
+        <li>Track <strong>P50 / P95 latency alongside quality</strong> — a 2-point MRR gain that doubles tail latency is rarely a win.</li>
+        <li><strong>Freeze and version your ground truth</strong> (<code>ground-truth-data-v1.csv</code>). Regenerating it between experiments invalidates every comparison you've made.</li>
+        <li>Cache embeddings on disk; encode the corpus once. At any non-trivial scale, encoding is the cost bottleneck.</li>
+        <li>Industry-standard rigor is just discipline: <strong>frozen data, fixed metrics, one variable per run, latency tracked, results logged.</strong></li>
+      </ul>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>23 · Resources</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Further Reading</h2>
+      <ul>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp" style="color:#a5b4fc;">DataTalksClub · llm-zoomcamp</a> — the upstream course and notebooks for this RAG evaluation module.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/03-evaluation/search_evaluation/ground-truth-data.ipynb" style="color:#a5b4fc;">ground-truth-data.ipynb</a> — the source notebook for §6 – §10 (IDs, hashing, prompt, generation, CSV).</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/03-evaluation/search_evaluation/evaluate-text.ipynb" style="color:#a5b4fc;">evaluate-text.ipynb</a> — the source notebook for §14 – §16 (Elasticsearch + minsearch evaluation, the generic evaluator).</li>
+        <li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html" style="color:#a5b4fc;">Elasticsearch · multi_match query</a> — reference for <code>best_fields</code>, <code>fields</code>, and the <code>^</code> boost syntax used in §14.</li>
+        <li><a href="https://github.com/alexeygrigorev/minsearch" style="color:#a5b4fc;">alexeygrigorev/minsearch</a> — the toy TF-IDF index that beats Elasticsearch on this benchmark.</li>
+        <li><a href="https://mlflow.org/" style="color:#a5b4fc;">MLflow</a> — experiment tracking for when one-off Jupyter tweaks stop scaling.</li>
+        <li><a href="https://github.com/DataTalksClub/llm-zoomcamp/blob/main/cohorts/2025/03-evaluation/search_evaluation/evaluate-vector.ipynb" style="color:#a5b4fc;">evaluate-vector.ipynb</a> — the source notebook for §17 – §20 (dense vectors, KNN, embedding strategies).</li>
+        <li><a href="https://huggingface.co/sentence-transformers/multi-qa-MiniLM-L6-cos-v1" style="color:#a5b4fc;">multi-qa-MiniLM-L6-cos-v1</a> — the 384-dim Q&amp;A embedding model used in §18.</li>
+        <li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/dense-vector.html" style="color:#a5b4fc;">Elasticsearch · dense_vector field</a> — full reference for <code>dims</code>, <code>similarity</code>, <code>index</code>, and HNSW tuning.</li>
+        <li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html" style="color:#a5b4fc;">Elasticsearch · KNN search</a> — the <code>knn</code> query, <code>num_candidates</code>, filtered KNN, and hybrid search syntax.</li>
+        <li><a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/rrf.html" style="color:#a5b4fc;">Elasticsearch · Reciprocal Rank Fusion</a> — built-in RRF for hybrid retrieval (8.9+).</li>
+        <li><a href="https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2" style="color:#a5b4fc;">cross-encoder/ms-marco-MiniLM-L-6-v2</a> — the lightweight reranker used in §20.</li>
+        <li><a href="https://github.com/embeddings-benchmark/mteb" style="color:#a5b4fc;">MTEB · Massive Text Embedding Benchmark</a> — the de-facto leaderboard for picking an embedding model.</li>
+        <li><a href="https://github.com/beir-cellar/beir" style="color:#a5b4fc;">BEIR</a> — heterogeneous IR benchmark; the academic reference for cross-domain retrieval evaluation.</li>
+        <li><a href="https://arxiv.org/abs/1603.09320" style="color:#a5b4fc;">HNSW (Malkov &amp; Yashunin, 2016)</a> — the paper behind every modern ANN index. Worth skimming once for the intuitions behind <code>m</code> and <code>ef</code>.</li>
+        <li><a href="https://docs.python.org/3/library/collections.html#collections.defaultdict" style="color:#a5b4fc;">Python · <code>collections.defaultdict</code></a> — the canonical group-by pattern used in §7.</li>
+        <li><a href="https://platform.openai.com/docs/guides/text-generation" style="color:#a5b4fc;">OpenAI · text generation guide</a> — reference for the chat-completions API call used in §8.</li>
+        <li><a href="https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-unranked-retrieval-sets-1.html" style="color:#a5b4fc;">IR Book · Evaluation</a> — Manning, Raghavan, Schütze. The canonical reference for precision, recall, MAP, and nDCG.</li>
+        <li><a href="https://en.wikipedia.org/wiki/Mean_reciprocal_rank" style="color:#a5b4fc;">Mean Reciprocal Rank (Wikipedia)</a> — formal definition and worked examples.</li>
+        <li><a href="https://en.wikipedia.org/wiki/Discounted_cumulative_gain" style="color:#a5b4fc;">nDCG (Wikipedia)</a> — definition and intuition for graded-relevance ranking metrics.</li>
+        <li><a href="https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)" style="color:#a5b4fc;">IR evaluation measures (Wikipedia)</a> — overview of the full metric landscape.</li>
+        <li><a href="search-engine.html" style="color:#a5b4fc;">Build Your Own Search Engine</a> — text-search baseline this evaluation will benchmark against.</li>
+        <li><a href="vector-search.html" style="color:#a5b4fc;">Vector Search with Qdrant</a> — vector retriever that goes head-to-head with the text baseline.</li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← RAG Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
