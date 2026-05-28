@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classic ML Interview Questions &amp; Answers — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Q&A item ── */
+    .qa-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.8rem;
+    }
+    .qa-q {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 0.55rem;
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      line-height: 1.55;
+    }
+    .qa-num {
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      min-width: 1.55rem;
+      height: 1.55rem;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+    .qa-a {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      padding-left: 2.25rem;
+    }
+    .qa-a code {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.82rem;
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · Machine Learning</p>
+      <h1>Classic ML Interview Questions &amp; Answers</h1>
+      <p>Twenty foundational machine-learning questions covering theory, models, evaluation, and optimization — the staples of any ML interview round.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Foundations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Core Concepts</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">1</span> What is the difference between supervised and unsupervised learning?</div>
+        <div class="qa-a">Supervised learning uses labeled data (input–output pairs) to learn a mapping function (e.g., classification, regression). Unsupervised learning finds patterns in unlabeled data (e.g., clustering, dimensionality reduction).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">2</span> Explain the bias–variance tradeoff.</div>
+        <div class="qa-a">Bias is error from overly simplistic assumptions (underfitting); variance is error from sensitivity to training data fluctuations (overfitting). Total error = bias² + variance + irreducible error. Increasing model complexity lowers bias but raises variance; the goal is to minimize total error.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">3</span> What is overfitting and how do you prevent it?</div>
+        <div class="qa-a">Overfitting is when a model learns noise in training data and performs poorly on unseen data. Prevention: regularization (L1/L2), cross-validation, more training data, simpler models, dropout, early stopping, and pruning.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">4</span> Difference between L1 and L2 regularization?</div>
+        <div class="qa-a">L1 (Lasso) adds the absolute value of weights to the loss, producing sparse solutions (feature selection). L2 (Ridge) adds the squared weights, shrinking them toward zero but rarely to exactly zero.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">5</span> What is cross-validation?</div>
+        <div class="qa-a">A technique to evaluate model generalization by splitting data into k folds, training on k−1 folds and validating on the remaining one, repeated k times. K-fold (commonly k=5 or 10) reduces variance in performance estimates.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>2 · Metrics, Trees &amp; Optimization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Evaluation &amp; Learning Mechanics</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">6</span> Explain precision, recall, and F1-score.</div>
+        <div class="qa-a">Precision = <code>TP / (TP + FP)</code> — accuracy of positive predictions. Recall = <code>TP / (TP + FN)</code> — coverage of actual positives. F1 = harmonic mean = <code>2·(P·R) / (P + R)</code> — balances both, useful for imbalanced classes.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">7</span> What is the difference between bagging and boosting?</div>
+        <div class="qa-a">Bagging trains models in parallel on bootstrap samples and averages results to reduce variance (e.g., Random Forest). Boosting trains models sequentially, each correcting the previous one's errors, reducing bias (e.g., AdaBoost, Gradient Boosting).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">8</span> How does a decision tree decide splits?</div>
+        <div class="qa-a">It selects splits that maximize information gain (reduce entropy) or minimize Gini impurity for classification, and minimize variance/MSE for regression.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">9</span> What is the curse of dimensionality?</div>
+        <div class="qa-a">As dimensions increase, data becomes sparse, distances between points become less meaningful, and models need exponentially more data to generalize well. Mitigated via dimensionality reduction (PCA) and feature selection.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">10</span> Explain how gradient descent works.</div>
+        <div class="qa-a">An optimization algorithm that iteratively updates parameters in the opposite direction of the loss gradient: <code>θ = θ − α·∇J(θ)</code>, where α is the learning rate. Variants: batch, stochastic (SGD), and mini-batch.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · Models &amp; Algorithms</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Model Families</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">11</span> What's the difference between generative and discriminative models?</div>
+        <div class="qa-a">Generative models learn the joint probability <code>P(x, y)</code> and can generate data (e.g., Naive Bayes, GANs). Discriminative models learn the conditional <code>P(y | x)</code> or decision boundary directly (e.g., logistic regression, SVM).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">12</span> How does logistic regression work?</div>
+        <div class="qa-a">It models the probability of a binary outcome using the sigmoid function applied to a linear combination of features. It's trained by minimizing log-loss (cross-entropy) and outputs probabilities mapped to classes via a threshold.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">13</span> What is PCA?</div>
+        <div class="qa-a">Principal Component Analysis is a linear dimensionality reduction technique that projects data onto orthogonal axes (principal components) capturing maximum variance, found via eigendecomposition of the covariance matrix.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">14</span> How does K-means clustering work?</div>
+        <div class="qa-a">It partitions data into k clusters by: (1) initializing centroids, (2) assigning points to nearest centroid, (3) recomputing centroids as cluster means, repeating until convergence. Sensitive to initialization and requires choosing k.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">15</span> What is the difference between parametric and non-parametric models?</div>
+        <div class="qa-a">Parametric models assume a fixed form with a finite number of parameters (e.g., linear regression). Non-parametric models grow in complexity with data and make fewer assumptions (e.g., KNN, decision trees).</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · Practical Considerations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Real-World Practice</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">16</span> How do you handle imbalanced datasets?</div>
+        <div class="qa-a">Resampling (oversampling minority/SMOTE, undersampling majority), class weighting, using appropriate metrics (F1, ROC-AUC, PR-AUC instead of accuracy), and ensemble methods.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">17</span> What is the ROC curve and AUC?</div>
+        <div class="qa-a">The ROC curve plots True Positive Rate vs. False Positive Rate across thresholds. AUC (Area Under Curve) measures overall ability to discriminate classes; 1.0 is perfect, 0.5 is random.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">18</span> Explain the difference between bagging-based Random Forest and a single decision tree.</div>
+        <div class="qa-a">A single tree is prone to high variance/overfitting. Random Forest builds many trees on bootstrapped samples with random feature subsets and averages predictions, reducing variance and improving generalization.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">19</span> What is regularization and why use it?</div>
+        <div class="qa-a">Regularization adds a penalty to the loss function to discourage complex models, reducing overfitting and improving generalization by constraining parameter magnitudes.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">20</span> What's the difference between batch, mini-batch, and stochastic gradient descent?</div>
+        <div class="qa-a">Batch uses the entire dataset per update (stable, slow). SGD uses one sample (fast, noisy). Mini-batch uses a small subset (balances stability and speed) — the most common in practice.</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

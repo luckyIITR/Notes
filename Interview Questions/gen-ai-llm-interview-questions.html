@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gen AI / LLM Interview Questions &amp; Answers — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Q&A item ── */
+    .qa-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.8rem;
+    }
+    .qa-q {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 0.55rem;
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      line-height: 1.55;
+    }
+    .qa-num {
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      min-width: 1.7rem;
+      height: 1.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+      padding: 0 0.3rem;
+    }
+    .qa-a {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      padding-left: 2.4rem;
+    }
+    .qa-a code {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.82rem;
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · Gen AI · LLMs</p>
+      <h1>Gen AI / LLM Interview Questions &amp; Answers</h1>
+      <p>Thirty questions on the modern LLM stack — transformer internals, training stages, RLHF/DPO, RAG, PEFT/LoRA, decoding, scaling laws, quantization, agents, and the safety issues that come with them.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Transformer Foundations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> Architectures &amp; Attention</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">1</span> What is a Large Language Model and how is it trained?</div>
+        <div class="qa-a">An LLM is a transformer-based neural network trained on massive text corpora to predict the next token given context. Training has stages: pretraining (self-supervised next-token prediction on large unlabeled text), supervised fine-tuning (SFT) on instruction-response pairs, and alignment (e.g., RLHF) to make outputs helpful and safe.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">2</span> Explain the self-attention mechanism mathematically.</div>
+        <div class="qa-a"><code>Attention(Q, K, V) = softmax(QKᵀ / √dₖ) · V</code>. Each token is projected into Query, Key, and Value vectors. Dot products of Q and K measure relevance between tokens, scaled by <code>√dₖ</code> to stabilize gradients, passed through softmax to get attention weights, then used to take a weighted sum of Values. This lets each token gather context from all others.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">3</span> What's the difference between encoder-only, decoder-only, and encoder-decoder models?</div>
+        <div class="qa-a">Encoder-only (BERT) uses bidirectional attention, good for understanding tasks (classification, NER). Decoder-only (GPT) uses causal/masked attention, good for generation. Encoder-decoder (T5, BART) encodes input bidirectionally then generates output, good for seq2seq tasks like translation and summarization.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">4</span> What is causal (masked) attention and why do decoder models use it?</div>
+        <div class="qa-a">Causal attention masks future tokens so each position can only attend to previous tokens. Decoder models use it during autoregressive generation to prevent "cheating" by seeing the answer — preserving the next-token prediction objective and enabling left-to-right generation.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">5</span> Explain tokenization and the role of BPE.</div>
+        <div class="qa-a">Tokenization splits text into units (tokens) the model processes. Byte-Pair Encoding (BPE) iteratively merges the most frequent character/subword pairs, balancing vocabulary size and coverage. Subword tokenization handles rare/unknown words by breaking them into known pieces, avoiding out-of-vocabulary issues. Variants: WordPiece (BERT), SentencePiece, tiktoken.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">6</span> What are embeddings and how do they capture meaning?</div>
+        <div class="qa-a">Embeddings are dense vector representations of tokens/text where semantic similarity corresponds to geometric proximity. They're learned so words/sentences with similar meanings have nearby vectors, enabling similarity search, clustering, and downstream tasks. Contextual embeddings (from transformers) vary by surrounding context.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>2 · Training, Alignment &amp; Fine-Tuning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> From Pretraining to Preferences</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">7</span> What is RLHF and why is it important?</div>
+        <div class="qa-a">Reinforcement Learning from Human Feedback aligns models with human preferences. Steps: (1) SFT on demonstrations, (2) train a reward model on human-ranked outputs, (3) optimize the LLM against the reward model using RL (typically PPO). It improves helpfulness, harmlessness, and instruction-following beyond what next-token prediction alone achieves.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">8</span> What is DPO and how does it differ from RLHF/PPO?</div>
+        <div class="qa-a">Direct Preference Optimization aligns models directly from preference data without training a separate reward model or running RL. It reframes preference optimization as a simple classification-style loss on the policy itself, making it more stable, simpler, and computationally cheaper than PPO-based RLHF while achieving comparable alignment.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">12</span> What is the difference between fine-tuning and prompt engineering?</div>
+        <div class="qa-a">Prompt engineering shapes behavior via input instructions without changing weights — fast, cheap, no training. Fine-tuning updates model weights on task-specific data — better for consistent specialized behavior, domain adaptation, or style, but requires data, compute, and risks catastrophic forgetting.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">13</span> Explain LoRA and why it's efficient.</div>
+        <div class="qa-a">Low-Rank Adaptation freezes the pretrained weights and injects small trainable low-rank matrices (<code>A</code> and <code>B</code>, where <code>ΔW = BA</code>) into layers. Only these tiny matrices are trained, drastically reducing trainable parameters and memory while preserving the base model. Adapters can be swapped per task. QLoRA adds quantization for even lower memory.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">14</span> What is PEFT (Parameter-Efficient Fine-Tuning)?</div>
+        <div class="qa-a">PEFT methods adapt LLMs by training only a small fraction of parameters. Techniques: LoRA/QLoRA (low-rank adapters), prefix/prompt tuning (learnable virtual tokens), and adapter layers. They cut compute/storage costs, reduce catastrophic forgetting, and let one base model serve many tasks via swappable modules.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">24</span> What is catastrophic forgetting and how do you prevent it?</div>
+        <div class="qa-a">Catastrophic forgetting is when fine-tuning on new tasks degrades performance on previously learned ones. Prevention: PEFT/LoRA (preserve base weights), low learning rates, rehearsal (mixing in original data), regularization (EWC), and multi-task training.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">26</span> What is the difference between pretraining, fine-tuning, and alignment?</div>
+        <div class="qa-a">Pretraining teaches general language via self-supervised next-token prediction on huge corpora. Fine-tuning (SFT) adapts the model to follow instructions or specialize using labeled data. Alignment (RLHF/DPO) tunes outputs to match human preferences for helpfulness and safety. Each stage builds on the previous.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · RAG &amp; Embeddings</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📚</span> Grounding LLMs in External Knowledge</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">9</span> Explain RAG (Retrieval-Augmented Generation).</div>
+        <div class="qa-a">RAG combines a retriever with a generator: relevant documents are retrieved (usually via vector similarity search) from an external knowledge base and added to the prompt as context. This grounds responses in up-to-date/proprietary data, reduces hallucinations, and avoids retraining the model for new knowledge.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">10</span> What are the components of a RAG pipeline?</div>
+        <div class="qa-a">(1) Document ingestion and chunking, (2) embedding generation, (3) vector store/index, (4) retriever (similarity search, often with reranking), (5) prompt augmentation with retrieved context, (6) the LLM generator. Quality depends heavily on chunking strategy, embedding quality, and retrieval relevance.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">29</span> What are embeddings vs generative outputs — when do you use each?</div>
+        <div class="qa-a">Embedding models produce fixed vectors for similarity, search, clustering, and retrieval (no text generation). Generative models produce text. RAG uses both: embeddings for retrieval, generation for the final answer. Choose embeddings for semantic search/classification, generation for content creation.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · Prompting &amp; Decoding</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💬</span> Steering Outputs at Inference</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">11</span> Why do LLMs hallucinate and how do you reduce hallucinations?</div>
+        <div class="qa-a">LLMs predict plausible tokens, not verified facts — they have no inherent truth-checking and may confidently generate false information, especially for rare or out-of-distribution queries. Mitigations: RAG grounding, citing sources, lower temperature, prompting for "I don't know," fine-tuning, self-consistency checks, and constrained decoding.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">15</span> Explain temperature, top-k, and top-p (nucleus) sampling.</div>
+        <div class="qa-a">Temperature scales logits before softmax — lower (&lt;1) makes output more deterministic/focused, higher (&gt;1) more random/creative. Top-k restricts sampling to the <code>k</code> most likely tokens. Top-p (nucleus) samples from the smallest set of tokens whose cumulative probability exceeds <code>p</code>, adapting the candidate pool dynamically.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">16</span> What is the difference between greedy decoding and beam search?</div>
+        <div class="qa-a">Greedy decoding picks the single highest-probability token at each step — fast but can miss globally better sequences. Beam search keeps the top-<code>b</code> candidate sequences at each step, exploring more paths for higher overall likelihood — better for tasks like translation but more compute and can produce generic/repetitive text.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">17</span> What is in-context learning and few-shot prompting?</div>
+        <div class="qa-a">In-context learning is the model's ability to perform tasks from examples in the prompt without weight updates. Zero-shot gives only instructions; few-shot provides several input-output examples that guide the model to infer the pattern and format. Performance often improves with well-chosen examples.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">18</span> Explain Chain-of-Thought (CoT) prompting.</div>
+        <div class="qa-a">CoT prompts the model to generate intermediate reasoning steps before the final answer (e.g., "Let's think step by step"). It improves performance on multi-step reasoning (math, logic) by allocating more computation and structuring the problem. Variants: zero-shot CoT, self-consistency (sample multiple chains, majority vote), tree-of-thoughts.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>5 · Efficiency, Scaling &amp; Inference</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> Making Big Models Practical</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">19</span> What is the context window and why does it matter?</div>
+        <div class="qa-a">The context window is the maximum number of tokens (input + output) a model can process at once. It limits how much information/history fits in a prompt. Longer windows enable processing large documents and longer conversations but increase compute cost (attention scales quadratically with sequence length).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">20</span> Why does attention scale quadratically, and how is this addressed?</div>
+        <div class="qa-a">Self-attention compares every token with every other token → <code>O(n²)</code> compute and memory in sequence length. Solutions: FlashAttention (memory-efficient exact attention), sparse/local attention, sliding-window attention, linear attention approximations, and architectures like Longformer/Mamba (state-space models) for long sequences.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">21</span> What is KV caching and why is it important for inference?</div>
+        <div class="qa-a">During autoregressive generation, the Key and Value vectors of past tokens are recomputed each step. KV caching stores them so only the new token's K/V are computed, drastically speeding up generation. It trades memory for speed and is essential for efficient LLM serving.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">22</span> Explain quantization and its tradeoffs.</div>
+        <div class="qa-a">Quantization reduces weight/activation precision (e.g., FP16 → INT8/INT4), shrinking memory footprint and speeding inference. Tradeoff: potential accuracy loss. Methods: post-training quantization (PTQ, fast, may degrade) and quantization-aware training (QAT, better accuracy, costlier). Techniques like GPTQ and AWQ minimize quality loss at low bit-widths.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">23</span> What are scaling laws for LLMs?</div>
+        <div class="qa-a">Scaling laws describe how model performance (loss) improves predictably as a power law with increased model size, dataset size, and compute. The Chinchilla finding showed many models were undertrained — optimal performance balances parameters and training tokens (roughly 20 tokens per parameter), guiding compute-efficient training.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">27</span> What are mixture-of-experts (MoE) models?</div>
+        <div class="qa-a">MoE replaces dense feed-forward layers with multiple "expert" subnetworks and a router that activates only a few experts per token (sparse activation). This increases total parameters/capacity while keeping per-token compute low, improving efficiency. Challenges: load balancing across experts and training stability.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · Evaluation, Safety &amp; Agents</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛡️</span> Deploying LLMs in the Real World</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">25</span> How do you evaluate LLMs?</div>
+        <div class="qa-a">Automated benchmarks (MMLU, HellaSwag, GSM8K, HumanEval for code), task metrics (BLEU, ROUGE, perplexity), LLM-as-a-judge (using a strong model to score outputs), human evaluation, and red-teaming for safety. No single metric suffices; alignment and factuality often need human/preference-based assessment.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">28</span> What is prompt injection and how do you defend against it?</div>
+        <div class="qa-a">Prompt injection is an attack where malicious input overrides the system's intended instructions (e.g., "ignore previous instructions"). Defenses: input/output filtering, separating system and user content, instruction hierarchies, sandboxing tool use, and not feeding untrusted content directly into privileged prompts. It remains an open security challenge, especially with RAG and agents.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">30</span> Explain agents and tool use in LLMs.</div>
+        <div class="qa-a">Agentic LLMs go beyond text generation by planning and invoking external tools (search, code execution, APIs, databases) in a loop, observing results and deciding next actions. Frameworks use reasoning patterns like ReAct (reason + act). This extends capabilities to real-time data and actions but adds reliability, latency, and safety challenges.</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

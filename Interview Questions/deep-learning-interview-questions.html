@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deep Learning Interview Questions &amp; Answers — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Q&A item ── */
+    .qa-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.8rem;
+    }
+    .qa-q {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 0.55rem;
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      line-height: 1.55;
+    }
+    .qa-num {
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      min-width: 1.7rem;
+      height: 1.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+      padding: 0 0.3rem;
+    }
+    .qa-a {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      padding-left: 2.4rem;
+    }
+    .qa-a code {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.82rem;
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · Deep Learning</p>
+      <h1>Deep Learning Interview Questions &amp; Answers</h1>
+      <p>Thirty questions covering the deep-learning stack — backprop, activations, CNNs, RNNs/LSTMs, attention and Transformers, optimization, and the training tricks that make modern networks actually work.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Fundamentals</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> How Networks Learn</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">1</span> What is backpropagation and how does it work?</div>
+        <div class="qa-a">Backpropagation computes gradients of the loss with respect to each weight using the chain rule, propagating errors backward from output to input layers. It has two phases: forward pass (compute predictions and loss) and backward pass (compute gradients layer by layer). These gradients are then used by an optimizer to update weights.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">2</span> Why do we need activation functions, and what happens without them?</div>
+        <div class="qa-a">Activation functions introduce non-linearity, enabling networks to learn complex patterns. Without them, stacking layers collapses into a single linear transformation (a composition of linear functions is still linear), so the network couldn't model non-linear relationships regardless of depth.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">3</span> Compare ReLU, sigmoid, and tanh.</div>
+        <div class="qa-a">Sigmoid (0 to 1) saturates and causes vanishing gradients; outputs aren't zero-centered. Tanh (−1 to 1) is zero-centered but still saturates. ReLU (<code>max(0, x)</code>) avoids saturation for positive inputs, is computationally cheap, and speeds convergence, but suffers "dying ReLU" (neurons stuck at 0). Variants like Leaky ReLU and GELU address this.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">4</span> What is the dying ReLU problem and how do you fix it?</div>
+        <div class="qa-a">When a neuron's input is consistently negative, ReLU outputs 0 and its gradient is 0, so it stops updating permanently. Fixes: Leaky ReLU (small negative slope), Parametric ReLU, ELU, GELU, lower learning rates, and proper initialization.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">20</span> Explain the difference between epoch, batch, and iteration.</div>
+        <div class="qa-a">An epoch is one full pass through the training dataset. A batch is the subset of samples processed before one weight update. An iteration is one weight update (one batch). <code>iterations per epoch = dataset size / batch size</code>.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">29</span> What is the difference between parameters and hyperparameters?</div>
+        <div class="qa-a">Parameters (weights, biases) are learned from data during training. Hyperparameters (learning rate, batch size, number of layers, dropout rate) are set before training and control the learning process, typically tuned via validation.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>2 · Initialization, Normalization &amp; Stability</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Keeping Training Stable</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">5</span> Explain weight initialization strategies (Xavier vs He).</div>
+        <div class="qa-a">Poor initialization causes vanishing/exploding activations. Xavier (Glorot) initialization scales weights by variance <code>1/n</code> to keep signal variance stable, suited for tanh/sigmoid. He initialization uses <code>2/n</code>, designed for ReLU since it halves activations. Both prevent gradients from shrinking or blowing up early in training.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">6</span> How does batch normalization work and what are its benefits?</div>
+        <div class="qa-a">It normalizes layer inputs per mini-batch to zero mean/unit variance, then applies learnable scale (γ) and shift (β). Benefits: faster training, higher learning rates, reduced internal covariate shift, mild regularization, and less sensitivity to initialization. At inference, it uses running population statistics.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">7</span> What's the difference between batch norm, layer norm, and instance norm?</div>
+        <div class="qa-a">Batch norm normalizes across the batch dimension (per feature), depends on batch size. Layer norm normalizes across features within a single sample (batch-independent, used in transformers/RNNs). Instance norm normalizes per-channel per-sample (common in style transfer).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">8</span> Explain the vanishing/exploding gradient problem in deep networks.</div>
+        <div class="qa-a">During backprop, gradients are products of many terms. If weights/derivatives are &lt;1, gradients vanish toward zero (early layers stop learning); if &gt;1, they explode. Solutions: ReLU, residual connections, batch norm, careful initialization, gradient clipping (for exploding), and LSTM/GRU gating (for RNNs).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">12</span> What are residual connections (ResNets) and why do they help?</div>
+        <div class="qa-a">Residual connections add the input of a block to its output (skip connection): <code>y = F(x) + x</code>. They let gradients flow directly through the identity path, mitigating vanishing gradients and enabling very deep networks (100+ layers) by letting layers learn residual functions rather than full mappings.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">26</span> What is gradient clipping and when is it needed?</div>
+        <div class="qa-a">Gradient clipping caps gradient magnitude (by value or norm) to prevent exploding gradients, especially in RNNs/Transformers. It stabilizes training by avoiding huge, destabilizing weight updates.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · CNNs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🖼️</span> Convolutional Networks</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">9</span> How do CNNs work and why are they good for images?</div>
+        <div class="qa-a">CNNs use convolutional filters that slide over the input to detect local patterns, sharing weights across spatial positions. This gives parameter efficiency, translation invariance, and a hierarchy of features (edges → textures → objects). Pooling layers reduce spatial size and add invariance.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">10</span> What are the roles of stride, padding, and pooling in CNNs?</div>
+        <div class="qa-a">Stride controls the step size of the filter (larger stride = smaller output). Padding adds border pixels to preserve spatial dimensions ("same" padding) or allow shrinkage ("valid"). Pooling (max/average) downsamples feature maps, reducing computation and providing local translation invariance.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">11</span> How do you compute the output size of a convolutional layer?</div>
+        <div class="qa-a"><code>Output = ⌊(W − F + 2P) / S⌋ + 1</code>, where <code>W</code> is input size, <code>F</code> is filter size, <code>P</code> is padding, and <code>S</code> is stride. Applied independently to height and width.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · RNNs, Attention &amp; Transformers</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Sequence Models</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">13</span> Explain how RNNs work and their limitations.</div>
+        <div class="qa-a">RNNs process sequences by maintaining a hidden state updated at each timestep, sharing weights across time. Limitations: vanishing/exploding gradients over long sequences (poor long-term memory), sequential computation (no parallelization), and difficulty capturing long-range dependencies.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">14</span> How do LSTMs solve the vanishing gradient problem?</div>
+        <div class="qa-a">LSTMs use a cell state with gating mechanisms (forget, input, output gates) that regulate information flow. The cell state allows gradients to flow nearly unchanged across many timesteps (additive updates instead of repeated multiplication), preserving long-term dependencies. GRUs are a simpler variant with fewer gates.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">15</span> Explain the attention mechanism.</div>
+        <div class="qa-a">Attention lets a model weigh the relevance of different input parts when producing each output. It computes attention weights via compatibility between a query and keys, then takes a weighted sum of values: <code>Attention(Q, K, V) = softmax(QKᵀ / √dₖ) · V</code>. The scaling by <code>√dₖ</code> prevents large dot products from saturating softmax.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">16</span> How do Transformers work and why did they replace RNNs?</div>
+        <div class="qa-a">Transformers use self-attention to relate all positions in a sequence simultaneously, plus positional encodings (since attention is order-agnostic), multi-head attention, feed-forward layers, and residual connections + layer norm. They enable full parallelization, capture long-range dependencies better, and scale far more effectively than sequential RNNs.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">17</span> What is multi-head attention and why use multiple heads?</div>
+        <div class="qa-a">Multi-head attention runs several attention operations in parallel with different learned projections, letting the model attend to different representation subspaces and relationship types simultaneously (e.g., syntactic vs. semantic). Outputs are concatenated and projected.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">18</span> Why do Transformers need positional encoding?</div>
+        <div class="qa-a">Self-attention is permutation-invariant and has no inherent notion of order. Positional encodings (sinusoidal or learned) inject sequence position information into embeddings so the model can use word order.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">30</span> Explain encoder-decoder architecture.</div>
+        <div class="qa-a">An encoder compresses the input into a latent representation; a decoder generates output from it. Used in seq2seq tasks (translation, summarization). Transformers use stacked encoder/decoder blocks with cross-attention letting the decoder attend to encoder outputs.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>5 · Regularization &amp; Generalization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛡️</span> Fighting Overfitting</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">19</span> What is the difference between dropout in training vs inference?</div>
+        <div class="qa-a">During training, dropout randomly zeroes neurons to prevent co-adaptation. At inference, all neurons are active. With inverted dropout, activations are scaled by <code>1 / (1 − p)</code> during training so no scaling is needed at inference, keeping expected activations consistent.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">21</span> What is transfer learning and when do you use it?</div>
+        <div class="qa-a">Transfer learning reuses a model pretrained on a large dataset (e.g., ImageNet, large text corpora) for a new related task. You either use it as a fixed feature extractor or fine-tune some/all layers. Useful when target data is limited, saving compute and improving generalization.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">22</span> What's the difference between fine-tuning and feature extraction in transfer learning?</div>
+        <div class="qa-a">Feature extraction freezes the pretrained layers and trains only a new head on top — fast, low data needs. Fine-tuning unfreezes some or all pretrained layers and updates them with a small learning rate — better performance when you have more data and the domains differ.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">23</span> How do you handle overfitting in deep networks?</div>
+        <div class="qa-a">Regularization (L1/L2, dropout), data augmentation, early stopping, batch normalization, reducing model size, transfer learning, and gathering more data. Monitoring the validation loss gap signals overfitting.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">24</span> What is data augmentation and why is it useful?</div>
+        <div class="qa-a">Data augmentation creates modified copies of training data (rotations, flips, crops, color jitter for images; synonym replacement, back-translation for text). It increases effective dataset size and diversity, improving generalization and robustness without collecting new data.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · Outputs &amp; Optimization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Heads &amp; Optimizers</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">25</span> Explain the difference between softmax and sigmoid for output layers.</div>
+        <div class="qa-a">Sigmoid outputs independent probabilities per class — used for binary or multi-label classification. Softmax outputs a probability distribution summing to 1 across mutually exclusive classes — used for multi-class single-label classification.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">27</span> Compare Adam, SGD with momentum, and RMSprop for deep learning.</div>
+        <div class="qa-a">SGD+momentum generalizes well and is common for final-tuning but needs careful learning-rate scheduling. RMSprop adapts per-parameter learning rates via squared-gradient averages, good for non-stationary objectives. Adam combines momentum + adaptive rates with bias correction — robust default, though sometimes generalizes slightly worse than tuned SGD.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">28</span> What is the role of the learning rate schedule (warmup, decay)?</div>
+        <div class="qa-a">Warmup gradually increases the learning rate early to avoid instability when weights are random (critical for Transformers). Decay (step, cosine, exponential) reduces it over time for finer convergence near the minimum. Together they improve stability and final performance.</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

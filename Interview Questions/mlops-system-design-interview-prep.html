@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MLOps / System Design Interview Prep — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Numbered algorithm-style steps (used for The Framework) ── */
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+      margin: 0.4rem 0 0;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.9rem 1rem 0.95rem 3.1rem;
+      margin-bottom: 0.6rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.7;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.95rem;
+      top: 1rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .algo-steps li .step-title {
+      display: block;
+      font-weight: 700;
+      color: #c7d2fe;
+      font-size: 0.95rem;
+      margin-bottom: 0.3rem;
+    }
+    .algo-steps li ul {
+      margin: 0.4rem 0 0;
+    }
+
+    /* ── Concept item (term + description block) ── */
+    .concept-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 0.6rem;
+    }
+    .concept-name {
+      font-weight: 700;
+      color: #c7d2fe;
+      font-size: 0.92rem;
+      margin-bottom: 0.35rem;
+    }
+    .concept-desc {
+      color: #cbd5e1;
+      font-size: 0.88rem;
+      line-height: 1.7;
+    }
+    .concept-desc ul { margin: 0.35rem 0 0; }
+
+    /* ── Worked-design sub-sections ── */
+    .design-row {
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      gap: 0.9rem;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid #2d3148;
+    }
+    .design-row:last-of-type { border-bottom: none; }
+    .design-row .design-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      padding-top: 0.15rem;
+    }
+    .design-row .design-body {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    /* ── Rapid-fire concept pills ── */
+    .rapid-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+    .rapid-pills .term {
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 540px) {
+      .design-row { grid-template-columns: 1fr; gap: 0.3rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · MLOps · System Design</p>
+      <h1>MLOps / System Design Interview Prep</h1>
+      <p>The round where breadth and structure matter more than depth on any one piece — a repeatable framework, the key MLOps and LLM concepts, three fully worked designs, and what interviewers are actually scoring.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · The Framework</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Your Repeatable Seven-Step Script</h2>
+      <p>Memorize this flow and narrate it out loud every time. The discipline of walking it signals seniority even if you're light on a specific tool.</p>
+
+      <ol class="algo-steps">
+        <li>
+          <span class="step-title">Clarify Requirements</span>
+          Always start here; never jump to the model.
+          <ul>
+            <li><strong>Functional:</strong> What exactly does the system do? Who's the user? What's the output?</li>
+            <li><strong>Non-functional:</strong> Latency (p50/p99), throughput (QPS), scale (users, items, requests/day), availability SLA, cost budget.</li>
+            <li><strong>Scoping questions:</strong> "Is this real-time or can it be batch?" "What's the acceptable latency?" "What's the scale — thousands or billions of items?" "Is there a human in the loop?"</li>
+          </ul>
+        </li>
+        <li>
+          <span class="step-title">Data — sources, volume, labels, quality, drift</span>
+          <ul>
+            <li>Where does data come from (logs, clickstream, transactions, user-generated)?</li>
+            <li>How are labels obtained (explicit feedback, implicit signals, human annotation, weak supervision)?</li>
+            <li>Class imbalance, label delay, data freshness, privacy/PII concerns.</li>
+          </ul>
+        </li>
+        <li>
+          <span class="step-title">Features — engineering + online/offline store</span>
+          <ul>
+            <li>Offline store (training, batch, historical) vs online store (low-latency serving).</li>
+            <li>The critical concept: <span class="term">train-serve skew</span> — features must be computed identically in both, which is why feature stores exist.</li>
+            <li>Point-in-time correctness to avoid label leakage.</li>
+          </ul>
+        </li>
+        <li>
+          <span class="step-title">Model — baseline first, then complexity</span>
+          <ul>
+            <li>Always state: "I'd start with a simple baseline" (logistic regression, popularity-based, heuristic) to establish a reference and validate the pipeline end-to-end.</li>
+            <li>Then iterate to complex (gradient-boosted trees, deep models, two-tower, transformers).</li>
+            <li>Training infra: distributed training, hardware, frequency.</li>
+          </ul>
+        </li>
+        <li>
+          <span class="step-title">Serving — match the pattern to the latency budget</span>
+          <ul>
+            <li><strong>Batch:</strong> precompute predictions offline (e.g., daily recommendations). Cheapest, highest latency tolerance.</li>
+            <li><strong>Real-time / online:</strong> compute on request (fraud, ad CTR). Needs low-latency feature fetch + fast model.</li>
+            <li><strong>Streaming:</strong> continuous processing of event streams.</li>
+            <li>Mention A/B testing, shadow deployment, and canary releases for safe rollout.</li>
+          </ul>
+        </li>
+        <li>
+          <span class="step-title">Monitoring — name all four layers explicitly</span>
+          <ul>
+            <li><strong>Data drift</strong> — input distribution changes (PSI, KS test).</li>
+            <li><strong>Model / concept drift</strong> — relationship between X and y changes (performance decay).</li>
+            <li><strong>Operational</strong> — latency, error rate, throughput.</li>
+            <li><strong>Business metrics</strong> — the metric that actually matters (revenue, fraud caught, engagement).</li>
+          </ul>
+        </li>
+        <li>
+          <span class="step-title">Iteration — close the loop</span>
+          Retraining cadence (scheduled vs triggered by drift), feedback collection, continuous evaluation, and the experiment → deploy → monitor cycle.
+        </li>
+      </ol>
+
+      <div class="callout"><strong>Pro move:</strong> Open every answer with — <em>"Let me clarify requirements first, then I'll walk through data, features, modeling, serving, monitoring, and iteration."</em> This frames you as systematic before you've said anything technical.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · Key MLOps Concepts</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧰</span> Talking Points You Should Have Ready</h2>
+
+      <div class="concept-item">
+        <div class="concept-name">Experiment tracking (MLflow, Weights &amp; Biases)</div>
+        <div class="concept-desc">Log hyperparameters, metrics, artifacts, and code versions for every run so experiments are reproducible and comparable. Answers "which config produced this model?"</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Feature store (Feast, Tecton)</div>
+        <div class="concept-desc">Centralized system serving consistent features to both training (offline) and inference (online), solving train-serve skew and enabling feature reuse across teams.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Model registry</div>
+        <div class="concept-desc">Versioned catalog of trained models with stage tags (staging/production/archived), lineage, and metadata. Enables controlled promotion and rollback.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Data versioning (DVC)</div>
+        <div class="concept-desc">Version control for datasets and pipelines so you can reproduce exactly which data trained a model — critical for debugging and compliance.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">CI/CD for ML</div>
+        <div class="concept-desc">Beyond code, it includes data validation, automated retraining, model testing (not just unit tests but model quality gates), and automated deployment. Often called CT (continuous training).</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Deployment strategies</div>
+        <div class="concept-desc">
+          <ul>
+            <li><strong>Shadow deployment:</strong> new model runs alongside production receiving real traffic, but its predictions aren't served — you compare silently against the live model with zero user risk.</li>
+            <li><strong>Canary release:</strong> route a small % of traffic to the new model, monitor, then gradually ramp up.</li>
+            <li><strong>A/B testing:</strong> split traffic to measure causal impact on business metrics.</li>
+            <li><strong>Blue-green:</strong> maintain two environments, switch traffic instantly, roll back fast.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Drift detection</div>
+        <div class="concept-desc">
+          <ul>
+            <li><strong>PSI (Population Stability Index):</strong> measures distribution shift between two periods; common thresholds — &lt;0.1 stable, 0.1–0.25 moderate, &gt;0.25 significant shift.</li>
+            <li><strong>KS test (Kolmogorov–Smirnov):</strong> statistical test comparing two distributions for continuous features.</li>
+            <li><strong>Concept drift:</strong> track prediction quality over time as labels arrive.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Observability</div>
+        <div class="concept-desc">Logging, metrics, tracing, and alerting across the full pipeline — knowing <em>why</em> something broke, not just <em>that</em> it broke.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · LLM-Specific MLOps</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✨</span> The Hot Section — Emphasize This</h2>
+      <p>LLM systems break some traditional MLOps assumptions (no labels, non-deterministic outputs, expensive inference). Lead with these.</p>
+
+      <div class="concept-item">
+        <div class="concept-name">Prompt versioning &amp; management</div>
+        <div class="concept-desc">Treat prompts as versioned artifacts (like code) since small prompt changes drastically alter behavior. Track which prompt version produced which output.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Eval pipelines</div>
+        <div class="concept-desc">Since outputs are open-ended, use a mix of automated metrics, LLM-as-judge, golden test sets / regression suites, and human eval. Run evals in CI before deploying prompt or model changes to catch regressions.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Guardrails</div>
+        <div class="concept-desc">Input filtering (block injection, PII, toxic input) and output filtering (block hallucinations, unsafe content, PII leakage, off-topic responses). Often a separate validation layer or smaller classifier model.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Semantic caching</div>
+        <div class="concept-desc">Cache responses keyed by <em>semantic similarity</em> of queries (via embeddings), not exact match, so paraphrased questions hit the cache — cutting cost and latency significantly.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Cost tracking</div>
+        <div class="concept-desc">Monitor token usage per request / user / feature; LLM costs scale with tokens, so observability on input/output token counts is essential for unit economics.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Rate limiting</div>
+        <div class="concept-desc">Protect against abuse and runaway costs; manage provider quotas.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Fallback chains</div>
+        <div class="concept-desc">If the primary model fails, times out, or hits rate limits, gracefully degrade to a cheaper model, cached response, or a default — ensuring reliability.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · Worked Design A — RAG Chatbot for Enterprise Docs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📚</span> The Most Likely LLM Question</h2>
+
+      <div class="design-row">
+        <div class="design-label">Requirements</div>
+        <div class="design-body"><strong>Functional —</strong> employees ask natural-language questions, get accurate answers grounded in internal docs with citations. <strong>Non-functional —</strong> p99 latency a few seconds, handle concurrent users, strict access control (answers must respect document permissions), no hallucination of sensitive policy.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Data</div>
+        <div class="design-body">Sources are wikis, PDFs, tickets, Slack, Confluence. Ingestion pipeline handles parsing, deduplication, and chunking. Chunking strategy matters most — overlapping chunks of a few hundred tokens, respecting semantic/section boundaries. Attach metadata (source, permissions, timestamp) to each chunk.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Features / Indexing</div>
+        <div class="design-body">Embed chunks with an embedding model, store in a vector DB (Pinecone, Weaviate, pgvector). Consider hybrid search (dense vectors + BM25 keyword) for better recall on exact terms like error codes.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Model / Retrieval</div>
+        <div class="design-body">Retriever pulls top-k chunks → optional reranker (cross-encoder) reorders for relevance → augment prompt with retrieved context + citations → LLM generates grounded answer. Baseline first: simple top-k vector search with an off-the-shelf LLM, then add reranking and query rewriting.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Serving</div>
+        <div class="design-body">Real-time. Pipeline: query → (rewrite) → embed → retrieve → rerank → generate. Apply access control by filtering retrieval to documents the user can see. Add semantic caching for repeated questions and a fallback model if the primary is down.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Monitoring</div>
+        <div class="design-body">Retrieval quality (are relevant chunks retrieved?), groundedness/faithfulness (does the answer stick to sources?), hallucination rate, latency, cost per query, and user feedback (thumbs up/down). Run an eval suite on a golden Q&amp;A set before any prompt/model change.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Iteration</div>
+        <div class="design-body">Re-embed and re-index on doc updates (incremental), refine chunking and prompts based on failure analysis, fine-tune retriever/reranker on collected feedback. Address freshness via scheduled or event-triggered re-ingestion.</div>
+      </div>
+
+      <div class="callout"><strong>Top trap to mention:</strong> RAG quality is usually a <em>retrieval</em> problem, not a generation problem — if the right chunk isn't retrieved, the LLM can't answer. So invest in chunking, hybrid search, and reranking first.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Worked Design B — Fraud Detection</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛡️</span> Real-Time, Imbalanced, Adversarial</h2>
+
+      <div class="design-row">
+        <div class="design-label">Requirements</div>
+        <div class="design-body"><strong>Functional —</strong> flag fraudulent transactions in real time, allow/block/review decision. <strong>Non-functional —</strong> very low latency (block before transaction completes, ~tens of ms), extreme class imbalance (fraud is &lt;1%), high cost of false negatives (missed fraud) <em>and</em> false positives (blocking legit customers), adversarial (fraudsters adapt).</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Data</div>
+        <div class="design-body">Transaction logs, user history, device/IP, merchant data. Labels are delayed and noisy — chargebacks arrive weeks later, and many frauds go unlabeled. Use confirmed fraud + chargebacks as positives; handle label delay explicitly.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Features</div>
+        <div class="design-body">Heavy feature engineering — velocity features (transactions per hour), aggregations (avg spend, deviation from normal), device/location anomalies. Online feature store is essential for real-time low-latency lookups; offline store computes historical aggregates. Train-serve consistency is critical here.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Model</div>
+        <div class="design-body">Baseline — logistic regression or rules. Then gradient-boosted trees (XGBoost) which dominate tabular fraud, possibly with graph features or anomaly detection for novel patterns. Handle imbalance via class weighting, focal loss, or careful sampling — and evaluate with PR-AUC, not accuracy.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Serving</div>
+        <div class="design-body">Real-time scoring within the transaction flow. Tiered approach: fast rules block obvious fraud, model scores the rest, ambiguous cases go to manual review queue. Set the decision threshold by business cost tradeoff, not a default 0.5.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Monitoring</div>
+        <div class="design-body">Precision/recall over time (with label delay accounting), drift in transaction patterns (PSI on key features), fraud rate by segment, false-positive rate (customer friction), and dollar impact. Alert on sudden distribution shifts (could be an attack).</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Iteration</div>
+        <div class="design-body">Frequent retraining because fraud is adversarial and concept drift is fast. Feedback loop from the manual review team provides fresh labels. Watch for feedback bias — you only get labels on transactions you <em>allowed</em>, so blocked-transaction labels are missing (selection bias).</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · Worked Design C — Ad CTR / Recommendation Ranking</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Massive Scale, Tight Latency, Calibration</h2>
+
+      <div class="design-row">
+        <div class="design-label">Requirements</div>
+        <div class="design-body"><strong>Functional —</strong> predict probability a user clicks an ad/item, rank candidates. <strong>Non-functional —</strong> extremely high QPS, very tight latency budget (single-digit ms for ranking), billions of items and users, must update fast as new items/ads appear.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Data</div>
+        <div class="design-body">Impression and click logs (implicit feedback). Massive scale, sparse high-cardinality categorical features (user IDs, ad IDs). Positive label = click; handle that non-clicks aren't necessarily negatives (position bias — top items get more clicks regardless of relevance).</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Features</div>
+        <div class="design-body">User features, item/ad features, context (time, device), and crosses/interactions. Embeddings for high-cardinality IDs. Online store for real-time features, offline for training. Point-in-time correctness essential.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Model</div>
+        <div class="design-body">Standard architecture is <strong>candidate generation → ranking</strong>. Retrieval narrows billions to hundreds (two-tower model, ANN search); ranking scores those precisely (gradient-boosted trees or deep models like Wide &amp; Deep, DLRM). Baseline: logistic regression on engineered features — historically strong for CTR.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Serving</div>
+        <div class="design-body">Two-stage real-time. Retrieval via approximate nearest neighbor; ranking model scores the shortlist under the latency budget. Precompute embeddings where possible. A/B test every change against business metrics.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Monitoring</div>
+        <div class="design-body">CTR/conversion (business metric), AUC/log-loss (model metric), <strong>calibration</strong> (predicted probabilities must match observed rates — critical for ad auctions/pricing), latency, and feature/prediction drift. Calibration is a CTR-specific must-mention.</div>
+      </div>
+
+      <div class="design-row">
+        <div class="design-label">Iteration</div>
+        <div class="design-body">Continuous/frequent retraining (often daily or online) because trends and inventory shift constantly. Address position/selection bias with techniques like inverse propensity weighting. Online learning for freshness.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>7 · What Interviewers Are Scoring</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📝</span> The Signals That Differentiate Candidates</h2>
+      <ul>
+        <li><strong>Did you clarify before designing?</strong> Jumping to "I'll use a transformer" is the #1 junior signal. Ask about scale, latency, and labels first.</li>
+        <li><strong>Did you propose a baseline before complexity?</strong> This is a strong seniority signal — it shows you value iteration and validation over hype.</li>
+        <li><strong>Did you reason about tradeoffs out loud?</strong> Batch vs real-time, precision vs recall, cost vs latency, accuracy vs interpretability. There's rarely one right answer; they want your reasoning.</li>
+        <li><strong>Did you cover monitoring and iteration?</strong> Most candidates stop at "deploy the model." Talking about drift, retraining, and feedback loops sets you apart.</li>
+        <li><strong>Did you name the domain-specific trap?</strong> Calibration for CTR, retrieval-not-generation for RAG, label delay / feedback bias for fraud, cold-start for recommendations. One sharp domain insight signals real experience.</li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>8 · Rapid-Fire Concepts</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> The Drill Bits Interviewers Love</h2>
+      <p>Be ready to define these in one or two crisp sentences each — they're the connective tissue of any MLOps system-design conversation.</p>
+      <div class="rapid-pills">
+        <span class="term">train-serve skew</span>
+        <span class="term">cold-start</span>
+        <span class="term">point-in-time correctness</span>
+        <span class="term">accuracy is useless for fraud</span>
+        <span class="term">shadow vs canary</span>
+        <span class="term">data drift vs concept drift</span>
+        <span class="term">semantic vs exact caching for LLMs</span>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

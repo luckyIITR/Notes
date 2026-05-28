@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced ML Interview Questions &amp; Answers — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Q&A item ── */
+    .qa-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.8rem;
+    }
+    .qa-q {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 0.55rem;
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      line-height: 1.55;
+    }
+    .qa-num {
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      min-width: 1.7rem;
+      height: 1.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+      padding: 0 0.3rem;
+    }
+    .qa-a {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      padding-left: 2.4rem;
+    }
+    .qa-a code {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.82rem;
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · Machine Learning</p>
+      <h1>Advanced ML Interview Questions &amp; Answers</h1>
+      <p>Twenty-five deeper machine-learning questions covering kernels, boosting internals, optimization, generalization theory, and the practical pitfalls that come up in senior-level interviews.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Models &amp; Kernels</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Algorithms in Depth</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">1</span> Explain how Support Vector Machines work and the kernel trick.</div>
+        <div class="qa-a">SVM finds the hyperplane that maximizes the margin between classes (the distance to the nearest points, called support vectors). The kernel trick implicitly maps data into a higher-dimensional space using a kernel function (e.g., RBF, polynomial) without computing the transformation explicitly, enabling non-linear separation. It relies on computing dot products via <code>K(x, x')</code> instead of explicit feature maps.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">2</span> How does XGBoost differ from standard Gradient Boosting?</div>
+        <div class="qa-a">XGBoost adds regularization (L1/L2) to the objective, uses second-order Taylor approximation (gradients + Hessians) for optimization, supports parallelized tree construction, handles missing values natively, includes column subsampling, and uses a sparsity-aware split-finding algorithm. These make it faster and less prone to overfitting.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">3</span> What is the difference between Gradient Boosting and AdaBoost?</div>
+        <div class="qa-a">AdaBoost reweights misclassified samples and combines weak learners via weighted voting. Gradient Boosting fits each new learner to the residual gradients of the loss function, optimizing an arbitrary differentiable loss via gradient descent in function space.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">7</span> Explain the difference between generative and discriminative models with examples and tradeoffs.</div>
+        <div class="qa-a">Generative (Naive Bayes, GMMs) model <code>P(x, y)</code> and can generate samples and handle missing data, but make stronger distributional assumptions. Discriminative (logistic regression, SVM) model <code>P(y | x)</code> directly, usually achieving higher accuracy when data is abundant since they focus only on the decision boundary.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">16</span> How does the Naive Bayes "naive" assumption work, and why does it still perform well?</div>
+        <div class="qa-a">It assumes features are conditionally independent given the class. Though rarely true, it works because correct classification only requires the correct class having the highest posterior — not accurate probability estimates — so dependency errors often cancel out.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">22</span> Explain the difference between hard and soft margin SVM.</div>
+        <div class="qa-a">Hard margin requires perfect linear separation (fails with noise/overlap). Soft margin introduces slack variables and a penalty parameter <code>C</code>, allowing some misclassifications to balance margin width and training errors — higher <code>C</code> means less tolerance for errors.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>2 · Optimization &amp; Training Dynamics</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Gradients, Losses &amp; Optimizers</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">4</span> Explain the vanishing and exploding gradient problem.</div>
+        <div class="qa-a">In deep networks, gradients computed via backpropagation can shrink toward zero (vanishing) or grow uncontrollably (exploding) through repeated multiplication of small/large weights. Solutions: ReLU activations, proper weight initialization (Xavier/He), batch normalization, residual connections, and gradient clipping.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">5</span> Why use cross-entropy loss instead of MSE for classification?</div>
+        <div class="qa-a">Cross-entropy penalizes confident wrong predictions heavily and produces well-behaved (convex with sigmoid/softmax) gradients, leading to faster convergence. MSE with sigmoid creates non-convex loss surfaces and small gradients when predictions are very wrong, slowing learning.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">8</span> How does batch normalization work and why does it help?</div>
+        <div class="qa-a">It normalizes layer inputs to zero mean and unit variance per mini-batch, then applies learnable scale (γ) and shift (β). It reduces internal covariate shift, allows higher learning rates, acts as a mild regularizer, and smooths the loss landscape for faster, more stable training.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">10</span> Explain how dropout works and why it acts as regularization.</div>
+        <div class="qa-a">During training, dropout randomly zeroes a fraction of neurons each forward pass, preventing co-adaptation. It approximates training an ensemble of subnetworks; at inference, all neurons are used with scaled weights (or activations scaled during training via inverted dropout).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">19</span> Explain how a learning rate affects training and strategies to tune it.</div>
+        <div class="qa-a">Too high causes divergence/oscillation; too low causes slow convergence or getting stuck. Strategies: learning rate schedules (step decay, cosine annealing), warmup, adaptive optimizers (Adam, RMSprop), and learning-rate finders.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">20</span> What is the difference between Adam, RMSprop, and SGD with momentum?</div>
+        <div class="qa-a">Momentum accelerates SGD by accumulating a velocity term in consistent gradient directions. RMSprop scales the learning rate per-parameter by a running average of squared gradients. Adam combines both (momentum + adaptive scaling) with bias correction, making it a robust default.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · Theory &amp; Generalization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Math, Priors &amp; Decomposition</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">6</span> What is the bias-variance decomposition mathematically?</div>
+        <div class="qa-a">For squared error: <code>E[(y − ŷ)²] = Bias(ŷ)² + Var(ŷ) + σ²</code>. Bias is <code>(E[ŷ] − true value)</code>, variance is the spread of <code>ŷ</code> across datasets, and <code>σ²</code> is irreducible noise.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">9</span> What is the difference between L1/L2 regularization from a Bayesian perspective?</div>
+        <div class="qa-a">L2 regularization corresponds to a Gaussian prior on weights (MAP estimation), L1 corresponds to a Laplace prior. The prior's shape explains why L1 induces sparsity (peaked at zero with heavier tails) while L2 shrinks smoothly.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">11</span> What is the difference between bagging and boosting in terms of bias/variance?</div>
+        <div class="qa-a">Bagging primarily reduces variance by averaging independent high-variance models. Boosting primarily reduces bias by sequentially fitting models to residual errors, though it can increase variance/overfitting if not regularized.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">13</span> What is the EM algorithm?</div>
+        <div class="qa-a">Expectation-Maximization iteratively finds maximum likelihood estimates with latent variables. <strong>E-step:</strong> compute expected values of latent variables given current parameters. <strong>M-step:</strong> maximize the expected log-likelihood to update parameters. Used in Gaussian Mixture Models; guaranteed to not decrease likelihood.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">24</span> Explain the difference between Type I and Type II errors in ML context.</div>
+        <div class="qa-a">Type I (false positive) is predicting positive when actually negative. Type II (false negative) is predicting negative when actually positive. The tradeoff depends on cost: medical screening prioritizes minimizing Type II; spam filtering may prioritize minimizing Type I.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · Evaluation &amp; Data Issues</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Metrics, Leakage &amp; Practical Pitfalls</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">12</span> How do you choose the number of clusters in K-means?</div>
+        <div class="qa-a">Elbow method (plot inertia vs. <code>k</code>, find the bend), silhouette score (measures cohesion vs. separation), gap statistic, or domain knowledge. K-means also assumes spherical, equally-sized clusters, which limits applicability.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">14</span> Explain ROC-AUC vs PR-AUC and when to use each.</div>
+        <div class="qa-a">ROC-AUC plots TPR vs FPR and is robust to threshold choice but can look optimistic on imbalanced data. PR-AUC (precision vs recall) focuses on the positive class and is more informative when positives are rare, since it ignores true negatives.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">15</span> What is the difference between feature selection and feature extraction?</div>
+        <div class="qa-a">Feature selection picks a subset of original features (filter, wrapper, embedded methods). Feature extraction creates new features by transforming the original space (PCA, autoencoders, LDA). Selection preserves interpretability; extraction can capture richer combined signals.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">17</span> Explain the difference between collaborative filtering and content-based filtering.</div>
+        <div class="qa-a">Collaborative filtering recommends based on user-item interaction patterns (users similar to you liked X). Content-based filtering uses item/user feature similarity (you liked items with these attributes). Collaborative suffers from cold-start; content-based may over-specialize.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">18</span> What is multicollinearity and why is it a problem?</div>
+        <div class="qa-a">When predictors are highly correlated, it inflates coefficient variance, making estimates unstable and hard to interpret in linear models (though prediction may be unaffected). Detected via VIF; addressed with regularization, PCA, or dropping correlated features.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">21</span> How do you detect and handle data leakage?</div>
+        <div class="qa-a">Data leakage is when training data includes information unavailable at prediction time, inflating performance. Detect via suspiciously high accuracy or features too predictive. Prevent by proper train/test splitting before preprocessing, time-based splits for temporal data, and fitting scalers/encoders only on training data.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">23</span> What is the difference between online and batch learning?</div>
+        <div class="qa-a">Batch learning trains on the entire dataset at once and retrains for updates. Online learning updates incrementally as new data arrives, suiting streaming data and concept drift, with lower memory needs but more sensitivity to noisy samples.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">25</span> How does feature scaling affect different algorithms?</div>
+        <div class="qa-a">Distance-based (KNN, K-means, SVM) and gradient-based (neural nets, logistic regression) algorithms require scaling for fair feature contribution and stable convergence. Tree-based models (decision trees, Random Forest, XGBoost) are scale-invariant and don't need it.</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

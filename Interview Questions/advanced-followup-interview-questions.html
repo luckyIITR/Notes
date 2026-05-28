@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Follow-Up Questions &amp; Answers — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Q&A item ── */
+    .qa-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.8rem;
+    }
+    .qa-q {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 0.55rem;
+      display: flex;
+      gap: 0.7rem;
+      align-items: flex-start;
+      line-height: 1.55;
+    }
+    .qa-num {
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      min-width: 1.7rem;
+      height: 1.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+      padding: 0 0.3rem;
+    }
+    .qa-a {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      padding-left: 2.4rem;
+    }
+    .qa-a code {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.82rem;
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · Deep Dives</p>
+      <h1>Advanced Follow-Up Questions &amp; Answers</h1>
+      <p>Twenty senior-level follow-ups across ML, deep learning, and LLM systems — the "why" and "what would you do" questions that interviewers ask after the textbook answer, covering math, debugging, and production tradeoffs.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Architectures &amp; Attention Math</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> Why Models Are Built the Way They Are</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">1</span> What's the difference between BERT and GPT pretraining objectives?</div>
+        <div class="qa-a">BERT uses Masked Language Modeling (MLM) — randomly masks ~15% of tokens and predicts them using bidirectional context (sees both left and right), plus originally Next Sentence Prediction. GPT uses Causal Language Modeling (CLM) — predicts the next token using only left context (autoregressive). BERT's bidirectionality suits understanding tasks; GPT's left-to-right objective enables generation.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">7</span> Why does deeper not always mean better in neural networks?</div>
+        <div class="qa-a">Beyond a point, added depth brings vanishing/exploding gradients, optimization difficulty, overfitting, diminishing returns, and higher compute/latency. Without architectural aids (residual connections, normalization), very deep networks train poorly. Capacity must also match data size — too deep on limited data overfits. ResNets specifically addressed degradation where deeper plain networks had <em>higher</em> training error.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">17</span> Why does attention use scaling by √dₖ, and what happens without it?</div>
+        <div class="qa-a">As dimension <code>dₖ</code> grows, dot products <code>Q · K</code> have larger magnitude (variance scales with <code>dₖ</code>), pushing softmax into saturated regions where gradients vanish and attention becomes nearly one-hot. Dividing by <code>√dₖ</code> normalizes the variance back to ~1, keeping softmax in a sensitive range with healthy gradients. Without scaling, training becomes unstable and slow for large <code>dₖ</code>.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>2 · Training Stability &amp; Diagnostics</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🩺</span> Debugging Networks in the Wild</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">8</span> What causes loss to become NaN during training and how do you debug it?</div>
+        <div class="qa-a">Common causes: learning rate too high (exploding gradients), numerical instability (<code>log(0)</code>, division by zero), bad input data (NaNs/infs), exploding activations, or mixed-precision overflow. Debug by lowering the learning rate, adding gradient clipping, checking/normalizing inputs, using numerically stable ops (log-sum-exp, epsilon in denominators), reducing batch size, and using loss scaling for FP16.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">9</span> Why is training loss decreasing but validation loss increasing?</div>
+        <div class="qa-a">This is the classic overfitting signature — the model memorizes training data and fails to generalize. Remedies: regularization (dropout, weight decay), data augmentation, early stopping at the validation minimum, reducing model capacity, gathering more data, or transfer learning. Also verify train/validation come from the same distribution and there's no data leakage.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">10</span> How does BatchNorm behave with batch size = 1, and what do you use instead?</div>
+        <div class="qa-a">With batch size 1, batch statistics (mean/variance) are unreliable — variance is zero or meaningless — destabilizing training. BatchNorm depends on sufficient batch size for good estimates. Alternatives that are batch-independent: LayerNorm (normalizes across features per sample, used in transformers), GroupNorm, or InstanceNorm — all work fine with tiny or single-sample batches.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">14</span> Walk through the math of backpropagation for a single layer.</div>
+        <div class="qa-a">For a layer with <code>z = Wx + b</code>, <code>a = σ(z)</code>, and loss <code>L</code>: the upstream gradient <code>∂L/∂a</code> arrives from the next layer. Then <code>∂L/∂z = ∂L/∂a · σ'(z)</code> (elementwise). Weight gradient <code>∂L/∂W = ∂L/∂z · xᵀ</code>, bias gradient <code>∂L/∂b = ∂L/∂z</code>, and the gradient passed back to the previous layer <code>∂L/∂x = Wᵀ · ∂L/∂z</code>. The chain rule composes these across layers from output to input.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">20</span> Why might tuned SGD generalize better than Adam, despite Adam converging faster?</div>
+        <div class="qa-a">Adam's adaptive per-parameter learning rates can converge to sharper minima and overfit, sometimes generalizing slightly worse. SGD (with momentum) tends to find flatter minima associated with better generalization, and its noisier updates act as implicit regularization — but it needs careful learning-rate scheduling. A common strategy: train with Adam early for speed, then switch to SGD, or use AdamW (decoupled weight decay) which closes much of the gap.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · Classical ML Deep Dives</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Edge Cases in Familiar Algorithms</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">11</span> What happens to logistic regression when classes are perfectly separable?</div>
+        <div class="qa-a">With perfect separation, the maximum-likelihood weights diverge toward infinity as the model pushes predicted probabilities to exactly 0 and 1, so training doesn't converge and coefficients blow up. Fixes: add regularization (L1/L2) to bound the weights, use early stopping, or apply Bayesian priors. This is why regularization is often essential, not optional.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">12</span> How does the choice of k in KNN affect bias and variance?</div>
+        <div class="qa-a">Small <code>k</code> (e.g., <code>k=1</code>) gives low bias but high variance — sensitive to noise, jagged decision boundary, overfitting. Large <code>k</code> gives high bias but low variance — smoother boundary, may underfit and blur class distinctions. <code>k</code> controls the bias-variance tradeoff; it's tuned via cross-validation, and odd <code>k</code> avoids ties in binary classification.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">13</span> Why is accuracy a poor metric for imbalanced datasets?</div>
+        <div class="qa-a">With heavy imbalance (e.g., 99% negatives), a model predicting only the majority class achieves 99% accuracy while being useless for the minority class. Accuracy hides poor minority-class performance. Better metrics: precision, recall, F1, ROC-AUC, and especially PR-AUC, plus the confusion matrix — these reveal performance on the rare but often important class.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · RLHF, DPO &amp; Reward Hacking</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> Alignment in Practice</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">3</span> Why is RLHF (PPO) unstable, and how does DPO fix it?</div>
+        <div class="qa-a">PPO-based RLHF involves a separate reward model that can be hacked (reward hacking), needs careful KL-penalty tuning to prevent the policy drifting too far, and RL training is sensitive to hyperparameters with high variance. DPO eliminates the reward model and RL loop entirely, deriving a closed-form loss that directly optimizes the policy on preference pairs using a simple classification-style objective — making it stable, reproducible, and cheaper.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">15</span> What is reward hacking in RLHF and how do you mitigate it?</div>
+        <div class="qa-a">Reward hacking is when the policy exploits flaws in the reward model to get high reward without genuinely improving (e.g., overly verbose answers, sycophancy, gaming length). Mitigations: KL-divergence penalty keeping the policy near the SFT model, better/more diverse reward-model training data, reward-model ensembles, periodic reward-model retraining, and methods like DPO that avoid a separate exploitable reward model.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>5 · LLM Inference &amp; Serving</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> Production Throughput &amp; Cost</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">2</span> How does FlashAttention save memory and speed up attention?</div>
+        <div class="qa-a">Standard attention materializes the full <code>n × n</code> attention matrix in slow GPU memory (HBM), causing <code>O(n²)</code> memory and many memory reads/writes. FlashAttention uses tiling and online softmax to compute attention in blocks within fast on-chip SRAM, never materializing the full matrix. It's exact (not an approximation) and IO-aware, reducing memory to <code>O(n)</code> and dramatically speeding up by minimizing HBM traffic.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">5</span> How would you reduce LLM inference cost in production?</div>
+        <div class="qa-a">Multiple levers: quantization (INT8/INT4) to shrink memory and speed compute; KV caching to avoid recomputation; batching requests (continuous/dynamic batching like vLLM); model distillation or using smaller models for easy queries (model routing/cascades); prompt compression and caching frequent prompts; speculative decoding (small draft model proposes tokens, large model verifies); and infrastructure choices (efficient serving frameworks, autoscaling, spot instances).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">6</span> What is speculative decoding and how does it speed up generation?</div>
+        <div class="qa-a">A small, fast "draft" model generates several candidate tokens ahead, then the large target model verifies them all in a single parallel forward pass. Accepted tokens are kept; the first rejection triggers correction. Since verification is parallel and the draft is cheap, multiple tokens can be produced per large-model pass — speeding generation 2–3x with identical output distribution (lossless).</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">18</span> What's the difference between continuous batching and static batching in LLM serving?</div>
+        <div class="qa-a">Static batching groups a fixed set of requests and waits for all to finish — the longest sequence stalls the batch (head-of-line blocking), wasting GPU. Continuous (in-flight) batching, used by vLLM, dynamically adds new requests and evicts finished ones at the token level, keeping the GPU saturated. Combined with PagedAttention for efficient KV-cache memory, it massively improves throughput.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · RAG, Decoding &amp; Practical Pitfalls</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> Tradeoffs You'll Actually Hit</h2>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">4</span> What chunking strategy works best for RAG?</div>
+        <div class="qa-a">There's no universal best — it depends on data and queries. Common approaches: fixed-size chunks with overlap (simple, preserves context across boundaries), semantic/recursive chunking (split on natural boundaries like paragraphs/sections), and sentence-window or parent-document retrieval (retrieve small precise chunks but feed larger context to the LLM). Key tradeoffs: small chunks improve retrieval precision but lose context; large chunks preserve context but dilute relevance and waste tokens. Adding metadata and overlap (~10–20%) generally helps.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">16</span> How does temperature interact with top-p sampling, and how do you tune them together?</div>
+        <div class="qa-a">Temperature reshapes the probability distribution (sharper or flatter) <em>before</em> top-p truncation selects the nucleus. High temperature + high top-p maximizes diversity/creativity but risks incoherence; low temperature + low top-p yields focused, deterministic output. Typically you tune one primarily — e.g., temperature ~0.7 with top-p ~0.9 for balanced generation, near-0 temperature for factual/deterministic tasks. Setting both very high compounds randomness.</div>
+      </div>
+
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-num">19</span> How do you prevent and detect data leakage in a temporal/time-series setting?</div>
+        <div class="qa-a">Use strictly time-ordered splits (train on past, validate/test on future) — never random shuffling. Avoid features computed using future information (e.g., target leakage, look-ahead bias in aggregations). Fit all preprocessing (scaling, encoding) only on training data. Detect via implausibly high performance, feature-importance audits revealing suspicious predictors, and backtesting that mimics real deployment timing.</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
