@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR Interview Prep Guide — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── HR Q&A item ── */
+    .hr-item {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 1.1rem 1.3rem 1.2rem;
+      margin-bottom: 0.95rem;
+    }
+    .hr-q {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      font-size: 0.97rem;
+      font-weight: 700;
+      color: #c7d2fe;
+      line-height: 1.55;
+      margin-bottom: 0.5rem;
+    }
+    .hr-num {
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      min-width: 1.75rem;
+      height: 1.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.35rem;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+    .hr-meta {
+      font-size: 0.82rem;
+      color: #64748b;
+      font-style: italic;
+      margin: 0 0 0.7rem 2.5rem;
+      line-height: 1.6;
+    }
+    .hr-answer {
+      background: #151823;
+      border-left: 3px solid #6366f1;
+      border-radius: 6px;
+      padding: 0.85rem 1rem;
+      margin-left: 2.5rem;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .hr-answer + .hr-answer { margin-top: 0.55rem; }
+    .hr-tips {
+      margin: 0.7rem 0 0 2.5rem;
+      padding: 0;
+    }
+    .hr-tips li {
+      font-size: 0.86rem;
+      color: #cbd5e1;
+    }
+    .hr-tips strong { color: #c7d2fe; }
+
+    code.token {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.82rem;
+      color: #a5b4fc;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Three-check list at the top ── */
+    .check-list {
+      list-style: none;
+      padding: 0;
+      counter-reset: check-counter;
+      margin: 0.6rem 0 0;
+    }
+    .check-list li {
+      counter-increment: check-counter;
+      position: relative;
+      padding: 0.75rem 0.95rem 0.75rem 3rem;
+      margin-bottom: 0.55rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+    .check-list li::before {
+      content: counter(check-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.85rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .check-list li strong { color: #c7d2fe; }
+
+    /* ── Quick rules numbered list ── */
+    .rules-list {
+      list-style: none;
+      padding: 0;
+      counter-reset: rule-counter;
+      margin: 0.4rem 0 0;
+    }
+    .rules-list li {
+      counter-increment: rule-counter;
+      position: relative;
+      padding: 0.7rem 0.9rem 0.7rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+    .rules-list li::before {
+      content: counter(rule-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.8rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rules-list li strong { color: #c7d2fe; }
+
+    /* ── Practice plan day list ── */
+    .plan-list {
+      list-style: none;
+      padding: 0;
+      margin: 0.4rem 0 0;
+    }
+    .plan-list li {
+      display: grid;
+      grid-template-columns: 5.5rem 1fr;
+      gap: 0.9rem;
+      padding: 0.7rem 0.9rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+    .plan-list .plan-day {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      color: #6366f1;
+      padding-top: 0.15rem;
+    }
+
+    /* ── Questions-to-ask pills ── */
+    .ask-list {
+      margin: 0.4rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .ask-list li {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-left: 3px solid #6366f1;
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      margin-bottom: 0.5rem;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 540px) {
+      .hr-meta, .hr-answer, .hr-tips { margin-left: 0; }
+      .plan-list li { grid-template-columns: 1fr; gap: 0.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · HR · Behavioral</p>
+      <h1>HR Interview Prep Guide</h1>
+      <p>For AI / ML / GenAI roles with around two years of Data Science experience — the most common HR (screening / behavioral) questions, with simple-English sample answers you can adapt and practice out loud.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · How an HR Round Actually Works</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> What They're Really Checking</h2>
+      <p>The HR person is usually <strong>not</strong> testing your technical depth. They are checking three things:</p>
+      <ol class="check-list">
+        <li><strong>Are you a normal, easy-to-work-with person?</strong> (attitude, communication)</li>
+        <li><strong>Will you stay and not quit in 3 months?</strong> (motivation, stability)</li>
+        <li><strong>Do the basics fit?</strong> (salary, notice period, location, the layoff story)</li>
+      </ol>
+      <div class="callout">Your job is to sound calm, positive, and clear. Short answers are fine. You do not need to impress with big words — <strong>simple and confident wins.</strong></div>
+    </div>
+
+    <div class="section-divider"><span>2 · The Opening Question</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">👋</span> The First 90 Seconds</h2>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">1</span> "Tell me about yourself."</div>
+        <div class="hr-meta">What they want: a 60–90 second clear summary. Not your life story.</div>
+        <p style="margin-left:2.5rem;font-size:0.88rem;color:#94a3b8;">Use this simple structure: <strong style="color:#c7d2fe;">Present → Past → Why this role.</strong></p>
+        <div class="hr-answer">"Sure. I'm a Data Scientist with around two years of experience. In my last role at <code class="token">[Company]</code>, I worked on <code class="token">[1–2 things, e.g. building ML models for customer churn and automating data pipelines]</code>. Over the last year I've been moving deeper into <code class="token">[machine learning / GenAI]</code> — I've worked with <code class="token">[models, LLMs, NLP, whatever is true]</code>. I really enjoy turning data and models into something useful for the business. I'm now looking for a role where I can grow in the AI/ML space, and this position looks like a strong fit for that."</div>
+        <ul class="hr-tips">
+          <li><strong>Tip:</strong> End on <em>why you're excited about this kind of role</em>. That sets the tone.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · The Layoff Story</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> The Important One — Stay Calm</h2>
+      <div class="callout">A layoff is a <strong>company decision, not a you-problem.</strong> Companies cut roles all the time for budget and restructuring reasons. Say it briefly, stay positive, move forward. Do <strong>not</strong> sound bitter or blame anyone.</div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">2</span> "Why did you leave your last job?" / "Why were you laid off?"</div>
+        <div class="hr-answer">"It was a company-wide decision. <code class="token">[Company]</code> went through <code class="token">[restructuring / cost reduction / a downsizing of the data team]</code>, and my role was one of the positions that was cut. It wasn't related to my performance — it affected several people across teams. I'm grateful for what I learned there, and now I'm focused on finding the right next step in AI/ML."</div>
+        <ul class="hr-tips">
+          <li>Keep it short (3–4 sentences). Don't over-explain.</li>
+          <li>Make clear it was about the company/role, not your work.</li>
+          <li>Never criticize your old company or manager.</li>
+          <li>End by looking forward, not backward.</li>
+        </ul>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">3</span> "How many people were affected?" / "Was it just you?"</div>
+        <div class="hr-answer">"No, it was a group of people across different teams. It was part of a larger <code class="token">[restructuring / budget]</code> decision, not an individual thing."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">4</span> "There's a gap since you left. What have you been doing?"</div>
+        <div class="hr-meta">If you have a gap, fill it with something. Even self-learning counts.</div>
+        <div class="hr-answer">"I used the time to sharpen my skills, especially in <code class="token">[GenAI / LLMs / a course or project you did]</code>. I <code class="token">[built a project on X / completed a course on Y / contributed to Z]</code>. I wanted to make sure I was interview-ready and up to date with the latest in AI, since the field moves fast."</div>
+        <ul class="hr-tips">
+          <li><strong>Tip:</strong> If the gap is small (1–2 months), you can simply say you took a short break and are now actively interviewing.</li>
+        </ul>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">5</span> "Were you the only one let go because of performance?" <span style="color:#94a3b8;font-weight:500;">(a pressure version)</span></div>
+        <div class="hr-meta">Stay calm — they're testing your reaction.</div>
+        <div class="hr-answer">"No, it was a structural decision affecting multiple roles. My performance reviews were <code class="token">[positive / on track]</code>, and my manager would be happy to speak to that. The cut was based on which functions the company was reducing, not on individual performance."</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · Motivation &amp; Fit</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Why This Company, Why This Role</h2>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">6</span> "Why do you want to work here?" / "Why this company?"</div>
+        <div class="hr-meta">Do 5 minutes of homework on the company before the interview. This question catches lazy candidates.</div>
+        <div class="hr-answer">"I looked into what your team is doing in <code class="token">[the company's AI product / area]</code>, and it lines up well with where I want to grow. I'm especially interested in <code class="token">[specific thing — their GenAI product, their scale of data, their domain]</code>. I want to be somewhere I can keep building real AI/ML solutions, and this role gives me that chance."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">7</span> "Why are you moving toward AI / ML / GenAI specifically?"</div>
+        <div class="hr-answer">"In my data science work, the parts I enjoyed most were always the modeling and the machine learning side — turning data into something predictive and useful. GenAI is the most exciting area in the field right now, and I've been actively learning it through <code class="token">[projects / courses]</code>. I want to build my career in this direction, not just stay in reporting and analysis."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">8</span> "What do you know about our company?"</div>
+        <div class="hr-meta">Have 3 facts ready: what they do, a recent product/news, and their domain.</div>
+        <div class="hr-answer">"From what I've read, you <code class="token">[build / offer X]</code>, you're focused on <code class="token">[domain]</code>, and recently you <code class="token">[launched / announced Y]</code>. What stood out to me is <code class="token">[one genuine thing]</code>."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">9</span> "Why should we hire you?"</div>
+        <div class="hr-answer">"I bring two years of hands-on data science experience, so I'm not starting from zero — I already know how to work with real, messy data and ship models. On top of that, I've been actively building my AI/ML and GenAI skills. I'm a fast learner, I'm easy to work with, and I'm genuinely motivated to grow in this exact area. I think that mix of experience plus drive fits what you're looking for."</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>5 · Strengths, Weaknesses &amp; About You</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪞</span> The Self-Reflection Set</h2>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">10</span> "What are your strengths?"</div>
+        <div class="hr-meta">Pick 2–3 and give a one-line example for each.</div>
+        <div class="hr-answer">"First, problem-solving — I like breaking a messy problem into clear steps. For example, <code class="token">[short example]</code>. Second, I communicate well — I can explain a model's results to non-technical people. And third, I'm reliable; I follow through on what I commit to."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">11</span> "What is your weakness?"</div>
+        <div class="hr-meta">Be honest but pick something fixable, and show you're working on it. Don't say "I'm a perfectionist" — it sounds fake.</div>
+        <div class="hr-answer">"Earlier, I used to spend too long trying to make a model perfect before sharing it. I've learned that it's better to share an early version, get feedback, and improve from there. I've been consciously working on that, and it's made me faster and more collaborative."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">12</span> "Tell me about your biggest achievement."</div>
+        <div class="hr-meta">Use the STAR method: Situation → Task → Action → Result. Keep it tight.</div>
+        <div class="hr-answer">"In my last role, <code class="token">[the business had a problem — situation]</code>. I was asked to <code class="token">[task]</code>. I <code class="token">[action — what you actually did, e.g. built a model / automated a process]</code>. As a result, <code class="token">[result — a number if possible, e.g. it reduced manual work by X hours, or improved accuracy, or saved cost]</code>."</div>
+        <ul class="hr-tips">
+          <li><strong>Tip:</strong> Numbers make achievements believable. Even a rough estimate helps.</li>
+        </ul>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">13</span> "Tell me about a time you failed / made a mistake."</div>
+        <div class="hr-answer">"Once I <code class="token">[made an assumption / missed something]</code> which led to <code class="token">[the issue]</code>. As soon as I noticed, I <code class="token">[owned it and fixed it]</code>. The lesson I took was <code class="token">[what you changed going forward]</code>. Since then I always <code class="token">[the new habit]</code>."</div>
+        <ul class="hr-tips">
+          <li><strong>Rule:</strong> Always end with what you <em>learned</em>. Never blame others.</li>
+        </ul>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">14</span> "How do you handle pressure / tight deadlines?"</div>
+        <div class="hr-answer">"I stay calm and break the work into priorities — I figure out what must be done first and focus there. I also communicate early if something is at risk, instead of staying silent. In my last role I handled <code class="token">[a tight situation]</code> this way and we delivered on time."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">15</span> "Tell me about a conflict with a coworker / manager."</div>
+        <div class="hr-meta">They want maturity, not drama.</div>
+        <div class="hr-answer">"I had a situation where <code class="token">[a teammate and I disagreed on an approach]</code>. I asked to talk it through, listened to their reasoning, and shared mine with data to back it up. We found a middle path that worked. I believe most conflicts come from miscommunication, so I focus on understanding the other side first."</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · Goals &amp; The Future</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Where You're Headed</h2>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">16</span> "Where do you see yourself in 5 years?"</div>
+        <div class="hr-meta">Show ambition but also that you'd stay. Don't say "running my own company."</div>
+        <div class="hr-answer">"In five years I see myself as a strong, experienced AI/ML professional — someone the team relies on for solving hard problems, and maybe mentoring juniors. I want to keep growing technically and take on more ownership over time."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">17</span> "What are your career goals?"</div>
+        <div class="hr-answer">"Short term, I want to get deep into real AI/ML and GenAI work and become really good at it. Long term, I want to grow into a senior role where I'm leading projects and contributing at a higher level."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">18</span> "Are you applying anywhere else?"</div>
+        <div class="hr-meta">Be honest but neutral.</div>
+        <div class="hr-answer">"Yes, I'm interviewing with a few companies, as most candidates are. But this role is one I'm genuinely interested in because <code class="token">[reason]</code>."</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>7 · The Practical Questions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> Salary, Notice, Logistics</h2>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">19</span> "What is your expected salary?"</div>
+        <div class="hr-meta">Best move: give a range based on research, or turn it back politely.</div>
+        <div class="hr-answer">"I'm looking for a package that fits my two years of experience and the AI/ML responsibilities of this role. Based on my research for similar roles, I'd expect something in the range of <code class="token">[X to Y]</code>. But I'm open to discussing it based on the full offer and growth opportunity."</div>
+        <ul class="hr-tips">
+          <li>Research the market range for your role/city <em>before</em> the interview.</li>
+          <li>If pushed for a number first, it's okay to give a range, not a single figure.</li>
+          <li>Don't undersell yourself out of layoff fear.</li>
+        </ul>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">20</span> "What was your previous / current salary?"</div>
+        <div class="hr-answer">"My last package was around <code class="token">[X]</code>. For this role, I'm looking for something that reflects the added responsibilities and the market rate."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">21</span> "What is your notice period?" / "When can you join?"</div>
+        <div class="hr-meta">Since you're not currently employed, this is your advantage.</div>
+        <div class="hr-answer">"I'm available to join immediately, since I'm not currently working. I can start as soon as it suits the team."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">22</span> "Are you okay with [location / hybrid / on-site / shift]?"</div>
+        <div class="hr-answer">"Yes, I'm comfortable with that." <span style="color:#94a3b8;">(Only say yes if it's true. If you have a constraint, state it simply and positively.)</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>8 · Curveball / Tricky Questions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎲</span> The Pressure Tests</h2>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">23</span> "Why should we hire someone who was laid off over someone who is currently employed?"</div>
+        <div class="hr-answer">"A layoff was a company decision, not a reflection of my skills. In fact, I'm available immediately and I'm fully focused on this search — I'm not juggling a current job. I've also used this time to sharpen my AI/ML skills, so I'm coming in motivated and up to date."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">24</span> "What if you get laid off again?"</div>
+        <div class="hr-answer">"Layoffs can happen in any company, and I understand that's part of the industry. What I focus on is doing strong, valuable work and keeping my skills sharp so I'm always contributing. I'm here to build something long-term."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">25</span> "How do we know you won't leave once the market improves?"</div>
+        <div class="hr-answer">"I'm not looking for just any job — I'm looking for the right place to grow in AI/ML, and this role fits that. When I find a role and team I believe in, I commit to it. Stability and growth matter to me as much as they do to you."</div>
+      </div>
+
+      <div class="hr-item">
+        <div class="hr-q"><span class="hr-num">26</span> "Tell me something that's not on your resume."</div>
+        <div class="hr-meta">Keep it light, positive, and a little human.</div>
+        <div class="hr-answer">"Outside work, I <code class="token">[genuine hobby — e.g. enjoy following AI research / play a sport / cook]</code>. It keeps me balanced. I also like <code class="token">[small genuine detail]</code>."</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>9 · Questions YOU Should Ask Them</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">❓</span> Always Ask 2–3 at the End</h2>
+      <p>It shows interest. Pick from these:</p>
+      <ul class="ask-list">
+        <li>"What does success look like in this role in the first six months?"</li>
+        <li>"What's the team structure, and who would I be working with?"</li>
+        <li>"What AI/ML tools and tech stack does the team use?"</li>
+        <li>"What are the biggest challenges the team is facing right now?"</li>
+        <li>"How does the company support learning and growth?"</li>
+        <li>"What are the next steps in the process?"</li>
+      </ul>
+      <div class="callout"><strong>Avoid asking</strong> about salary, leaves, or work-from-home in the <em>first</em> HR round unless they bring it up — save those for when an offer is closer.</div>
+    </div>
+
+    <div class="section-divider"><span>10 · Quick Rules to Remember</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✅</span> The Seven Habits That Win HR Rounds</h2>
+      <ol class="rules-list">
+        <li><strong>Be brief.</strong> Most answers should be 30–60 seconds. Don't ramble.</li>
+        <li><strong>Stay positive.</strong> Never bad-mouth your old company or boss.</li>
+        <li><strong>The layoff is a company decision</strong> — say it once, calmly, and move on.</li>
+        <li><strong>Smile and stay relaxed.</strong> HR is judging attitude as much as answers.</li>
+        <li><strong>Use real examples.</strong> Specific stories beat general claims.</li>
+        <li><strong>Always end forward-looking.</strong> "And that's why I'm excited about this role."</li>
+        <li><strong>Research the company</strong> for 10 minutes before the call. It really shows.</li>
+      </ol>
+    </div>
+
+    <div class="section-divider"><span>11 · A Simple Practice Plan</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗓️</span> Five Days to Sound Natural</h2>
+      <ul class="plan-list">
+        <li><span class="plan-day">Day 1–2</span><span>Write your own answers for #1, #2, #6, #9, #10, #11 — the must-knows.</span></li>
+        <li><span class="plan-day">Day 3</span><span>Practice the layoff answer until it sounds natural and calm.</span></li>
+        <li><span class="plan-day">Day 4</span><span>Record yourself answering 5 questions. Listen back. Fix the rambling.</span></li>
+        <li><span class="plan-day">Day 5</span><span>Do a mock interview with a friend, or out loud in the mirror.</span></li>
+      </ul>
+      <div class="callout">You've got real experience and a clear story. <strong>Keep it simple and confident.</strong></div>
+    </div>
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
