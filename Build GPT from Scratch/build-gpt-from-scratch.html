@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Let's Build GPT From Scratch — Build GPT From Scratch</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula block ── */
+    .formula-block { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.5rem; margin: 0.8rem 0; }
+    .formula-block .formula-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.5rem; }
+    .formula-block .formula-main { font-size: 1rem; color: #c7d2fe; font-family: 'Courier New', monospace; text-align: center; line-height: 2.2; }
+    .formula-block .formula-legend { margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; line-height: 2; }
+    .formula-block .formula-legend span { color: #a5b4fc; font-family: 'Courier New', monospace; }
+
+    /* ── algo steps ── */
+    .algo-steps { list-style: none; padding: 0; counter-reset: step-counter; }
+    .algo-steps li { counter-increment: step-counter; position: relative; padding: 0.75rem 0.9rem 0.75rem 3rem; margin-bottom: 0.5rem; background: #151823; border: 1px solid #2d3148; border-radius: 8px; color: #cbd5e1; font-size: 0.92rem; line-height: 1.65; }
+    .algo-steps li::before { content: counter(step-counter); position: absolute; left: 0.9rem; top: 0.85rem; background: #6366f1; color: #fff; font-size: 0.72rem; font-weight: 800; width: 1.4rem; height: 1.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+    /* ── code block ── */
+    .code-block { background: #0c0e16; border: 1px solid #2d3148; border-radius: 10px; padding: 1rem 1.1rem; margin: 0.8rem 0; font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.65; color: #cbd5e1; overflow-x: auto; white-space: pre; }
+    .code-block .c-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.6rem; font-family: inherit; }
+    .code-block .kw { color: #c084fc; }
+    .code-block .fn { color: #a5b4fc; }
+    .code-block .str { color: #86efac; }
+    .code-block .num { color: #fbbf24; }
+    .code-block .com { color: #475569; font-style: italic; }
+
+    /* ── pipeline diagram ── */
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 0.6rem; margin: 1rem 0; }
+    .pipeline-node { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 0.9rem 1rem; text-align: center; }
+    .pipeline-node .p-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.35rem; }
+    .pipeline-node .p-title { font-size: 0.9rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.25rem; }
+    .pipeline-node .p-sub { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+    .pipeline-arrow { align-self: center; color: #475569; font-size: 1.1rem; }
+
+    /* ── matrix / tensor demo box ── */
+    .demo-box { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1rem 1.2rem; margin: 0.8rem 0; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.7; color: #c7d2fe; }
+    .demo-box .demo-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.6rem; font-family: inherit; }
+
+    /* ── stat pills ── */
+    .stat-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.8rem 0; }
+    .stat-pill { background: #1e2130; border: 1px solid #2d3148; border-radius: 8px; padding: 0.4rem 0.85rem; font-size: 0.8rem; color: #64748b; }
+    .stat-pill span { color: #a5b4fc; font-weight: 700; }
+
+    /* ── loss progression ── */
+    .loss-track { display: flex; align-items: stretch; margin: 1rem 0 0.4rem; border-radius: 10px; overflow: hidden; border: 1px solid #2d3148; }
+    .loss-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.75rem 0.4rem; background: #151823; border-right: 1px solid #2d3148; }
+    .loss-step:last-child { border-right: none; }
+    .loss-step .l-stage { font-size: 0.62rem; font-weight: 700; color: #64748b; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.3rem; text-align: center; }
+    .loss-step .l-val { font-size: 1.15rem; font-weight: 800; color: #e2e8f0; }
+    .loss-step.best { background: #1a2e1a; }
+    .loss-step.best .l-val { color: #4ade80; }
+
+    @media (max-width: 540px) {
+      .pipeline { grid-template-columns: 1fr; }
+      .pipeline-arrow { transform: rotate(90deg); justify-self: center; }
+      .loss-track { flex-wrap: wrap; }
+      .loss-step { flex: 1 1 33%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Build GPT From Scratch Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Transformers · GPT · From Scratch · Karpathy</p>
+      <h1>Let's Build GPT From Scratch</h1>
+      <p>A complete walkthrough of building a character-level GPT — from raw Shakespeare text to a working decoder-only Transformer — covering tokenization, batching, the bigram baseline, the self-attention "math trick", multi-head attention, residual connections, LayerNorm, and how it all relates to ChatGPT.</p>
+    </header>
+
+    <!-- ─────────────────────────────────────── 1 ── -->
+    <div class="section-divider"><span>1 · What We Are Building</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💬</span> From ChatGPT to a Language Model</h2>
+      <p>
+        <span class="term">ChatGPT</span> lets you give an AI text-based tasks, and it replies by generating words left to right, one after another. Ask it the same prompt twice and you get slightly different answers — it is a <strong>probabilistic system</strong>, so for any one prompt there are many possible completions.
+      </p>
+      <p style="margin-top:0.8rem;">
+        Under the hood it is a <span class="term">language model</span>: it models the sequence of words (or characters, or tokens) and knows how they tend to follow each other. From its point of view, it is simply <strong>completing a sequence</strong> — you give it the start, it produces the rest.
+      </p>
+      <div class="callout">
+        The neural network doing the heavy lifting is the <strong>Transformer</strong>, proposed in the 2017 paper <em>"Attention Is All You Need"</em>. GPT stands for <strong>Generatively Pre-trained Transformer</strong>. The architecture was introduced for machine translation, but with minor changes it took over the rest of AI in the years after.
+      </div>
+      <p style="margin-top:0.8rem;">
+        We will not reproduce production ChatGPT (trained on much of the internet, with extensive pre-training and fine-tuning). Instead we build a small but educational <strong>character-level</strong> Transformer language model trained on a toy dataset, and watch it generate infinite (fake) Shakespeare.
+      </p>
+      <p style="margin-top:0.8rem;"><strong>Roadmap of this page:</strong></p>
+      <ol class="algo-steps">
+        <li>Load the data and build a character-level tokenizer.</li>
+        <li>Chunk the data into batches with a block size (context length).</li>
+        <li>Train a bigram baseline, evaluate the loss, and generate.</li>
+        <li>Learn the matrix-multiply "math trick" behind self-attention.</li>
+        <li>Build one self-attention head, then multi-head attention.</li>
+        <li>Add feed-forward layers, residual connections, LayerNorm, and Dropout.</li>
+        <li>Scale up the full decoder-only Transformer and relate it to ChatGPT.</li>
+      </ol>
+    </div>
+
+    <!-- ─────────────────────────────────────── 2 ── -->
+    <div class="section-divider"><span>2 · The Data — Tiny Shakespeare</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📜</span> One Megabyte of Shakespeare</h2>
+      <p>
+        We use the <span class="term">tiny Shakespeare</span> dataset — a concatenation of all of Shakespeare's works in a single ~1&nbsp;MB file, roughly <strong>1 million characters</strong>. The model's job is to learn how the characters follow each other: given some context, predict the character that comes next.
+      </p>
+      <div class="code-block"><span class="c-label">Load the raw text</span><span class="kw">with</span> <span class="fn">open</span>(<span class="str">'input.txt'</span>, <span class="str">'r'</span>) <span class="kw">as</span> f:
+    text = f.read()
+
+<span class="fn">print</span>(<span class="fn">len</span>(text))         <span class="com"># ~1,000,000 characters</span>
+<span class="fn">print</span>(text[:<span class="num">1000</span>])      <span class="com"># first 1000 chars of Shakespeare</span></div>
+      <p style="margin-top:0.8rem;">
+        The set of unique characters that occur in the text becomes our <span class="term">vocabulary</span>. Sorting them gives a fixed ordering, and counting them gives the <strong>vocabulary size</strong> — 65 for this dataset (a space, some special characters, and upper/lowercase letters).
+      </p>
+      <div class="code-block"><span class="c-label">Build the vocabulary</span>chars = <span class="fn">sorted</span>(<span class="fn">list</span>(<span class="fn">set</span>(text)))
+vocab_size = <span class="fn">len</span>(chars)   <span class="com"># 65</span></div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 3 ── -->
+    <div class="section-divider"><span>3 · Tokenization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔤</span> Turning Text Into Integers</h2>
+      <p>
+        To <span class="term">tokenize</span> means to convert raw text into a sequence of integers according to some vocabulary. Because we work at the character level, we simply map each character to an integer and back. We build a lookup table both ways and an <strong>encoder</strong> / <strong>decoder</strong> pair.
+      </p>
+      <div class="code-block"><span class="c-label">Character-level encode / decode</span>stoi = { ch:i <span class="kw">for</span> i,ch <span class="kw">in</span> <span class="fn">enumerate</span>(chars) }
+itos = { i:ch <span class="kw">for</span> i,ch <span class="kw">in</span> <span class="fn">enumerate</span>(chars) }
+
+encode = <span class="kw">lambda</span> s: [stoi[c] <span class="kw">for</span> c <span class="kw">in</span> s]            <span class="com"># string -> list[int]</span>
+decode = <span class="kw">lambda</span> l: <span class="str">''</span>.join([itos[i] <span class="kw">for</span> i <span class="kw">in</span> l])   <span class="com"># list[int] -> string</span>
+
+<span class="fn">print</span>(encode(<span class="str">"hi there"</span>))   <span class="com"># [46, 47, ...]</span>
+<span class="fn">print</span>(decode(encode(<span class="str">"hi there"</span>)))  <span class="com"># "hi there"</span></div>
+      <p style="margin-top:0.8rem;">
+        This is only one of many possible schemes. In practice people use <strong>subword</strong> tokenizers — Google's <em>SentencePiece</em>, or OpenAI's <em>tiktoken</em> (a byte-pair-encoding tokenizer used by GPT). These trade off codebook size against sequence length:
+      </p>
+      <table>
+        <thead><tr><th>Tokenizer</th><th>Level</th><th>Vocab size</th><th>"hi there" →</th></tr></thead>
+        <tbody>
+          <tr><td>Ours (char)</td><td>Character</td><td>65</td><td>8 integers (0–64)</td></tr>
+          <tr><td>tiktoken (GPT-2)</td><td>Subword</td><td>~50,257</td><td>3 integers</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        Large vocabularies give <strong>short sequences</strong>; small vocabularies give <strong>long sequences</strong>. Character level keeps the tokenizer dead simple (tiny codebook, trivial encode/decode) at the cost of longer sequences — perfect for learning.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 4 ── -->
+    <div class="section-divider"><span>4 · Train / Validation Split</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✂️</span> Encode Everything, Then Split</h2>
+      <p>
+        We encode the entire dataset and wrap it in a PyTorch tensor — the whole text becomes one very long sequence of integers. Then we hold out the last 10% as a <span class="term">validation split</span> to monitor <strong>overfitting</strong>: we want a model that produces Shakespeare-<em>like</em> text, not one that memorizes the exact training file.
+      </p>
+      <div class="code-block"><span class="c-label">Tensor + 90/10 split</span><span class="kw">import</span> torch
+data = torch.tensor(encode(text), dtype=torch.long)
+
+n = <span class="fn">int</span>(<span class="num">0.9</span> * <span class="fn">len</span>(data))
+train_data = data[:n]
+val_data   = data[n:]</div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 5 ── -->
+    <div class="section-divider"><span>5 · Chunks, Block Size & Batches</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> The Time Dimension</h2>
+      <p>
+        We never feed the entire text into the Transformer at once — that would be far too expensive. Instead we sample random <strong>chunks</strong> of a maximum length called the <span class="term">block size</span> (also known as context length). A chunk of <code>block_size + 1</code> characters secretly contains <code>block_size</code> training examples, because every prefix predicts the next character.
+      </p>
+      <div class="code-block"><span class="c-label">Eight examples hidden in nine characters</span>block_size = <span class="num">8</span>
+x = train_data[:block_size]      <span class="com"># inputs</span>
+y = train_data[<span class="num">1</span>:block_size+<span class="num">1</span>]   <span class="com"># targets (offset by one)</span>
+
+<span class="kw">for</span> t <span class="kw">in</span> <span class="fn">range</span>(block_size):
+    context = x[:t+<span class="num">1</span>]
+    target  = y[t]
+    <span class="fn">print</span>(<span class="str">f"when input is {context.tolist()} the target is {target}"</span>)</div>
+      <div class="callout">
+        Training on contexts from length 1 up to <code>block_size</code> is not just for efficiency — it teaches the Transformer to predict given <strong>any</strong> amount of context. That matters at generation time, when we can kick off sampling with a single character.
+      </div>
+      <h2 style="margin-top:1.6rem;"><span class="icon">📦</span> The Batch Dimension</h2>
+      <p>
+        For GPU efficiency we stack many chunks into a single tensor — the <span class="term">batch dimension</span>. These chunks are processed completely independently; they never talk to each other. We grab <code>batch_size</code> random offsets and stack the chunks into a <code>batch × time</code> tensor.
+      </p>
+      <div class="code-block"><span class="c-label">get_batch — sampling random chunks</span>batch_size = <span class="num">4</span>   <span class="com"># independent sequences per pass</span>
+block_size = <span class="num">8</span>   <span class="com"># max context length</span>
+
+<span class="kw">def</span> <span class="fn">get_batch</span>(split):
+    data = train_data <span class="kw">if</span> split == <span class="str">'train'</span> <span class="kw">else</span> val_data
+    ix = torch.randint(<span class="fn">len</span>(data) - block_size, (batch_size,))
+    x = torch.stack([data[i   : i+block_size  ] <span class="kw">for</span> i <span class="kw">in</span> ix])
+    y = torch.stack([data[i+<span class="num">1</span> : i+block_size+<span class="num">1</span>] <span class="kw">for</span> i <span class="kw">in</span> ix])
+    <span class="kw">return</span> x, y   <span class="com"># both shape (4, 8) -> 32 examples total</span></div>
+      <p style="margin-top:0.8rem;">
+        A <code>4 × 8</code> input tensor therefore packs <strong>32 independent examples</strong>. The targets <code>y</code> are fed in at the very end to compute the loss — they give the correct next character for every position in <code>x</code>.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 6 ── -->
+    <div class="section-divider"><span>6 · The Bigram Baseline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎲</span> The Simplest Possible Model</h2>
+      <p>
+        The simplest language model is the <span class="term">bigram model</span>: predict the next character from the identity of the current one alone — no context, tokens don't see each other. We implement it with a single <code>nn.Embedding</code> table of shape <code>vocab_size × vocab_size</code>. Each input integer plucks out a row, which we read directly as the <strong>logits</strong> (scores) for the next character.
+      </p>
+      <div class="code-block"><span class="c-label">Bigram language model</span><span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">from</span> torch.nn <span class="kw">import</span> functional <span class="kw">as</span> F
+
+<span class="kw">class</span> <span class="fn">BigramLanguageModel</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, vocab_size):
+        <span class="fn">super</span>().__init__()
+        self.token_embedding_table = nn.Embedding(vocab_size, vocab_size)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, idx, targets=<span class="kw">None</span>):
+        logits = self.token_embedding_table(idx)   <span class="com"># (B, T, C)</span>
+
+        <span class="kw">if</span> targets <span class="kw">is</span> <span class="kw">None</span>:
+            loss = <span class="kw">None</span>
+        <span class="kw">else</span>:
+            B, T, C = logits.shape
+            logits = logits.view(B*T, C)            <span class="com"># reshape for cross_entropy</span>
+            targets = targets.view(B*T)
+            loss = F.cross_entropy(logits, targets)
+        <span class="kw">return</span> logits, loss</div>
+      <p style="margin-top:0.8rem;">
+        PyTorch arranges the output as a <code>Batch × Time × Channel</code> tensor (here <code>4 × 8 × 65</code>). The <span class="term">loss</span> is the <strong>negative log likelihood</strong>, implemented as <code>cross_entropy</code>. One subtlety: cross-entropy wants channels as the second dimension, so we reshape <code>(B,T,C)</code> into <code>(B·T, C)</code> and the targets into <code>(B·T,)</code>.
+      </p>
+      <div class="formula-block">
+        <div class="formula-label">Expected initial loss</div>
+        <div class="formula-main">−ln(1 / vocab_size) = −ln(1 / 65) ≈ 4.17</div>
+        <div class="formula-legend">
+          A random model should score about <span>4.17</span>. We get <span>4.87</span> at init — the predictions are not perfectly diffuse, but we can already evaluate the loss correctly.
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 7 ── -->
+    <div class="section-divider"><span>7 · Generation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔮</span> Sampling One Character at a Time</h2>
+      <p>
+        The <code>generate</code> function takes the current context <code>(B, T)</code> and extends it to <code>(B, T+1)</code>, <code>(B, T+2)</code>, … for <code>max_new_tokens</code> steps. At each step we take the logits for the <strong>last</strong> time step, convert them to probabilities with <code>softmax</code>, sample one index with <code>torch.multinomial</code>, and append it.
+      </p>
+      <div class="code-block"><span class="c-label">generate — autoregressive sampling</span><span class="kw">def</span> <span class="fn">generate</span>(self, idx, max_new_tokens):
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(max_new_tokens):
+        logits, loss = self(idx)            <span class="com"># (B, T, C)</span>
+        logits = logits[:, -<span class="num">1</span>, :]            <span class="com"># last step -> (B, C)</span>
+        probs  = F.softmax(logits, dim=-<span class="num">1</span>)
+        idx_next = torch.multinomial(probs, num_samples=<span class="num">1</span>)  <span class="com"># (B, 1)</span>
+        idx = torch.cat((idx, idx_next), dim=<span class="num">1</span>)            <span class="com"># (B, T+1)</span>
+    <span class="kw">return</span> idx
+
+<span class="com"># kick off generation from a single newline character (index 0)</span>
+idx = torch.zeros((<span class="num">1</span>, <span class="num">1</span>), dtype=torch.long)
+<span class="fn">print</span>(decode(m.generate(idx, max_new_tokens=<span class="num">100</span>)[<span class="num">0</span>].tolist()))</div>
+      <div class="callout">
+        The function is written to feed the <em>whole</em> history into the model even though the bigram only needs the last character. That looks wasteful now, but we keep it <strong>general</strong> so the exact same code works later when attention actually uses the history.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 8 ── -->
+    <div class="section-divider"><span>8 · Training the Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏋️</span> The Optimization Loop</h2>
+      <p>
+        We use the <span class="term">AdamW</span> optimizer — more advanced and popular than plain SGD. For tiny networks a high learning rate like <code>1e-3</code> works fine. The loop is standard: sample a batch, evaluate the loss, zero the gradients, backprop, and step.
+      </p>
+      <div class="code-block"><span class="c-label">Training loop</span>optimizer = torch.optim.AdamW(m.parameters(), lr=<span class="num">1e-3</span>)
+
+<span class="kw">for</span> step <span class="kw">in</span> <span class="fn">range</span>(<span class="num">10000</span>):
+    xb, yb = <span class="fn">get_batch</span>(<span class="str">'train'</span>)
+    logits, loss = m(xb, yb)
+    optimizer.zero_grad(set_to_none=<span class="kw">True</span>)
+    loss.backward()
+    optimizer.step()</div>
+      <p style="margin-top:0.8rem;">
+        The bigram model drops from ~4.7 down to about <strong>2.5</strong>. The output is no Shakespeare, but it is recognizably structured text — clearly better than the random garbage we started with. The fundamental limitation is obvious: <strong>the tokens are not talking to each other.</strong>
+      </p>
+      <h2 style="margin-top:1.6rem;"><span class="icon">📊</span> Estimating Loss Robustly</h2>
+      <p>
+        Printing the loss of a single batch is noisy. A cleaner approach averages the loss over many batches for both splits, wrapped in <code>@torch.no_grad()</code> (so PyTorch skips storing intermediates) and with the model set to <code>eval()</code> mode and back to <code>train()</code> afterwards — good practice even when, as here, there are no Dropout or BatchNorm layers yet.
+      </p>
+      <div class="code-block"><span class="c-label">estimate_loss</span><span class="fn">@torch.no_grad</span>()
+<span class="kw">def</span> <span class="fn">estimate_loss</span>():
+    out = {}
+    model.eval()
+    <span class="kw">for</span> split <span class="kw">in</span> [<span class="str">'train'</span>, <span class="str">'val'</span>]:
+        losses = torch.zeros(eval_iters)
+        <span class="kw">for</span> k <span class="kw">in</span> <span class="fn">range</span>(eval_iters):
+            X, Y = <span class="fn">get_batch</span>(split)
+            logits, loss = model(X, Y)
+            losses[k] = loss.item()
+        out[split] = losses.mean()
+    model.train()
+    <span class="kw">return</span> out</div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 9 ── -->
+    <div class="section-divider"><span>9 · The Math Trick Behind Self-Attention</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧮</span> Weighted Averages via Matrix Multiply</h2>
+      <p>
+        Before self-attention, we need one mathematical trick. We want each token to gather information only from itself and the <strong>past</strong> (never the future — we are predicting the future). The simplest "communication" is to <strong>average</strong> all preceding tokens. The naive version is a slow double loop; the trick is to do it with a single <strong>matrix multiplication</strong>.
+      </p>
+      <div class="demo-box"><span class="demo-label">Lower-triangular weights → weighted average</span>a = tril(ones(3,3))        b = [[2,7],          c = a @ b
+a / a.sum(1, keepdim)            [6,4],     =  [[2.0, 7.0 ],
+                                 [6,5]]         [4.0, 5.5 ],
+a = [[1.00, 0,    0   ],                        [4.67, 5.33]]
+     [0.50, 0.50, 0   ]    each row of c is the
+     [0.33, 0.33, 0.33]]   running average of b's rows</div>
+      <p style="margin-top:0.8rem;">
+        A lower-triangular matrix of ones (<code>torch.tril</code>), normalized so each row sums to 1, performs an <strong>incremental average</strong> when multiplied by any matrix. Row <em>t</em> of the result is the average of rows 0…<em>t</em> of the input — exactly "average my past".
+      </p>
+      <p style="margin-top:0.8rem;">
+        Applied to our <code>(B, T, C)</code> tensor, PyTorch broadcasts a <code>(T, T)</code> weight matrix into a batched matrix multiply, producing the same per-batch averaging in parallel. Three versions are equivalent — the third uses <code>softmax</code> and is the one that generalizes to attention:
+      </p>
+      <div class="code-block"><span class="c-label">Version 3 — softmax form (the one we keep)</span>tril = torch.tril(torch.ones(T, T))
+wei = torch.zeros((T, T))
+wei = wei.masked_fill(tril == <span class="num">0</span>, <span class="fn">float</span>(<span class="str">'-inf'</span>))   <span class="com"># block the future</span>
+wei = F.softmax(wei, dim=-<span class="num">1</span>)                       <span class="com"># normalize -> averages</span>
+xbow = wei @ x</div>
+      <div class="callout">
+        The <code>wei</code> matrix starts at zero (uniform averaging), but these weights are really <strong>affinities</strong> — how interesting each past token is. Setting future positions to <code>-inf</code> before softmax means "do not aggregate from the future." Soon these affinities will become <strong>data-dependent</strong> instead of constant — and that is self-attention.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 10 ── -->
+    <div class="section-divider"><span>10 · A Single Self-Attention Head</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔑</span> Queries, Keys & Values</h2>
+      <p>
+        We don't want uniform averaging — different tokens find different past tokens more or less interesting, and that should be <strong>data-dependent</strong>. A vowel might want to look back for consonants. This is the problem <span class="term">self-attention</span> solves.
+      </p>
+      <p style="margin-top:0.8rem;">
+        Every token emits two vectors: a <span class="term">query</span> ("what am I looking for") and a <span class="term">key</span> ("what do I contain"). The affinity between two tokens is the <strong>dot product</strong> of one's query with the other's key. Aligned query/key pairs interact strongly, so that token's information flows in more.
+      </p>
+      <div class="formula-block">
+        <div class="formula-label">Scaled dot-product attention</div>
+        <div class="formula-main">Attention(Q, K, V) = softmax( (Q · K<sup>T</sup>) / √d<sub>k</sub> ) · V</div>
+        <div class="formula-legend">
+          <span>Q</span> queries · <span>K</span> keys · <span>V</span> values · <span>d<sub>k</sub></span> head size · the mask sets future positions to −∞ before softmax.
+        </div>
+      </div>
+      <div class="code-block"><span class="c-label">Single head of self-attention</span><span class="kw">class</span> <span class="fn">Head</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, head_size):
+        <span class="fn">super</span>().__init__()
+        self.key   = nn.Linear(n_embd, head_size, bias=<span class="kw">False</span>)
+        self.query = nn.Linear(n_embd, head_size, bias=<span class="kw">False</span>)
+        self.value = nn.Linear(n_embd, head_size, bias=<span class="kw">False</span>)
+        self.register_buffer(<span class="str">'tril'</span>, torch.tril(torch.ones(block_size, block_size)))
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        B, T, C = x.shape
+        k = self.key(x)     <span class="com"># (B, T, head_size)</span>
+        q = self.query(x)   <span class="com"># (B, T, head_size)</span>
+        <span class="com"># compute affinities, scaled by 1/sqrt(head_size)</span>
+        wei = q @ k.transpose(-<span class="num">2</span>, -<span class="num">1</span>) * C**-<span class="num">0.5</span>      <span class="com"># (B, T, T)</span>
+        wei = wei.masked_fill(self.tril[:T, :T] == <span class="num">0</span>, <span class="fn">float</span>(<span class="str">'-inf'</span>))
+        wei = F.softmax(wei, dim=-<span class="num">1</span>)
+        v = self.value(x)   <span class="com"># (B, T, head_size)</span>
+        <span class="kw">return</span> wei @ v      <span class="com"># (B, T, head_size)</span></div>
+      <p style="margin-top:0.8rem;">
+        We aggregate <strong>values</strong> <code>v</code>, not the raw token vectors <code>x</code>. Think of <code>x</code> as private to the token; <code>v</code> is "here's what I'll tell you if you find me interesting." The <code>√d<sub>k</sub></code> scaling keeps the variance of <code>wei</code> around 1 so the softmax stays diffuse at init — without it, large values make softmax collapse toward a one-hot vector, aggregating from a single node.
+      </p>
+      <h2 style="margin-top:1.6rem;"><span class="icon">📐</span> Six Notes on Attention</h2>
+      <ul>
+        <li><strong>Communication mechanism.</strong> Attention is a directed graph where each node aggregates a weighted sum of the nodes pointing to it, data-dependently.</li>
+        <li><strong>No notion of space.</strong> Attention acts on a set of vectors; it has no idea of position, which is why we add <span class="term">positional embeddings</span>.</li>
+        <li><strong>Batch elements are independent.</strong> The batch dimension never talks to itself — it's a batched matrix multiply.</li>
+        <li><strong>Decoder vs encoder.</strong> The triangular mask makes this a <strong>decoder</strong> block (autoregressive). Delete the mask and all nodes talk freely — an <strong>encoder</strong> block (e.g. for sentiment analysis).</li>
+        <li><strong>Self vs cross attention.</strong> Here Q, K, V all come from the same <code>x</code> (self-attention). In cross-attention the keys/values come from a separate source (e.g. an encoder).</li>
+        <li><strong>Positional encoding required.</strong> Because attention is permutation-invariant, position must be injected explicitly.</li>
+      </ul>
+      <p style="margin-top:0.8rem;">
+        We also add a second embedding table for <strong>positions</strong>, and feed the sum of token and positional embeddings into the head:
+      </p>
+      <div class="code-block"><span class="c-label">Token + position embeddings</span>self.token_embedding_table    = nn.Embedding(vocab_size, n_embd)
+self.position_embedding_table = nn.Embedding(block_size, n_embd)
+
+tok_emb = self.token_embedding_table(idx)                      <span class="com"># (B, T, C)</span>
+pos_emb = self.position_embedding_table(torch.arange(T))       <span class="com"># (T, C)</span>
+x = tok_emb + pos_emb                                          <span class="com"># (B, T, C)</span></div>
+      <p style="margin-top:0.8rem;">
+        With one attention head, the validation loss improves from ~2.5 to about <strong>2.4</strong>. The head is doing useful communication, but there is a long way to go.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 11 ── -->
+    <div class="section-divider"><span>11 · Multi-Head Attention</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Many Communication Channels in Parallel</h2>
+      <p>
+        <span class="term">Multi-head attention</span> simply runs multiple attention heads in parallel and concatenates their results over the channel dimension. With <code>n_embd = 32</code>, four heads of size 8 each concatenate back to 32 — like a group convolution. Multiple heads give multiple independent channels: one can hunt for vowels, another for consonants at certain positions, and so on.
+      </p>
+      <div class="code-block"><span class="c-label">Multi-head attention</span><span class="kw">class</span> <span class="fn">MultiHeadAttention</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, num_heads, head_size):
+        <span class="fn">super</span>().__init__()
+        self.heads = nn.ModuleList([<span class="fn">Head</span>(head_size) <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(num_heads)])
+        self.proj  = nn.Linear(n_embd, n_embd)   <span class="com"># projection back to residual pathway</span>
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        out = torch.cat([h(x) <span class="kw">for</span> h <span class="kw">in</span> self.heads], dim=-<span class="num">1</span>)
+        <span class="kw">return</span> self.proj(out)</div>
+      <p style="margin-top:0.8rem;">
+        Four communication channels bring the validation loss down to about <strong>2.28</strong>.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 12 ── -->
+    <div class="section-divider"><span>12 · Feed-Forward Layers</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Time to Think</h2>
+      <p>
+        After attention does the <strong>communication</strong>, the tokens jump too quickly to the logits — they gather information but never think about it. The <span class="term">feed-forward</span> network is a simple per-token MLP (linear → ReLU → linear) that lets each token process what it gathered, independently. The paper uses an inner expansion factor of <strong>4×</strong>.
+      </p>
+      <div class="code-block"><span class="c-label">Feed-forward (per-token MLP)</span><span class="kw">class</span> <span class="fn">FeedForward</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, n_embd):
+        <span class="fn">super</span>().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, <span class="num">4</span> * n_embd),
+            nn.ReLU(),
+            nn.Linear(<span class="num">4</span> * n_embd, n_embd),   <span class="com"># projection back</span>
+        )
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        <span class="kw">return</span> self.net(x)</div>
+      <p style="margin-top:0.8rem;">
+        Calling feed-forward right after self-attention nudges the validation loss down to ~<strong>2.24</strong>. The pattern emerging is <strong>communicate, then compute</strong> — repeated.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 13 ── -->
+    <div class="section-divider"><span>13 · Blocks, Residuals & LayerNorm</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Interspersing Communication and Computation</h2>
+      <p>
+        A Transformer <span class="term">block</span> groups one multi-head attention (communication) with one feed-forward (computation), and we stack many of them. But stacking makes the network deep, and deep nets are hard to optimize. Two ideas from the literature rescue trainability.
+      </p>
+
+      <div class="pipeline">
+        <div class="pipeline-node">
+          <div class="p-label">Communicate</div>
+          <div class="p-title">Multi-Head Attention</div>
+          <div class="p-sub">tokens gather context</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-node">
+          <div class="p-label">Compute</div>
+          <div class="p-title">Feed-Forward</div>
+          <div class="p-sub">tokens think per-position</div>
+        </div>
+        <div class="pipeline-arrow">↻</div>
+        <div class="pipeline-node">
+          <div class="p-label">× N layers</div>
+          <div class="p-title">Stacked Blocks</div>
+          <div class="p-sub">repeat the pattern</div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.4rem;"><span class="icon">🛣️</span> Residual Connections</h2>
+      <p>
+        <span class="term">Residual (skip) connections</span> add the input back after each sub-layer. You fork off the residual pathway, do some computation, and add the result back. During backprop, addition distributes gradients equally to both branches, creating a <strong>gradient super-highway</strong> from the loss straight to the input. The residual blocks start out contributing almost nothing and "come online" during training.
+      </p>
+
+      <h2 style="margin-top:1.4rem;"><span class="icon">📏</span> LayerNorm (Pre-Norm)</h2>
+      <p>
+        <span class="term">LayerNorm</span> normalizes each token's feature vector to zero mean and unit variance (per row), with learnable <code>gamma</code> and <code>beta</code>. Unlike BatchNorm, it needs no running buffers and no train/test distinction. Modern practice applies it <strong>before</strong> each sub-layer — the <strong>pre-norm</strong> formulation, a small deviation from the original paper.
+      </p>
+      <div class="code-block"><span class="c-label">Transformer block (pre-norm + residual)</span><span class="kw">class</span> <span class="fn">Block</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, n_embd, n_head):
+        <span class="fn">super</span>().__init__()
+        head_size = n_embd // n_head
+        self.sa   = <span class="fn">MultiHeadAttention</span>(n_head, head_size)
+        self.ffwd = <span class="fn">FeedForward</span>(n_embd)
+        self.ln1  = nn.LayerNorm(n_embd)
+        self.ln2  = nn.LayerNorm(n_embd)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        x = x + self.sa(self.ln1(x))     <span class="com"># communicate (+ residual)</span>
+        x = x + self.ffwd(self.ln2(x))   <span class="com"># compute (+ residual)</span>
+        <span class="kw">return</span> x</div>
+      <p style="margin-top:0.8rem;">
+        With residuals and the 4× feed-forward we reach ~<strong>2.08</strong>, and adding LayerNorm (plus a final LayerNorm before the output linear layer) brings it to ~<strong>2.06</strong>. The training loss now slightly leads validation — a first hint of overfitting.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 14 ── -->
+    <div class="section-divider"><span>14 · Dropout & Scaling Up</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💧</span> Regularization Before Going Big</h2>
+      <p>
+        <span class="term">Dropout</span> randomly zeroes a subset of activations on every forward/backward pass, effectively training an ensemble of sub-networks that merge at test time. We add it before each residual re-entry and after the softmax affinities. It's a regularizer we switch on because scaling up risks overfitting.
+      </p>
+      <h2 style="margin-top:1.4rem;"><span class="icon">📈</span> The Big Run</h2>
+      <p>With the architecture complete, we crank up the hyperparameters:</p>
+      <div class="stat-row">
+        <div class="stat-pill">batch_size <span>64</span></div>
+        <div class="stat-pill">block_size <span>256</span></div>
+        <div class="stat-pill">n_embd <span>384</span></div>
+        <div class="stat-pill">n_head <span>6</span></div>
+        <div class="stat-pill">n_layer <span>6</span></div>
+        <div class="stat-pill">dropout <span>0.2</span></div>
+        <div class="stat-pill">lr <span>3e-4</span></div>
+        <div class="stat-pill">params <span>~10M</span></div>
+      </div>
+      <p style="margin-top:0.4rem;">
+        Each of 6 heads is 64-dimensional (384 / 6), with 256 characters of context to predict the 257th. After roughly 15 minutes on an A100 GPU, the validation loss reaches <strong>1.48</strong>.
+      </p>
+      <div class="loss-track">
+        <div class="loss-step"><div class="l-stage">Bigram</div><div class="l-val">2.5</div></div>
+        <div class="loss-step"><div class="l-stage">1 head</div><div class="l-val">2.4</div></div>
+        <div class="loss-step"><div class="l-stage">Multi-head</div><div class="l-val">2.28</div></div>
+        <div class="loss-step"><div class="l-stage">+ FFwd</div><div class="l-val">2.24</div></div>
+        <div class="loss-step"><div class="l-stage">+ Residual</div><div class="l-val">2.08</div></div>
+        <div class="loss-step"><div class="l-stage">+ LayerNorm</div><div class="l-val">2.06</div></div>
+        <div class="loss-step best"><div class="l-stage">Scaled up</div><div class="l-val">1.48</div></div>
+      </div>
+      <div class="callout">
+        The generated text is now clearly recognizable as Shakespeare-shaped — characters speaking in turn, archaic phrasing — even though it remains <strong>nonsensical</strong> on close reading. Not bad for a character-level Transformer trained on 1&nbsp;MB of text.
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────── 15 ── -->
+    <div class="section-divider"><span>15 · Decoder-Only vs Encoder-Decoder</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> Why Our Architecture Looks Different</h2>
+      <p>
+        We built a <span class="term">decoder-only</span> Transformer — exactly what GPT uses. The original paper has an <strong>encoder-decoder</strong> architecture because it solves machine translation. The differences:
+      </p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Decoder (ours / GPT)</div>
+          <ul>
+            <li>Triangular mask → autoregressive</li>
+            <li>Future cannot see past</li>
+            <li>Unconditioned generation</li>
+            <li>Self-attention + feed-forward only</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Encoder-Decoder (translation)</div>
+          <ul>
+            <li>Encoder: no mask, all tokens talk</li>
+            <li>Encodes a source (e.g. French)</li>
+            <li>Cross-attention feeds encoder → decoder</li>
+            <li>Conditions output on the source</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:0.8rem;">
+        We have nothing to condition on — just a text file to imitate — so we drop the encoder and the cross-attention block entirely. The triangular mask is what makes ours a decoder usable for language modeling.
+      </p>
+    </div>
+
+    <!-- ─────────────────────────────────────── 16 ── -->
+    <div class="section-divider"><span>16 · nanoGPT & The Road to ChatGPT</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> nanoGPT</h2>
+      <p>
+        The production-quality version of this is <span class="term">nanoGPT</span> — two files: <code>model.py</code> (the Transformer, nearly identical to ours) and <code>train.py</code> (checkpointing, learning-rate decay, distributed training). The main difference is that nanoGPT batches all heads into a single tensor (adding a 4th "head" dimension) for efficiency, and uses GELU instead of ReLU to match OpenAI's checkpoints.
+      </p>
+      <h2 style="margin-top:1.4rem;"><span class="icon">🪜</span> Pre-training vs Fine-Tuning</h2>
+      <p>
+        Our model is a tiny <strong>pre-training</strong> step. Real ChatGPT is built in two stages:
+      </p>
+      <div class="pipeline">
+        <div class="pipeline-node">
+          <div class="p-label">Stage 1</div>
+          <div class="p-title">Pre-training</div>
+          <div class="p-sub">decoder-only Transformer babbles internet text — a document completer</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-node">
+          <div class="p-label">Stage 2</div>
+          <div class="p-title">Fine-tuning</div>
+          <div class="p-sub">align into a helpful assistant</div>
+        </div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-node">
+          <div class="p-label">Result</div>
+          <div class="p-title">Assistant</div>
+          <div class="p-sub">answers questions, not just completes documents</div>
+        </div>
+      </div>
+      <p style="margin-top:0.8rem;">
+        Fine-tuning has roughly three steps: (1) supervised fine-tuning on question→answer documents; (2) raters rank model responses to train a <strong>reward model</strong>; (3) <strong>PPO</strong> reinforcement learning optimizes the policy to score high reward. This data is largely internal to OpenAI and much harder to replicate — nanoGPT focuses on stage 1.
+      </p>
+      <h2 style="margin-top:1.4rem;"><span class="icon">🔢</span> Sense of Scale</h2>
+      <table>
+        <thead><tr><th>Quantity</th><th>Our model</th><th>GPT-3 (largest)</th></tr></thead>
+        <tbody>
+          <tr><td>Parameters</td><td>~10 million</td><td>175 billion</td></tr>
+          <tr><td>Training tokens</td><td>~300K (in GPT vocab)</td><td>300 billion</td></tr>
+          <tr><td>Vocabulary</td><td>65 (chars)</td><td>~50,257 (subword)</td></tr>
+          <tr><td>Architecture</td><td colspan="2" style="text-align:center;">Essentially identical — just 10,000–1,000,000× bigger</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        The headline: a production GPT is architecturally <strong>nearly identical</strong> to the ~200 lines we wrote. The difference is scale (parameters, data, GPUs) and the fine-tuning stages layered on top. Go forth and transform.
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← Build GPT From Scratch Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

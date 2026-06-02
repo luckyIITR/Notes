@@ -806,6 +806,78 @@ class DecisionTree:
         return (a2 >= 0.5).astype(int).ravel()
 </code></pre>
 
+      <div class="callout">In a real interview you write the from-scratch version to prove you understand the math, then mention you'd reach for <span class="term">PyTorch</span> in production. Below is the exact same network — one hidden layer, sigmoid output — built with the library.</div>
+
+      <div class="algo-label">The same thing with PyTorch</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+# ---- Data ----
+X = torch.tensor([[35.], [40.], [45.], [60.], [65.], [70.]])
+y = torch.tensor([[0.],  [0.],  [0.],  [1.],  [1.],  [1.]])
+
+dataset = TensorDataset(X, y)
+loader  = DataLoader(dataset, batch_size=2, shuffle=True)
+
+# ---- Model ----
+class StudentClassifier(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(1, 8),   # input -> hidden
+            nn.ReLU(),
+            nn.Linear(8, 1),   # hidden -> output
+            nn.Sigmoid()       # probability in [0, 1]
+        )
+
+    def forward(self, x):
+        return self.network(x)
+
+# ---- Setup ----
+model     = StudentClassifier()
+criterion = nn.BCELoss()                                 # binary cross-entropy
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+# ---- Training ----
+for epoch in range(100):
+    model.train()
+    total_loss = 0
+    for batch_x, batch_y in loader:
+        predictions = model(batch_x)
+        loss = criterion(predictions, batch_y)
+
+        optimizer.zero_grad()   # clear old gradients
+        loss.backward()         # backprop (autograd does the chain rule)
+        optimizer.step()        # update weights
+        total_loss += loss.item()
+
+    if epoch % 10 == 0:
+        print(f"Epoch {epoch}  Loss: {total_loss:.4f}")
+
+# ---- Inference ----
+model.eval()
+student = torch.tensor([[55.]])
+with torch.no_grad():
+    probability = model(student)
+    prediction  = (probability > 0.5).float()
+
+print("Probability:", probability.item())
+print("Prediction:",  prediction.item())
+</code></pre>
+
+      <div class="algo-label">From-scratch vs PyTorch — what maps to what</div>
+      <table>
+        <thead><tr><th>Manual NumPy</th><th>PyTorch equivalent</th></tr></thead>
+        <tbody>
+          <tr><td><code>W1, b1, W2, b2</code> + matmuls</td><td><code>nn.Linear</code> layers in <code>nn.Sequential</code></td></tr>
+          <tr><td><code>_sigmoid()</code> by hand</td><td><code>nn.ReLU()</code> / <code>nn.Sigmoid()</code></td></tr>
+          <tr><td>Manual <code>dz2, dW2, dz1, ...</code></td><td><code>loss.backward()</code> (autograd)</td></tr>
+          <tr><td><code>W -= lr * dW</code> updates</td><td><code>optimizer.step()</code></td></tr>
+          <tr><td>Plain gradient descent loop</td><td><code>Adam</code> + mini-batch <code>DataLoader</code></td></tr>
+        </tbody>
+      </table>
+
       <div class="followups">
         <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
 
