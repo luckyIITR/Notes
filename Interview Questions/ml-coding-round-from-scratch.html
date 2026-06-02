@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ML Coding Round — Algorithms From Scratch — Interview Questions</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    code.ic {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.82rem;
+      color: #a5b4fc;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+    }
+
+    .code-block {
+      position: relative;
+      background: #0a0d18;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 2.4rem 1.1rem 1.1rem;
+      margin: 0.85rem 0;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+      font-size: 0.82rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+    }
+    .code-block .code-label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: #6366f1;
+      background: #151823;
+      border-right: 1px solid #2d3148;
+      border-bottom: 1px solid #2d3148;
+      border-radius: 10px 0 8px 0;
+      padding: 0.35rem 0.8rem;
+    }
+    .code-block code {
+      display: block;
+      white-space: pre;
+      font-family: inherit;
+      color: inherit;
+    }
+
+    .algo-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: #a5b4fc;
+      margin: 1rem 0 0.4rem;
+    }
+
+    .algo-steps {
+      list-style: none;
+      padding: 0;
+      counter-reset: step-counter;
+      margin: 0.4rem 0 0;
+    }
+    .algo-steps li {
+      counter-increment: step-counter;
+      position: relative;
+      padding: 0.7rem 0.95rem 0.7rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+    .algo-steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.8rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .algo-steps li strong { color: #c7d2fe; }
+
+    .followups {
+      margin-top: 1rem;
+      border-top: 1px solid #2d3148;
+      padding-top: 0.9rem;
+    }
+    .followup-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.75rem 0.95rem;
+      margin-bottom: 0.5rem;
+    }
+    .followup-q {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #c7d2fe;
+      font-style: italic;
+      margin-bottom: 0.35rem;
+      line-height: 1.55;
+    }
+    .followup-a {
+      font-size: 0.86rem;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .priority-list {
+      list-style: none;
+      padding: 0;
+      counter-reset: pcount;
+      margin: 0.4rem 0 0;
+    }
+    .priority-list li {
+      counter-increment: pcount;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.7rem 1rem 0.7rem 3rem;
+      margin-bottom: 0.5rem;
+      position: relative;
+      font-size: 0.92rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .priority-list li::before {
+      content: counter(pcount);
+      position: absolute;
+      left: 0.95rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .priority-list li.starred { border-color: #6366f1; }
+    .priority-list .star { color: #fbbf24; }
+
+    .rules-list {
+      list-style: none;
+      padding: 0;
+      counter-reset: rcount;
+      margin: 0.4rem 0 0;
+    }
+    .rules-list li {
+      counter-increment: rcount;
+      position: relative;
+      padding: 0.7rem 0.9rem 0.7rem 3rem;
+      margin-bottom: 0.5rem;
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+    .rules-list li::before {
+      content: counter(rcount);
+      position: absolute;
+      left: 0.9rem;
+      top: 0.8rem;
+      background: #6366f1;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rules-list li strong { color: #c7d2fe; }
+
+    .concept-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .concept-name {
+      font-weight: 700;
+      color: #c7d2fe;
+      font-size: 0.9rem;
+      margin-bottom: 0.3rem;
+    }
+    .concept-desc {
+      color: #cbd5e1;
+      font-size: 0.87rem;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Interview Questions</a>
+
+    <header class="notes-header">
+      <p class="tag">Interview Questions · ML Coding · Python + NumPy</p>
+      <h1>ML Coding Round — Algorithms From Scratch</h1>
+      <p>A complete, interview-ready guide for ML coding rounds — implement the core algorithms (linear, logistic, K-Means, KNN, trees, Naive Bayes, PCA, a small neural net) plus metrics and helpers in Python + NumPy. For each: <strong>the idea → the steps → the code → the follow-ups interviewers ask next.</strong></p>
+    </header>
+
+    <div class="section-divider"><span>1 · How This Round Works</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎙️</span> What They're Actually Testing</h2>
+      <p>The interviewer gives you a problem like <em>"implement linear regression from scratch"</em> — meaning <strong>no scikit-learn for the algorithm itself</strong>. NumPy is allowed and expected.</p>
+      <p>They are watching for:</p>
+      <ul>
+        <li><strong>Do you understand the math behind the model</strong> (not just <code class="ic">model.fit()</code>)?</li>
+        <li><strong>Can you turn that math into clean code</strong> under mild pressure?</li>
+        <li><strong>Can you explain your thinking out loud</strong> as you go?</li>
+      </ul>
+
+      <div class="algo-label">Your game plan for every problem (say this out loud)</div>
+      <ol class="algo-steps">
+        <li><strong>Clarify:</strong> "Just to confirm — NumPy is fine, no sklearn for the model? Binary or multi-class? Should I include training, or just the predict step?"</li>
+        <li><strong>Explain the idea in one line</strong> before coding. ("Linear regression fits a line by minimizing squared error, and I'll use gradient descent.")</li>
+        <li><strong>Write a class with <code class="ic">fit</code> and <code class="ic">predict</code></strong> — this structure impresses and is easy to extend.</li>
+        <li><strong>Test it</strong> on a tiny example at the end.</li>
+        <li><strong>Mention trade-offs:</strong> complexity, when it breaks, how you'd improve it.</li>
+      </ol>
+
+      <div class="callout"><strong>Golden rule:</strong> narrate while you code. Silence looks like you're stuck even when you're not.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · The Must-Know List</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⭐</span> Learn These In This Order</h2>
+      <p>If you only have limited time, learn these in order. Linear &amp; logistic regression and K-Means are asked the most.</p>
+      <ol class="priority-list">
+        <li class="starred">Linear Regression <span class="star">⭐</span></li>
+        <li class="starred">Logistic Regression <span class="star">⭐</span></li>
+        <li class="starred">K-Means <span class="star">⭐</span></li>
+        <li>K-Nearest Neighbors (KNN)</li>
+        <li>Decision Tree</li>
+        <li>Gaussian Naive Bayes</li>
+        <li>PCA</li>
+        <li>Simple Neural Network</li>
+        <li class="starred">Metrics from scratch <span class="star">⭐</span></li>
+        <li>Train/test split + standardization</li>
+      </ol>
+    </div>
+
+    <div class="section-divider"><span>3 · Linear Regression ⭐</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> Fitting a Line by Minimizing Error</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>Fit a straight line through the data so predictions are as close as possible to the real values. "Close" is measured by <span class="term">Mean Squared Error</span> — the average of squared mistakes. We adjust the line's weights step by step to make that error smaller; this is <span class="term">gradient descent</span>.</p>
+
+      <div class="algo-label">The steps</div>
+      <ol class="algo-steps">
+        <li>Start with weights = 0.</li>
+        <li>Predict <code class="ic">y = X·w + b</code>.</li>
+        <li>Measure the error <code class="ic">(prediction − actual)</code>.</li>
+        <li>Nudge <code class="ic">w</code> and <code class="ic">b</code> in the direction that reduces error.</li>
+        <li>Repeat many times.</li>
+      </ol>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>import numpy as np
+
+class LinearRegressionGD:
+    def __init__(self, lr=0.01, n_iters=1000):
+        self.lr = lr            # learning rate (step size)
+        self.n_iters = n_iters
+        self.w = None
+        self.b = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.w = np.zeros(n_features)
+        self.b = 0
+        for _ in range(self.n_iters):
+            y_pred = X @ self.w + self.b          # prediction
+            error = y_pred - y
+            dw = (1 / n_samples) * (X.T @ error)  # gradient w.r.t. weights
+            db = (1 / n_samples) * np.sum(error)  # gradient w.r.t. bias
+            self.w -= self.lr * dw                # update step
+            self.b -= self.lr * db
+
+    def predict(self, X):
+        return X @ self.w + self.b
+</code></pre>
+
+      <div class="algo-label">Bonus — the Normal Equation (closed-form)</div>
+      <p>No iterations. Good to mention; interviewers love it.</p>
+      <pre class="code-block"><span class="code-label">Python</span><code>def linreg_normal_equation(X, y):
+    X_b = np.c_[np.ones((X.shape[0], 1)), X]      # add bias column
+    theta = np.linalg.inv(X_b.T @ X_b) @ X_b.T @ y
+    return theta   # theta[0] = bias, theta[1:] = weights
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why squared error and not absolute error?"</div>
+          <div class="followup-a">Squared error is smooth and easy to differentiate, and punishes big mistakes more.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Gradient descent vs normal equation — when to use which?"</div>
+          <div class="followup-a">Normal equation is exact but slow for many features (it inverts a matrix, ~<code class="ic">O(n³)</code>). Gradient descent scales better to large/high-dimensional data.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"What does the learning rate do?"</div>
+          <div class="followup-a">Too high → it overshoots and never settles; too low → very slow training.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"What is the cost function?"</div>
+          <div class="followup-a"><code class="ic">MSE = (1/n) Σ (y_pred − y)²</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · Logistic Regression ⭐</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Classification via the Sigmoid</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>Like linear regression, but for <strong>classification</strong> (yes/no). We pass the linear output through a <span class="term">sigmoid</span> function that squashes any number into a probability between 0 and 1. Above 0.5 → class 1, below → class 0.</p>
+      <p>Key difference from linear: prediction goes through <code class="ic">sigmoid</code>, and the loss is <span class="term">log loss</span> (cross-entropy) instead of MSE. Nicely, the gradient formula ends up looking almost identical.</p>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>class LogisticRegression:
+    def __init__(self, lr=0.1, n_iters=1000):
+        self.lr = lr
+        self.n_iters = n_iters
+
+    def _sigmoid(self, z):
+        return 1 / (1 + np.exp(-z))
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.w = np.zeros(n_features)
+        self.b = 0
+        for _ in range(self.n_iters):
+            linear = X @ self.w + self.b
+            y_pred = self._sigmoid(linear)
+            dw = (1 / n_samples) * (X.T @ (y_pred - y))
+            db = (1 / n_samples) * np.sum(y_pred - y)
+            self.w -= self.lr * dw
+            self.b -= self.lr * db
+
+    def predict_proba(self, X):
+        return self._sigmoid(X @ self.w + self.b)
+
+    def predict(self, X):
+        return (self.predict_proba(X) >= 0.5).astype(int)
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why not use MSE here?"</div>
+          <div class="followup-a">With sigmoid, MSE creates a bumpy (non-convex) surface that's hard to optimize. Log loss is convex, so gradient descent works cleanly.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"What is the sigmoid doing?"</div>
+          <div class="followup-a">Converting a raw score into a probability between 0 and 1.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"How would you handle more than 2 classes?"</div>
+          <div class="followup-a">Use softmax (multinomial logistic regression) or one-vs-rest.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Is this a linear or non-linear model?"</div>
+          <div class="followup-a">The decision boundary is linear.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>5 · K-Means Clustering ⭐</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎭</span> Assign-and-Update Clusters</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>Group unlabeled data into <strong>k</strong> clusters. Each cluster has a center (<span class="term">centroid</span>). We repeat two steps until things stop moving: (1) assign each point to its nearest centroid, (2) move each centroid to the average of its points.</p>
+
+      <div class="algo-label">The steps</div>
+      <ol class="algo-steps">
+        <li>Pick k random points as starting centroids.</li>
+        <li><strong>Assign:</strong> each point joins its nearest centroid.</li>
+        <li><strong>Update:</strong> recompute each centroid as the mean of its assigned points.</li>
+        <li>Repeat until centroids stop changing.</li>
+      </ol>
+
+      <div class="algo-label">The code (modular form)</div>
+      <p><code class="ic">fit</code> reads top-down as the algorithm itself; each helper does one job. Keeping plain Python loops (no vectorization tricks) makes every step easy to explain out loud.</p>
+      <pre class="code-block"><span class="code-label">Python</span><code>class KMeans:
+    def __init__(self, k=3, max_iters=100):
+        self.k = k
+        self.max_iters = max_iters
+
+    # ── 1. random initialization ──────────────────────────
+    def _init_centroids(self, X):
+        m = X.shape[0]
+        return X[np.random.randint(0, m, self.k)].copy()
+
+    # ── 2. find the nearest centroid for one point ───────
+    def _nearest_centroid(self, point):
+        min_distance = float('inf')
+        min_index = -1
+        for c_idx in range(self.k):
+            dist = np.linalg.norm(self.centroids[c_idx] - point)
+            if dist &lt; min_distance:
+                min_distance = dist
+                min_index = c_idx
+        return min_index
+
+    # ── 3. assign every point to its nearest centroid ────
+    def _assign_clusters(self, X):
+        clusters = [[] for _ in range(self.k)]
+        for point in X:
+            idx = self._nearest_centroid(point)
+            clusters[idx].append(point)
+        return clusters
+
+    # ── 4. recompute each centroid as the mean of its points ──
+    def _update_centroids(self, clusters):
+        new_centroids = np.zeros_like(self.centroids)
+        for i in range(self.k):
+            if len(clusters[i]) &gt; 0:
+                new_centroids[i] = sum(clusters[i]) / len(clusters[i])
+            else:
+                new_centroids[i] = self.centroids[i]   # keep old if empty
+        return new_centroids
+
+    # ── 5. the high-level algorithm ──────────────────────
+    def fit(self, X):
+        self.centroids = self._init_centroids(X)
+        for _ in range(self.max_iters):
+            clusters = self._assign_clusters(X)
+            new_centroids = self._update_centroids(clusters)
+            if np.allclose(new_centroids, self.centroids):
+                break                                  # converged
+            self.centroids = new_centroids
+        return self
+
+    def predict(self, X):
+        return np.array([self._nearest_centroid(p) for p in X])
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"How do you choose k?"</div>
+          <div class="followup-a">The <strong>elbow method</strong>: plot total within-cluster distance for several k values and pick the "elbow" where it stops dropping fast. Or the silhouette score.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Is K-Means guaranteed to find the best answer?"</div>
+          <div class="followup-a">No. It can get stuck in a local optimum, which is why we often run it several times with different starts (k-means++ helps pick smart starting points).</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"It's unsupervised — what does that mean?"</div>
+          <div class="followup-a">There are no labels; it finds structure on its own.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"What if a cluster ends up empty?"</div>
+          <div class="followup-a">Reinitialize that centroid (the code keeps the old one to avoid a crash).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · K-Nearest Neighbors (KNN)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Vote of the Nearest Neighbors</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>To classify a new point, look at the <strong>k closest training points</strong> and take a majority vote. There is no real "training" — it just memorizes the data (called a <em>lazy</em> learner).</p>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>class KNN:
+    def __init__(self, k=3):
+        self.k = k
+
+    def fit(self, X, y):
+        self.X_train = X       # just store the data
+        self.y_train = y
+
+    def predict(self, X):
+        preds = []
+        for x in X:
+            dists = np.linalg.norm(self.X_train - x, axis=1)
+            k_idx = np.argsort(dists)[:self.k]      # k nearest indices
+            k_labels = self.y_train[k_idx]
+            preds.append(np.bincount(k_labels).argmax())  # majority vote
+        return np.array(preds)
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"What's the cost of prediction?"</div>
+          <div class="followup-a">Slow: <code class="ic">O(n × d)</code> per query because it compares to every training point. Fine for small data, bad for huge data.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why must you scale features first?"</div>
+          <div class="followup-a">Distance is dominated by large-range features. Always standardize.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"What if k is too small or too large?"</div>
+          <div class="followup-a">Too small → sensitive to noise; too large → over-smoothed and may miss real boundaries. Use an odd k for binary to avoid ties.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Classification vs regression with KNN?"</div>
+          <div class="followup-a">Classification = majority vote; regression = average of neighbors' values.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>7 · Decision Tree (Classification)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌳</span> Recursive Yes/No Splits</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>Ask a series of yes/no questions about the features (e.g. <em>"is feature 2 ≤ 0.5?"</em>) that best split the data into pure groups. "Pure" means mostly one class. We measure purity with <span class="term">Gini impurity</span> (0 = perfectly pure).</p>
+
+      <div class="algo-label">The steps</div>
+      <ol class="algo-steps">
+        <li>At each node, try every feature and threshold; pick the split that most reduces impurity.</li>
+        <li>Split the data and repeat on each side (recursion).</li>
+        <li>Stop when the node is pure, too small, or max depth is reached → make it a leaf that predicts the majority class.</li>
+      </ol>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>class Node:
+    def __init__(self, feature=None, threshold=None, left=None, right=None, value=None):
+        self.feature = feature; self.threshold = threshold
+        self.left = left; self.right = right
+        self.value = value     # set only for leaf nodes
+
+class DecisionTree:
+    def __init__(self, max_depth=5, min_samples_split=2):
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+
+    def _gini(self, y):
+        probs = np.bincount(y) / len(y)
+        return 1 - np.sum(probs ** 2)
+
+    def _best_split(self, X, y):
+        best_gain, best_feat, best_thr = -1, None, None
+        parent_gini = self._gini(y)
+        n_samples, n_features = X.shape
+        for feat in range(n_features):
+            for thr in np.unique(X[:, feat]):
+                left, right = y[X[:, feat] &lt;= thr], y[X[:, feat] &gt; thr]
+                if len(left) == 0 or len(right) == 0:
+                    continue
+                child_gini = (len(left)/n_samples)*self._gini(left) + \
+                             (len(right)/n_samples)*self._gini(right)
+                gain = parent_gini - child_gini
+                if gain &gt; best_gain:
+                    best_gain, best_feat, best_thr = gain, feat, thr
+        return best_feat, best_thr
+
+    def _build(self, X, y, depth):
+        if depth &gt;= self.max_depth or len(np.unique(y)) == 1 \
+           or len(y) &lt; self.min_samples_split:
+            return Node(value=np.bincount(y).argmax())
+        feat, thr = self._best_split(X, y)
+        if feat is None:
+            return Node(value=np.bincount(y).argmax())
+        mask = X[:, feat] &lt;= thr
+        left = self._build(X[mask], y[mask], depth + 1)
+        right = self._build(X[~mask], y[~mask], depth + 1)
+        return Node(feature=feat, threshold=thr, left=left, right=right)
+
+    def fit(self, X, y):
+        self.root = self._build(X, y, 0)
+
+    def _predict_one(self, x, node):
+        if node.value is not None:
+            return node.value
+        branch = node.left if x[node.feature] &lt;= node.threshold else node.right
+        return self._predict_one(x, branch)
+
+    def predict(self, X):
+        return np.array([self._predict_one(x, self.root) for x in X])
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Gini vs Entropy?"</div>
+          <div class="followup-a">Both measure impurity; results are usually similar. Gini is slightly faster (no log).</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why do trees overfit, and how do you prevent it?"</div>
+          <div class="followup-a">A deep tree can memorize the data. Limit it with <code class="ic">max_depth</code>, <code class="ic">min_samples_split</code>, or prune it.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"How does this become a Random Forest?"</div>
+          <div class="followup-a">Train many trees on random subsets of rows and features, then average/vote. This reduces overfitting.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Do you need to scale features?"</div>
+          <div class="followup-a">No. Trees split on thresholds, so scale doesn't matter.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>8 · Gaussian Naive Bayes</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧮</span> Bayes With Independent Features</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>Use <span class="term">probability</span> (Bayes' theorem) to classify. For each class we ask: "how likely is this data point under this class?" We assume features are <strong>independent</strong> (that's the "naive" part) and bell-shaped (Gaussian). We pick the class with the highest probability. We work in <strong>log space</strong> to avoid tiny-number underflow.</p>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>class GaussianNB:
+    def fit(self, X, y):
+        self.classes = np.unique(y)
+        self.mean, self.var, self.prior = {}, {}, {}
+        for c in self.classes:
+            Xc = X[y == c]
+            self.mean[c] = Xc.mean(axis=0)
+            self.var[c] = Xc.var(axis=0) + 1e-9     # avoid divide-by-zero
+            self.prior[c] = len(Xc) / len(y)
+
+    def _log_gaussian(self, x, mean, var):
+        return -0.5 * np.sum(np.log(2*np.pi*var)) - 0.5*np.sum(((x-mean)**2)/var)
+
+    def predict(self, X):
+        preds = []
+        for x in X:
+            posteriors = [np.log(self.prior[c]) + self._log_gaussian(x, self.mean[c], self.var[c])
+                          for c in self.classes]
+            preds.append(self.classes[np.argmax(posteriors)])
+        return np.array(preds)
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why is it called 'naive'?"</div>
+          <div class="followup-a">Because it assumes all features are independent, which is rarely true — yet it still works well.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why work in log space?"</div>
+          <div class="followup-a">Multiplying many small probabilities underflows to zero; adding logs is stable.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Where is it used a lot?"</div>
+          <div class="followup-a">Text/spam classification — fast and surprisingly strong.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>9 · PCA — Dimensionality Reduction</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Project Onto Max-Variance Axes</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>Squeeze many features into a few while keeping as much information (variance) as possible. It finds new axes — <span class="term">principal components</span> — that point in the directions where the data spreads out the most.</p>
+
+      <div class="algo-label">The steps</div>
+      <ol class="algo-steps">
+        <li>Center the data (subtract the mean).</li>
+        <li>Compute the covariance matrix.</li>
+        <li>Find its eigenvectors and eigenvalues.</li>
+        <li>Keep the eigenvectors with the largest eigenvalues (most variance).</li>
+        <li>Project the data onto them.</li>
+      </ol>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>class PCA:
+    def __init__(self, n_components=2):
+        self.n_components = n_components
+
+    def fit(self, X):
+        self.mean = X.mean(axis=0)
+        Xc = X - self.mean
+        cov = np.cov(Xc.T)
+        eigenvalues, eigenvectors = np.linalg.eigh(cov)
+        idx = np.argsort(eigenvalues)[::-1]            # largest variance first
+        self.components = eigenvectors[:, idx[:self.n_components]]
+        return self
+
+    def transform(self, X):
+        return (X - self.mean) @ self.components
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why center the data first?"</div>
+          <div class="followup-a">PCA measures variance around the mean; without centering, the result is wrong.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"How do you pick the number of components?"</div>
+          <div class="followup-a">Keep enough to explain ~95% of total variance (look at the explained-variance ratio).</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why must features be scaled?"</div>
+          <div class="followup-a">Otherwise a large-scale feature dominates the variance unfairly.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>10 · Simple Neural Network (1 Hidden Layer)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> Forward Pass + Backprop</h2>
+
+      <div class="algo-label">The idea</div>
+      <p>Stack layers of weighted sums passed through an activation function (sigmoid). <strong>Forward pass</strong> makes a prediction; <strong>backpropagation</strong> sends the error backward to update every weight using the chain rule. This is just gradient descent on a bigger function.</p>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>class SimpleNN:
+    def __init__(self, n_input, n_hidden, lr=0.1, n_iters=2000):
+        rng = np.random.default_rng(42)
+        self.W1 = rng.standard_normal((n_input, n_hidden)) * 0.1
+        self.b1 = np.zeros(n_hidden)
+        self.W2 = rng.standard_normal((n_hidden, 1)) * 0.1
+        self.b2 = 0.0
+        self.lr, self.n_iters = lr, n_iters
+
+    def _sigmoid(self, z):
+        return 1 / (1 + np.exp(-z))
+
+    def fit(self, X, y):
+        y = y.reshape(-1, 1)
+        n = X.shape[0]
+        for _ in range(self.n_iters):
+            # ---- forward ----
+            z1 = X @ self.W1 + self.b1
+            a1 = self._sigmoid(z1)
+            z2 = a1 @ self.W2 + self.b2
+            a2 = self._sigmoid(z2)
+            # ---- backward (chain rule) ----
+            dz2 = (a2 - y) / n
+            dW2 = a1.T @ dz2
+            db2 = np.sum(dz2)
+            dz1 = (dz2 @ self.W2.T) * a1 * (1 - a1)   # sigmoid derivative
+            dW1 = X.T @ dz1
+            db1 = np.sum(dz1, axis=0)
+            # ---- update ----
+            self.W2 -= self.lr * dW2; self.b2 -= self.lr * db2
+            self.W1 -= self.lr * dW1; self.b1 -= self.lr * db1
+
+    def predict(self, X):
+        a1 = self._sigmoid(X @ self.W1 + self.b1)
+        a2 = self._sigmoid(a1 @ self.W2 + self.b2)
+        return (a2 >= 0.5).astype(int).ravel()
+</code></pre>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up questions</div>
+
+        <div class="followup-item">
+          <div class="followup-q">"What is backpropagation?"</div>
+          <div class="followup-a">Using the chain rule to compute how much each weight contributed to the error, then nudging it the opposite way.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why initialize weights randomly, not to zero?"</div>
+          <div class="followup-a">If all weights are equal, every neuron learns the same thing ("symmetry"). Random breaks it.</div>
+        </div>
+
+        <div class="followup-item">
+          <div class="followup-q">"Why use ReLU instead of sigmoid in deep nets?"</div>
+          <div class="followup-a">Sigmoid gradients get tiny in deep networks (vanishing gradient); ReLU avoids that and is faster.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>11 · Evaluation Metrics From Scratch ⭐</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Accuracy, F1, RMSE — Without Sklearn</h2>
+
+      <p>Interviewers very often add: <em>"now write the accuracy / F1 / RMSE yourself."</em> Know these cold.</p>
+
+      <div class="algo-label">The code</div>
+      <pre class="code-block"><span class="code-label">Python</span><code>def accuracy(y_true, y_pred):
+    return np.mean(y_true == y_pred)
+
+def confusion_matrix_binary(y_true, y_pred):
+    tp = np.sum((y_true == 1) &amp; (y_pred == 1))
+    tn = np.sum((y_true == 0) &amp; (y_pred == 0))
+    fp = np.sum((y_true == 0) &amp; (y_pred == 1))
+    fn = np.sum((y_true == 1) &amp; (y_pred == 0))
+    return tp, tn, fp, fn
+
+def precision_recall_f1(y_true, y_pred):
+    tp, tn, fp, fn = confusion_matrix_binary(y_true, y_pred)
+    precision = tp / (tp + fp) if (tp + fp) else 0
+    recall    = tp / (tp + fn) if (tp + fn) else 0
+    f1 = 2*precision*recall / (precision + recall) if (precision + recall) else 0
+    return precision, recall, f1
+
+# Regression
+def rmse(y_true, y_pred):
+    return np.sqrt(np.mean((y_true - y_pred) ** 2))
+
+def r2_score(y_true, y_pred):
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - y_true.mean()) ** 2)
+    return 1 - ss_res / ss_tot
+</code></pre>
+
+      <div class="algo-label">Plain-English meanings</div>
+      <ul>
+        <li><strong>Precision</strong> — of everything I predicted positive, how much was actually positive. (Cost of false alarms.)</li>
+        <li><strong>Recall</strong> — of all the real positives, how many did I catch. (Cost of misses.)</li>
+        <li><strong>F1</strong> — balance of precision and recall (harmonic mean).</li>
+      </ul>
+
+      <div class="followups">
+        <div class="algo-label" style="margin-top:0;">Likely follow-up question</div>
+        <div class="followup-item">
+          <div class="followup-q">"When is accuracy a bad metric?"</div>
+          <div class="followup-a">On imbalanced data. If 99% of cases are "no", predicting "no" always gives 99% accuracy but is useless. Use precision/recall/F1 or AUC.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>12 · Train/Test Split + Standardization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✂️</span> Small Helpers They Sometimes Ask For</h2>
+
+      <pre class="code-block"><span class="code-label">Python</span><code>def train_test_split(X, y, test_size=0.2, seed=42):
+    rng = np.random.default_rng(seed)
+    idx = rng.permutation(len(X))
+    test_n = int(len(X) * test_size)
+    test_idx, train_idx = idx[:test_n], idx[test_n:]
+    return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
+
+def standardize(X_train, X_test):
+    mean = X_train.mean(axis=0)
+    std = X_train.std(axis=0) + 1e-9
+    return (X_train - mean) / std, (X_test - mean) / std
+</code></pre>
+
+      <div class="callout"><strong>Critical interview point:</strong> always compute mean/std on the <strong>training set only</strong>, then apply to the test set. Computing it on the full data leaks information from the test set — a classic mistake they look for.</div>
+    </div>
+
+    <div class="section-divider"><span>13 · Quick Reference Cheat Sheet</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> All Eight Algorithms On One Page</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>Type</th>
+            <th>Needs scaling?</th>
+            <th>Train cost</th>
+            <th>Key idea in 5 words</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Linear Regression</td>
+            <td>Regression</td>
+            <td>Helps GD</td>
+            <td>Low</td>
+            <td>Fit line, minimize squared error</td>
+          </tr>
+          <tr>
+            <td>Logistic Regression</td>
+            <td>Classification</td>
+            <td>Helps GD</td>
+            <td>Low</td>
+            <td>Sigmoid + log loss</td>
+          </tr>
+          <tr>
+            <td>K-Means</td>
+            <td>Clustering</td>
+            <td><strong>Yes</strong></td>
+            <td>Medium</td>
+            <td>Assign to nearest, move centers</td>
+          </tr>
+          <tr>
+            <td>KNN</td>
+            <td>Both</td>
+            <td><strong>Yes</strong></td>
+            <td>None (lazy)</td>
+            <td>Vote of nearest neighbors</td>
+          </tr>
+          <tr>
+            <td>Decision Tree</td>
+            <td>Both</td>
+            <td>No</td>
+            <td>Medium</td>
+            <td>Best yes/no splits, reduce Gini</td>
+          </tr>
+          <tr>
+            <td>Naive Bayes</td>
+            <td>Classification</td>
+            <td>No</td>
+            <td>Low</td>
+            <td>Bayes + independent features</td>
+          </tr>
+          <tr>
+            <td>PCA</td>
+            <td>Reduction</td>
+            <td><strong>Yes</strong></td>
+            <td>Medium</td>
+            <td>Keep directions of max variance</td>
+          </tr>
+          <tr>
+            <td>Neural Net</td>
+            <td>Both</td>
+            <td><strong>Yes</strong></td>
+            <td>High</td>
+            <td>Forward predict, backprop update</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>14 · Common Conceptual Questions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💭</span> Asked Alongside The Code</h2>
+
+      <div class="concept-item">
+        <div class="concept-name">Bias vs Variance</div>
+        <div class="concept-desc">High bias = too simple, underfits. High variance = too complex, overfits. You want a balance.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Overfitting fixes</div>
+        <div class="concept-desc">More data, simpler model, regularization (L1/L2), dropout, cross-validation, early stopping.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">L1 vs L2 regularization</div>
+        <div class="concept-desc">L1 (Lasso) can shrink weights to exactly zero (feature selection). L2 (Ridge) shrinks them smoothly toward zero.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Why split data?</div>
+        <div class="concept-desc">To check the model works on data it has never seen, not just memorized.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Cross-validation</div>
+        <div class="concept-desc">Split data into k folds, train on k−1, test on the last, rotate. Gives a more reliable score.</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Supervised vs unsupervised</div>
+        <div class="concept-desc">Supervised has labels (regression, classification); unsupervised doesn't (clustering, PCA).</div>
+      </div>
+
+      <div class="concept-item">
+        <div class="concept-name">Gradient descent types</div>
+        <div class="concept-desc">Batch (all data per step), Stochastic (one sample), Mini-batch (small groups — most common).</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>15 · Final Tips for the Live Round</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎬</span> What Actually Wins The Round</h2>
+      <ol class="rules-list">
+        <li><strong>Always write a <code class="ic">class</code> with <code class="ic">fit</code> and <code class="ic">predict</code>.</strong> It's the expected, clean structure.</li>
+        <li><strong>Vectorize with NumPy</strong> (<code class="ic">X @ w</code>) instead of Python loops where you can — it shows maturity.</li>
+        <li><strong>Add tiny inline comments</strong> on the tricky lines (the gradient, the update step).</li>
+        <li><strong>Test on a small array at the end</strong> and say <em>"let me sanity-check it."</em></li>
+        <li><strong>If you blank on the exact gradient,</strong> say so honestly and reason it out from the loss — interviewers value the thinking more than perfect recall.</li>
+        <li><strong>Talk through trade-offs</strong> at the end (complexity, when it fails). This often matters more than the code itself.</li>
+      </ol>
+
+      <div class="callout">You already work with these models in practice — this round is just about showing the gears inside. <strong>Practice writing linear regression, logistic regression, and K-Means from a blank file 2–3 times each</strong> until they flow without looking. That covers the majority of what gets asked.</div>
+    </div>
+
+
+    <footer>
+      <p>Updated May 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Interview Questions</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>
