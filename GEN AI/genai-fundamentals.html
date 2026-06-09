@@ -33,6 +33,7 @@
     /* ── figure / diagram ── */
     .figure { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem; margin:1rem 0; text-align:center; }
     .figure img { max-width:340px; width:100%; height:auto; border-radius:8px; background:#fff; padding:0.75rem; }
+    .figure.wide img { max-width:640px; }
     .figure figcaption { margin-top:0.85rem; font-size:0.8rem; color:#64748b; line-height:1.6; }
 
     /* ── use-case grid ── */
@@ -685,6 +686,10 @@
         <li>Add a <strong>KL penalty</strong> to the reward so the updated model is punished for diverging too far from the reference.</li>
       </ol>
       <div class="callout">This needs <strong>two full copies</strong> of the LLM (frozen reference + PPO model). Combining RLHF with <strong>PEFT</strong> lets you update only an adapter and reuse one underlying LLM for both roles — cutting the training memory footprint by ~half. Evaluate success with a <strong>toxicity score</strong> (avg. probability of the toxic class) before vs. after — it should drop.</div>
+      <figure class="figure wide">
+        <img src="assets/trl-ppo-kl.png" alt="PPO training setup: rollout (query → LM → response), evaluation (query+response → reward model → reward), and optimization where active and reference model log-probs feed a KL-divergence term that is combined with the reward and passed to PPO." />
+        <figcaption>The PPO/RLHF loop in TRL — <strong>Rollout</strong> (the LM completes a query), <strong>Evaluation</strong> (a reward model scores it), and <strong>Optimization</strong> (active vs. frozen reference log-probs give the KL-div penalty, added to the reward and fed to PPO via policy gradients).</figcaption>
+      </figure>
       <p class="paper-source">Tooling: <a href="https://huggingface.co/docs/trl/index">TRL (Transformer Reinforcement Learning)</a> implements PPO and integrates with PEFT/LoRA.</p>
     </div>
 
@@ -698,6 +703,150 @@
         <li><strong>Reinforcement (RLAIF):</strong> the fine-tuned model generates responses, then picks the constitution-preferred one — an <strong>AI-generated preference dataset</strong> that trains a reward model for PPO. This is <span class="term">RLAIF</span> (RL from AI Feedback).</li>
       </ol>
       <div class="callout">RLHF recap: a reward model scores completions against a human-preference metric, and PPO updates the LLM weights over many iterations until aligned. Constitutional AI/RLAIF pushes this further by replacing human feedback with model feedback — alignment remains a fast-moving research area.</div>
+    </div>
+
+    <div class="section-divider"><span>39 · Optimizing Models for Deployment</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> Smaller, Faster Inference</h2>
+      <p>At deployment you weigh inference speed, compute budget, and storage against model performance. Three techniques shrink the model while trying to preserve accuracy:</p>
+      <table>
+        <thead>
+          <tr><th>Technique</th><th>How it works</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Distillation</strong></td><td>A large <em>teacher</em> trains a smaller <em>student</em> to mimic it (soft labels via a high-temperature softmax + student/hard loss)</td><td>Use the student for inference; best for encoder-only models (e.g. BERT), less effective for generative decoders</td></tr>
+          <tr><td><strong>Post-training quantization (PTQ)</strong></td><td>Convert weights (and optionally activations) to 16-bit or 8-bit after training</td><td>Needs a calibration step; including activations hits performance more</td></tr>
+          <tr><td><strong>Pruning</strong></td><td>Remove weights near zero that contribute little</td><td>Some variants need retraining (or PEFT/LoRA); limited gains if few weights are near zero</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">Distillation trains a <strong>second smaller model</strong> — it doesn't shrink the original. Quantization and pruning actually reduce the original LLM's size. All three trade a little accuracy for cheaper, faster serving.</div>
+    </div>
+
+    <div class="section-divider"><span>40 · Cheat Sheet — Time &amp; Effort</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> Effort Across the Lifecycle</h2>
+      <p>A rough guide to the time, expertise, and objective of each phase. You'll usually <strong>skip pre-training</strong> (start from a foundation model), begin with prompt engineering, and escalate to fine-tuning, RLHF, and optimization only as needed.</p>
+      <figure class="figure wide">
+        <img src="assets/lifecycle-cheatsheet.png" alt="Cheat sheet table comparing pre-training, prompt engineering, prompt tuning/fine-tuning, RLHF, and compression/optimization across training duration, customization, objective, and expertise." />
+        <figcaption>Time and effort by phase — pre-training is the heaviest (high expertise, days–months); prompt engineering is lightest; fine-tuning, RLHF, and optimization fall in between.</figcaption>
+      </figure>
+    </div>
+
+    <div class="section-divider"><span>41 · LLM Limitations &amp; Orchestration</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> What Training Alone Can't Fix</h2>
+      <p>Some problems persist no matter how well you train:</p>
+      <ul>
+        <li><strong>Knowledge cutoff:</strong> internal knowledge freezes at pre-training time (a model trained in early 2022 still names Boris Johnson as PM).</li>
+        <li><strong>Weak math:</strong> LLMs predict tokens, they don't compute — division and large-number arithmetic are often wrong.</li>
+        <li><strong>Hallucination:</strong> they confidently invent answers (e.g. describing a nonexistent "Martian Dunetree").</li>
+      </ul>
+      <div class="callout">An <span class="term">orchestration library</span> (e.g. LangChain) manages passing user input to the LLM and returning completions — and connects the model to external data sources and APIs at runtime to overcome these limits.</div>
+    </div>
+
+    <div class="section-divider"><span>42 · Retrieval-Augmented Generation (RAG)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📚</span> Giving the Model External Knowledge</h2>
+      <p><span class="term">RAG</span> is a framework (not one technology) that gives an LLM access to data it didn't see in training — fixing knowledge cutoffs and reducing hallucination far more cheaply than retraining. Based on the 2020 Facebook paper, its core is a <span class="term">retriever</span>:</p>
+      <ol class="algo-steps">
+        <li>A <strong>query encoder</strong> encodes the user prompt into the same form as the external data.</li>
+        <li>It searches an <strong>external data source</strong> (vector store, SQL DB, CSV…) for the most relevant document(s).</li>
+        <li>The retrieved text is combined with the original prompt into an <strong>expanded prompt</strong>.</li>
+        <li>The LLM generates a completion that uses the retrieved data (e.g. a lawyer querying a corpus of court filings).</li>
+      </ol>
+      <p>Two key implementation considerations:</p>
+      <ul>
+        <li><strong>Context window:</strong> sources are too long, so data is split into <strong>chunks</strong> that fit (LangChain handles this).</li>
+        <li><strong>Retrieval format:</strong> chunks are embedded into vectors and stored in a <span class="term">vector store</span> for fast similarity search (cosine similarity). A <strong>vector database</strong> adds a key per vector, enabling citations.</li>
+      </ul>
+      <div class="callout">RAG can tap private wikis/expert systems, the internet (e.g. Wikipedia), and databases (via SQL) — improving relevance and accuracy while avoiding made-up answers.</div>
+    </div>
+
+    <div class="section-divider"><span>43 · Interacting with External Applications</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔌</span> The LLM as a Reasoning Engine</h2>
+      <p>Beyond data, LLMs can trigger <strong>actions</strong> via APIs and code. In the ShopBot return example, the LLM drives the flow: look up the order (SQL/RAG), confirm items, call the shipper's Python API for a label, verify the email, and send it. The LLM is the application's <span class="term">reasoning engine</span> — its completions form the plan.</p>
+      <p>For completions to drive actions, they must contain:</p>
+      <ul>
+        <li><strong>Instructions</strong> the app understands, matching allowed actions (check order ID → request label → verify email → email label).</li>
+        <li>A <strong>format</strong> the app can parse — a fixed sentence structure, a Python script, or a SQL command.</li>
+        <li><strong>Validation info</strong> collected from the user (e.g. the order's email address).</li>
+      </ul>
+      <div class="callout">Structuring prompts well is critical — it strongly affects plan quality and adherence to the required output format.</div>
+    </div>
+
+    <div class="section-divider"><span>44 · Chain-of-Thought Prompting</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> Helping Models Reason Step by Step</h2>
+      <p>Complex, multi-step or math problems trip up even large models (the apples problem answered "27" instead of 9). <span class="term">Chain-of-thought (CoT) prompting</span> teaches the model to reason like a human by including <strong>intermediate reasoning steps</strong> in the one/few-shot examples.</p>
+      <ul>
+        <li>Example: the Roger/tennis-balls problem written out as explicit steps (start with 5, 2 cans × 3 = 6, 5 + 6 = 11).</li>
+        <li>Given such an example, the model produces a transparent, step-by-step completion and reaches the correct answer (9 apples).</li>
+        <li>Works beyond arithmetic — e.g. a physics density problem (a gold ring sinks because gold is denser than water).</li>
+      </ul>
+      <div class="callout">CoT improves reasoning, but the model's <strong>limited math</strong> can still cause errors when accurate calculation is required (totals, tax, discounts).</div>
+    </div>
+
+    <div class="section-divider"><span>45 · PAL &amp; the Orchestrator</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🐍</span> Program-Aided Language Models</h2>
+      <p><span class="term">PAL</span> (Gao et al., CMU, 2022) pairs an LLM with a code interpreter for reliable math. Using CoT-style examples, the model generates a <strong>Python script</strong> where reasoning steps become code (reasoning text as <code>#</code> comments, calculations as variable assignments).</p>
+      <ol class="algo-steps">
+        <li>Format a prompt with one+ examples: a question, then reasoning steps as Python.</li>
+        <li>Append the new question and pass the combined prompt to the LLM.</li>
+        <li>The LLM emits a Python script; hand it to an <strong>interpreter</strong> to run (bakery example → 74).</li>
+        <li>Append the accurate answer back into the prompt; the LLM produces the final completion.</li>
+      </ol>
+      <div class="callout">An <span class="term">orchestrator</span> automates this hand-off — managing information flow and calls to external interpreters, APIs, and data sources, and deciding actions from the LLM's output. In PAL there's one action (run code); real apps (like ShopBot) need multiple decision points and validations — explored next via techniques like ReAct.</div>
+    </div>
+
+    <div class="section-divider"><span>46 · ReAct — Reasoning + Acting</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🤔</span> Planning Multi-Step Workflows</h2>
+      <p><span class="term">ReAct</span> (Princeton &amp; Google, 2022) is a prompting strategy that combines chain-of-thought reasoning with action planning, letting an LLM plan and execute complex workflows over multiple external sources. It uses structured examples built from benchmarks like HotpotQA (multi-hop Q&amp;A) and Fever (fact verification).</p>
+      <p>Each example is a repeating <strong>thought → action → observation</strong> trio:</p>
+      <ul>
+        <li><strong>Thought:</strong> a reasoning step that decides what to do next.</li>
+        <li><strong>Action:</strong> chosen from a <strong>pre-defined list</strong>, formatted in square-bracket notation the interpreter can detect. ReAct's Wikipedia API allows: <code>search[entity]</code>, <code>lookup[keyword]</code>, and <code>finish[answer]</code>.</li>
+        <li><strong>Observation:</strong> the new information returned by the action, fed back into the context.</li>
+      </ul>
+      <p>The cycle repeats until <code>finish</code> (e.g. searching two magazines, comparing start years, then answering which came first). The instructions prepended to the examples define the task and the allowed actions.</p>
+      <div class="callout">Defining a <strong>limited action set</strong> is critical — LLMs are creative and may propose steps the app can't perform. For inference: prepend instructions → add example(s) → append the question → pass to the LLM.</div>
+    </div>
+
+    <div class="section-divider"><span>47 · Paper · ReAct</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📄</span> ReAct: Synergizing Reasoning and Acting (Yao et al., 2022)</h2>
+      <p>The paper interleaves <strong>reasoning traces</strong> and <strong>task-specific actions</strong> so they reinforce each other: reasoning helps induce, track, and update action plans (and handle exceptions), while actions let the model gather info from external sources.</p>
+      <div class="callout">By calling a simple <strong>Wikipedia API</strong>, ReAct reduces the hallucination and error propagation seen in pure chain-of-thought on HotpotQA and Fever. On interactive benchmarks it beats imitation/RL methods by <strong>+34% (ALFWorld)</strong> and <strong>+10% (WebShop)</strong> success rate — with just one or two in-context examples — while being more interpretable and trustworthy.</div>
+      <p class="paper-source">Source: <a href="https://arxiv.org/abs/2210.03629">arXiv:2210.03629</a></p>
+    </div>
+
+    <div class="section-divider"><span>48 · LangChain</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Building Blocks for LLM Apps</h2>
+      <p><span class="term">LangChain</span> provides modular components for working with LLMs:</p>
+      <ul>
+        <li><strong>Prompt templates</strong> for many use cases (formatting inputs and completions).</li>
+        <li><strong>Memory</strong> to store interactions across a session.</li>
+        <li><strong>Tools</strong> — pre-built integrations for external datasets and APIs.</li>
+      </ul>
+      <p>Connecting components forms a <span class="term">chain</span>; pre-built chains exist for common use cases. When the workflow can branch on user input, a fixed chain won't do — instead an <span class="term">agent</span> interprets input and decides which tool(s) to use. LangChain ships agents for both <strong>PAL</strong> and <strong>ReAct</strong>, which can be embedded in chains to plan and execute actions.</p>
+      <div class="callout">Reasoning/planning quality scales with model size — prefer <strong>large models</strong> for PAL/ReAct. Smaller models may need fine-tuning to handle structured prompts; a good strategy is to start large, collect user data, then fine-tune a smaller model to switch to later.</div>
+    </div>
+
+    <div class="section-divider"><span>49 · LLM Application Architecture</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏛️</span> The Full End-to-End Stack</h2>
+      <p>The model is only one part of a production application. The layers to consider:</p>
+      <ol class="algo-steps">
+        <li><strong>Infrastructure:</strong> compute, storage, and network to serve models and host components — on-premises or pay-as-you-go cloud.</li>
+        <li><strong>Models:</strong> foundation and task-adapted models, deployed for real-time or near-real-time inference.</li>
+        <li><strong>External sources &amp; outputs:</strong> RAG retrieval, plus mechanisms to store completions (to augment the context window) and gather user feedback for future fine-tuning/alignment/evaluation.</li>
+        <li><strong>Tools &amp; frameworks:</strong> LangChain for PAL/ReAct/CoT, and model hubs to manage and share models.</li>
+        <li><strong>Interface &amp; security:</strong> the consuming surface (website, REST API) and the security components around it.</li>
+      </ol>
+      <div class="callout">Users — human or other systems via APIs — interact with this <strong>entire stack</strong>, not just the model. Frameworks like LangChain make it possible to rapidly build, deploy, and test LLM-powered applications.</div>
     </div>
 
     <footer>
