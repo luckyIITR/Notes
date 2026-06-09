@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gen AI Fundamentals — Gen AI</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── paper source line ── */
+    .paper-source { font-size:0.8rem; color:#64748b; margin-top:0.75rem; }
+    .paper-source a { color:#6366f1; text-decoration:none; }
+
+    /* ── figure / diagram ── */
+    .figure { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem; margin:1rem 0; text-align:center; }
+    .figure img { max-width:340px; width:100%; height:auto; border-radius:8px; background:#fff; padding:0.75rem; }
+    .figure figcaption { margin-top:0.85rem; font-size:0.8rem; color:#64748b; line-height:1.6; }
+
+    /* ── use-case grid ── */
+    .app-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem; margin-top:0.5rem; }
+    .app-item { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.9rem 1rem; }
+    .app-item .app-title { color:#a5b4fc; font-weight:700; font-size:0.9rem; margin-bottom:0.25rem; }
+    .app-item p { font-size:0.85rem; color:#94a3b8; margin:0; line-height:1.55; }
+
+    @media (max-width: 540px) {
+      .app-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Gen AI Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Gen AI · Foundations</p>
+      <h1>Gen AI Fundamentals</h1>
+      <p>What large language models are, how you interact with them, what they can do, and why the transformer architecture made it all possible.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · The Big Picture</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌐</span> LLMs as a General-Purpose Technology</h2>
+      <p>Large language models (<span class="term">LLMs</span>) are not just a tool for end users — they are a powerful <strong>developer tool</strong>. Applications that once took months to build can now be assembled in days or a few weeks.</p>
+      <p>Generative AI and LLMs are a <span class="term">general-purpose technology</span>. Like deep learning or electricity, they are useful not for a single application but across many corners of the economy. Much like the rise of deep learning ~15 years ago, there is years of work ahead to identify use cases and build specific applications.</p>
+      <div class="callout">A small model fine-tuned for one task can rival a giant model on that task. <strong>Bigger is not always necessary</strong> — model sizing is a real design decision.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · What Is Generative AI?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> A Subset of Machine Learning</h2>
+      <p><span class="term">Generative AI</span> is a subset of traditional machine learning. The models underpinning it learned their abilities by finding <strong>statistical patterns</strong> in massive datasets of human-generated content.</p>
+      <ul>
+        <li>LLMs are trained on <strong>trillions of words</strong> over weeks and months, using large amounts of compute.</li>
+        <li>These are called <span class="term">foundation models</span> (or base models), with billions of parameters.</li>
+        <li>They exhibit <strong>emergent properties</strong> beyond language alone — breaking down complex tasks, reasoning, and problem solving.</li>
+      </ul>
+      <div class="callout">Think of <strong>parameters</strong> as the model's memory. More parameters → more memory → the more sophisticated the tasks it can perform.</div>
+    </div>
+
+    <div class="section-divider"><span>3 · Prompts, Completions &amp; Inference</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💬</span> How You Talk to a Model</h2>
+      <p>Interacting with an LLM is different from traditional programming. Instead of writing formalized code against libraries and APIs, you give the model <strong>natural-language instructions</strong> and it performs the task much as a human would.</p>
+      <div class="formula-block">
+        <div class="formula-label">Core Vocabulary</div>
+        <div class="formula-legend">
+          <span>prompt</span> — the text you pass to the model.<br />
+          <span>context window</span> — the memory available for the prompt (typically a few thousand words; varies by model).<br />
+          <span>inference</span> — the act of using the model to generate text.<br />
+          <span>completion</span> — the output: the original prompt followed by the generated text.
+        </div>
+      </div>
+      <p><strong>Example:</strong> ask "Where is Ganymede located in the solar system?" The prompt is passed to the model, which predicts the next words. Because the prompt contained a question, the model generates an answer — correctly identifying Ganymede as a moon of Jupiter, located within Jupiter's orbit.</p>
+    </div>
+
+    <div class="section-divider"><span>4 · Use Cases</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> Beyond Chatbots</h2>
+      <p>Chatbots are the most visible use, but <strong>next-word prediction</strong> is the base concept behind many capabilities within text generation.</p>
+      <div class="app-grid">
+        <div class="app-item"><div class="app-title">Essay writing</div><p>Generate long-form text from a short prompt.</p></div>
+        <div class="app-item"><div class="app-title">Summarization</div><p>Provide a dialogue or document and get a concise summary.</p></div>
+        <div class="app-item"><div class="app-title">Translation</div><p>Between human languages (e.g. French ↔ German) or natural language → machine code.</p></div>
+        <div class="app-item"><div class="app-title">Code generation</div><p>e.g. "return the mean of every column in a DataFrame" → runnable Python.</p></div>
+        <div class="app-item"><div class="app-title">Information retrieval</div><p>Named entity recognition — extract people and places from an article (word classification).</p></div>
+        <div class="app-item"><div class="app-title">Augmentation</div><p>Connect to external data sources or invoke external APIs to power real-world interactions.</p></div>
+      </div>
+      <div class="callout">As foundation models scale from hundreds of millions to hundreds of billions of parameters, their <strong>subjective understanding of language</strong> grows — yet smaller models can be fine-tuned to excel at specific, focused tasks.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Choosing Model Size</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Giant vs. Small Models</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Giant models (100B+ params)</div>
+          <ul>
+            <li>Broad, general world knowledge — history, philosophy, coding, and more.</li>
+            <li>Generalize across many different tasks.</li>
+            <li>Best when comprehensiveness matters.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Smaller models (sub-1B to ~30B)</div>
+          <ul>
+            <li>Great for a single, optimized use case (e.g. dialogue summarization, one company's customer-service agent).</li>
+            <li>Can achieve similar or very good results at lower cost.</li>
+            <li>Surprisingly capable when fine-tuned.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · Before Transformers: RNNs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Why RNNs Fell Short</h2>
+      <p>Generative algorithms are not new. Earlier language models used <span class="term">recurrent neural networks</span> (RNNs). Powerful for their time, they were limited by the compute and memory needed for generative tasks.</p>
+      <ul>
+        <li>With only a few previous words seen, next-word prediction is poor.</li>
+        <li>Scaling an RNN to see more preceding words requires significantly more resources.</li>
+        <li>Even scaled up, the model often still hasn't seen enough input to predict well.</li>
+      </ul>
+      <p>To predict the next word well, a model must understand the <strong>whole sentence or document</strong>, not just the previous few words — and language is hard:</p>
+      <ul>
+        <li><strong>Homonyms:</strong> one word, multiple meanings — only context reveals which kind of "bank" is meant.</li>
+        <li><strong>Syntactic ambiguity:</strong> "The teacher taught the students with the book." Did the teacher use the book, did the students have it, or both?</li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>7 · The Transformer Revolution</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> Attention Is All You Need</h2>
+      <p>In 2017, the paper <em>Attention Is All You Need</em> (Google &amp; the University of Toronto) changed everything. The <span class="term">transformer architecture</span> unlocked the progress in generative AI we see today.</p>
+      <ul>
+        <li>Scales efficiently across multi-core <strong>GPUs</strong>.</li>
+        <li><strong>Parallel-processes</strong> input data, enabling much larger training datasets.</li>
+        <li>Learns to <strong>pay attention</strong> to the meaning of the words it processes.</li>
+      </ul>
+      <p>Key intuitions covered in depth: <span class="term">self-attention</span> and the <span class="term">multi-headed self-attention</span> mechanism — how the model gains an understanding of language. A major reason transformers took off is that attention could run in a <strong>massively parallel</strong> way, fitting modern GPUs and scaling up.</p>
+      <div class="callout">The same transformer foundation now powers <strong>vision transformers</strong> and other modalities — making it a critical building block far beyond text.</div>
+    </div>
+
+    <div class="section-divider"><span>8 · Self-Attention in Depth</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Relevance Across the Whole Sentence</h2>
+      <p>The power of the transformer is its ability to learn the relevance and context of <strong>all</strong> words in a sentence — not just each word relative to its neighbor, but to <strong>every other word</strong>, no matter where they sit in the input.</p>
+      <p>The model applies <span class="term">attention weights</span> to these relationships, learning how relevant each word is to every other word. For "The teacher taught the students with the book", this lets the algorithm learn who has the book, who could have it, and whether it's even relevant to the wider document.</p>
+      <ul>
+        <li>Attention weights are <strong>learned during training</strong>.</li>
+        <li>An <span class="term">attention map</span> visualizes the weights between each word and every other word.</li>
+        <li>In a stylized example, <em>book</em> attends strongly to both <em>teacher</em> and <em>student</em>.</li>
+      </ul>
+      <div class="callout">Learning attention this way across the whole input — called <strong>self-attention</strong> — significantly improves the model's ability to encode language.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · Inside the Transformer</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> Encoder, Decoder &amp; the Data Flow</h2>
+      <p>The architecture (from the original <em>Attention Is All You Need</em> paper) splits into two parts — the <span class="term">encoder</span> and the <span class="term">decoder</span> — which share many similarities and work together. By convention, <strong>inputs sit at the bottom, outputs at the top</strong>.</p>
+      <figure class="figure">
+        <img src="assets/transformer-architecture.png" alt="The transformer architecture: encoder on the left, decoder on the right, with embeddings, positional encoding, multi-head attention, feed-forward layers, and a final linear + softmax." />
+        <figcaption>The transformer architecture — encoder (left) and decoder (right). Inputs enter at the bottom; output probabilities exit through the final linear + softmax at the top. (After Vaswani et al., <em>Attention Is All You Need</em>, 2017.)</figcaption>
+      </figure>
+      <p>Machine-learning models are big statistical calculators: they work with numbers, not words. The data flows through these stages:</p>
+      <ol class="algo-steps">
+        <li><strong>Tokenization:</strong> convert words into numbers (token IDs), each pointing to a position in the model's vocabulary. Tokens may map to whole words or parts of words. <strong>You must use the same tokenizer for training and generation.</strong></li>
+        <li><strong>Embedding layer:</strong> a trainable, high-dimensional vector space where each token ID maps to a vector encoding its meaning and context. (Earlier algorithms like Word2vec used the same idea; the original paper used vector size 512.)</li>
+        <li><strong>Positional encoding:</strong> added to the token vectors. Since tokens are processed in parallel, this preserves word-order information so position isn't lost.</li>
+        <li><strong>Self-attention layer:</strong> analyzes relationships between tokens; learned weights reflect each word's importance to all others.</li>
+        <li><strong>Feed-forward network + softmax:</strong> the attended output passes through a fully-connected network producing <span class="term">logits</span> (one per vocabulary token), which softmax normalizes into probabilities.</li>
+      </ol>
+      <div class="formula-block">
+        <div class="formula-label">Why Embeddings Matter</div>
+        <div class="formula-legend">
+          Imagine a vector size of just <span>3</span> — words plot into a 3-D space.<br />
+          Related words sit <span>close together</span>; the <span>angle</span> (distance) between them lets the model mathematically understand language.
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>10 · Multi-Headed Self-Attention</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> Many Heads, Many Aspects of Language</h2>
+      <p>Self-attention doesn't happen just once. The transformer uses <span class="term">multi-headed self-attention</span> — multiple sets of attention weights (<strong>heads</strong>) learned in parallel, independently of each other. Common counts range from <strong>12 to 100</strong> heads.</p>
+      <ul>
+        <li>Each head learns a <strong>different aspect of language</strong> — one might track people entities, another the activity, another whether words rhyme.</li>
+        <li>You don't dictate what each head learns: weights are <strong>randomly initialized</strong>, and with enough data and time each specializes on its own.</li>
+        <li>Some attention maps are easy to interpret; others are not.</li>
+      </ul>
+      <div class="callout">After attention is applied, one token in the softmax output scores highest — the most likely next token — but <strong>several methods</strong> can vary the final selection (covered later, affecting creativity).</div>
+    </div>
+
+    <div class="section-divider"><span>11 · End-to-End: Translation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> A Full Prediction Loop</h2>
+      <p>Translation — a <span class="term">sequence-to-sequence</span> task — was the original objective of the transformer's designers. Here's how a French → English translation ("I love machine learning") flows end to end:</p>
+      <ol class="algo-steps">
+        <li>Tokenize the input with the same tokenizer used in training; feed tokens into the <strong>encoder</strong> via the embedding and multi-headed attention layers.</li>
+        <li>The encoder's feed-forward output is a <strong>deep representation</strong> of the input's structure and meaning.</li>
+        <li>This representation is inserted into the middle of the <strong>decoder</strong> to influence its self-attention.</li>
+        <li>A <strong>start-of-sequence token</strong> is added to the decoder input, triggering it to predict the next token using the encoder's context.</li>
+        <li>The decoder output passes through its feed-forward network and a final softmax — producing the first token.</li>
+        <li>Loop: feed each predicted token back to the decoder input to generate the next, until an <strong>end-of-sequence token</strong> is predicted.</li>
+        <li>Detokenize the final sequence back into words → "I love machine learning."</li>
+      </ol>
+    </div>
+
+    <div class="section-divider"><span>12 · Transformer Variants</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪢</span> Encoder-Only, Encoder-Decoder, Decoder-Only</h2>
+      <p>The complete architecture has both an encoder (encodes input into a deep representation) and a decoder (generates new tokens in a loop until a stop condition). You can split these apart for different model families.</p>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Best for</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Encoder-only</strong></td><td>Sequence-to-sequence (same input/output length); with extra layers, classification like sentiment analysis</td><td>BERT</td></tr>
+          <tr><td><strong>Encoder-decoder</strong></td><td>Seq-to-seq where input and output lengths differ (e.g. translation); also general text generation</td><td>BART, T5</td></tr>
+          <tr><td><strong>Decoder-only</strong></td><td>Most common today; generalize to most tasks as they scale</td><td>GPT family, BLOOM, Jurassic, LLaMA</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">You interact with these models through <strong>natural-language prompts, not code</strong> — you don't need to memorize the architecture. Guiding them with written words is called <strong>prompt engineering</strong>, the next topic.</div>
+    </div>
+
+    <div class="section-divider"><span>13 · Prompt Engineering &amp; In-Context Learning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✍️</span> Teaching the Model by Example</h2>
+      <p>Models often don't produce what you want on the first try. The iterative work of revising prompt language to get the desired behavior is called <span class="term">prompt engineering</span>. A powerful strategy is to include examples of the task directly inside the prompt — known as <span class="term">in-context learning</span> — which works because everything stays within the context window.</p>
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>What's in the prompt</th><th>Works best for</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Zero-shot</strong></td><td>Instruction + your input, no examples</td><td>Largest models (e.g. classifying a movie review's sentiment)</td></tr>
+          <tr><td><strong>One-shot</strong></td><td>One completed example, then the real input</td><td>Smaller models that fail zero-shot (e.g. GPT-2)</td></tr>
+          <tr><td><strong>Few-shot</strong></td><td>Multiple mixed-class examples, then the real input</td><td>Even smaller models; a mix of output classes clarifies the task</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">Mind the <strong>context window</strong>: there's a limit to how much in-context learning you can pass in. If a model still underperforms with ~5–6 examples, <strong>fine-tune</strong> it instead — additional training on new data covered in Week 2.</div>
+      <p><strong>Scale matters:</strong> models with more parameters capture more language understanding. The largest are great at zero-shot and can complete tasks they were never specifically trained on, while smaller models are usually only good at a few tasks similar to their training. Expect to try a few models to find the right fit.</p>
+    </div>
+
+    <div class="section-divider"><span>14 · Inference Configuration Parameters</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎛️</span> Controlling the Output</h2>
+      <p>Each model exposes <span class="term">configuration parameters</span> invoked at <strong>inference time</strong> — distinct from the training parameters learned during training. They control output length and creativity.</p>
+      <ul>
+        <li><span class="term">Max new tokens</span> — caps how many tokens the model generates (e.g. 100, 150, 200). It's a limit, not a guarantee: a stop condition like an end-of-sequence token can end generation early.</li>
+      </ul>
+      <p>The softmax layer produces a probability distribution over the entire vocabulary. How you pick from it shapes the result:</p>
+      <table>
+        <thead>
+          <tr><th>Method</th><th>How it picks the next token</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Greedy decoding</strong></td><td>Always the highest-probability word (default)</td><td>Good for short text; prone to repeated words/sequences</td></tr>
+          <tr><td><strong>Random sampling</strong></td><td>Picks at random, weighted by probability (e.g. "banana" at 0.02 → 2% chance)</td><td>Reduces repetition; may wander off if too creative</td></tr>
+          <tr><td><strong>Top-k</strong></td><td>Sample only from the <em>k</em> highest-probability tokens (e.g. k=3)</td><td>Some randomness while avoiding improbable words</td></tr>
+          <tr><td><strong>Top-p (nucleus)</strong></td><td>Sample from tokens whose cumulative probability ≤ <em>p</em> (e.g. p=0.3 → cake 0.2 + donut 0.1)</td><td>Variability bounded by total probability mass</td></tr>
+        </tbody>
+      </table>
+      <div class="formula-block">
+        <div class="formula-label">Temperature</div>
+        <div class="formula-legend">
+          A scaling factor applied inside the final softmax that <span>reshapes</span> the next-token distribution.<br />
+          <span>&lt; 1 (cool)</span> — peaked distribution, probability concentrated on few words → less random, closer to training.<br />
+          <span>&gt; 1 (warm)</span> — flatter distribution, probability spread out → more random, more creative.<br />
+          <span>= 1</span> — leaves the softmax unaltered (default).
+        </div>
+      </div>
+      <div class="callout">Unlike top-k / top-p, <strong>temperature actually alters the predictions</strong> the model makes. Note: some libraries need random sampling enabled explicitly — e.g. Hugging Face requires <code>do_sample=True</code>.</div>
+    </div>
+
+    <div class="section-divider"><span>15 · The Generative AI Project Lifecycle</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗺️</span> From Conception to Launch</h2>
+      <p>The <span class="term">generative AI project lifecycle</span> maps the tasks to take a project from idea to deployment — the decisions, difficulties, and infrastructure involved at each stage.</p>
+      <ol class="algo-steps">
+        <li><strong>Scope:</strong> the most important step — define the use case as narrowly as possible. Does the model need to do many tasks (long-form generation, high capability) or just one (e.g. named entity recognition)? Being specific saves time and compute cost.</li>
+        <li><strong>Select:</strong> choose to train from scratch or start from an existing base model. Usually you start with an existing model; rules of thumb help estimate the feasibility of training your own.</li>
+        <li><strong>Adapt &amp; align (iterative):</strong> assess performance and improve it. Start with in-context learning / prompt engineering; if that's not enough, <strong>fine-tune</strong> (Week 2); then align behavior with human preferences via <strong>RLHF</strong> (Week 3). Loop between prompting, fine-tuning, and evaluation as needed.</li>
+        <li><strong>Evaluate:</strong> use metrics and benchmarks to measure performance and alignment throughout the adapt-and-align loop.</li>
+        <li><strong>Deploy &amp; optimize:</strong> integrate the model into your infrastructure and optimize it for deployment to make the best use of compute and give users the best experience.</li>
+        <li><strong>Augment:</strong> add infrastructure to overcome fundamental LLM limitations — inventing information (hallucination), and weak complex reasoning and math.</li>
+      </ol>
+      <div class="callout">Course roadmap — <strong>Week 1:</strong> transformer architecture, training, compute, in-context learning &amp; prompt engineering. <strong>Week 2:</strong> instruction fine-tuning &amp; PEFT. <strong>Week 3:</strong> aligning models with RLHF.</div>
+    </div>
+
+    <div class="section-divider"><span>16 · Selecting &amp; Pre-training Models</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗂️</span> Choosing a Foundation Model</h2>
+      <p>Usually you start from an <strong>existing foundation model</strong> rather than training from scratch. Open-source models live on hubs (Hugging Face, PyTorch) that include <span class="term">model cards</span> describing best use cases, how the model was trained, and known limitations.</p>
+      <p>The right model depends on your task — and variants suit different tasks largely because of <strong>how they're trained</strong>. That training happens during <span class="term">pre-training</span>:</p>
+      <ul>
+        <li>The model learns a deep statistical representation of language from vast <strong>unstructured text</strong> (gigabytes → petabytes), scraped from the internet and curated corpora.</li>
+        <li>This is <span class="term">self-supervised learning</span>: weights update to minimize the loss of the training objective.</li>
+        <li>It requires large amounts of compute and GPUs.</li>
+      </ul>
+      <div class="callout">Public data needs heavy curation for quality, bias, and harmful content — often only <strong>1–3% of tokens</strong> survive. Factor this in when estimating how much data you'd need to pre-train your own model.</div>
+    </div>
+
+    <div class="section-divider"><span>17 · Pre-training Objectives by Architecture</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> How Each Variant Learns</h2>
+      <table>
+        <thead>
+          <tr><th>Architecture</th><th>Objective</th><th>Context</th><th>Good for</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Encoder-only</strong> (autoencoding)</td><td>Masked language modeling (denoising) — predict randomly masked tokens</td><td>Bi-directional</td><td>Sentence classification (sentiment), token classification (NER)</td><td>BERT, RoBERTa</td></tr>
+          <tr><td><strong>Decoder-only</strong> (autoregressive)</td><td>Causal language modeling — predict the next token from prior tokens</td><td>Uni-directional</td><td>Text generation; strong zero-shot at scale</td><td>GPT, BLOOM</td></tr>
+          <tr><td><strong>Encoder-decoder</strong> (seq-to-seq)</td><td>Varies; T5 uses span corruption — mask token spans, replace with a Sentinel token, reconstruct</td><td>Both</td><td>Translation, summarization, Q&amp;A</td><td>T5, BART</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">Rule of thumb: <strong>larger models of any architecture</strong> tend to perform their tasks well without extra in-context learning or fine-tuning — the trend that drove the race to ever-bigger models (a hypothesized "Moore's law for LLMs").</div>
+    </div>
+
+    <div class="section-divider"><span>18 · The Memory Challenge</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💾</span> Why LLMs Run Out of GPU Memory</h2>
+      <p>Training LLMs commonly hits out-of-memory errors on NVIDIA GPUs (via <span class="term">CUDA</span>, the libraries PyTorch/TensorFlow use to accelerate matrix math). The parameters alone are enormous:</p>
+      <div class="formula-block">
+        <div class="formula-label">Memory Math (32-bit full precision)</div>
+        <div class="formula-main">1 param = 4 bytes &nbsp;→&nbsp; 1B params = 4 GB (weights only)</div>
+        <div class="formula-legend">
+          Training adds <span>optimizer states (Adam ×2)</span>, <span>gradients</span>, <span>activations</span>, and temp variables — roughly <span>+20 bytes/param</span>.<br />
+          Total ≈ <span>6× the weight memory</span> → a 1B model needs <span>~24 GB</span> of GPU RAM to train.
+        </div>
+      </div>
+      <p>24 GB is already too large for consumer hardware and challenging even in data centers on a single processor — which motivates quantization and distributed training.</p>
+    </div>
+
+    <div class="section-divider"><span>19 · Quantization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📉</span> Trading Precision for Memory</h2>
+      <p><span class="term">Quantization</span> reduces memory by lowering the precision of weights — statistically projecting 32-bit floats into a lower-precision space using scaling factors based on the original range.</p>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Bits (sign/exp/fraction)</th><th>Memory / param</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>FP32</strong> (full)</td><td>1 / 8 / 23</td><td>4 bytes</td><td>Default; range ≈ ±3×10<sup>38</sup></td></tr>
+          <tr><td><strong>FP16</strong> (half)</td><td>1 / 5 / 10</td><td>2 bytes</td><td>Range ±65,504; some precision loss</td></tr>
+          <tr><td><strong>BF16</strong> (bfloat16)</td><td>1 / 8 / 7</td><td>2 bytes</td><td>Keeps FP32 dynamic range; better training stability (A100); used by FLAN-T5</td></tr>
+          <tr><td><strong>INT8</strong></td><td>1 / — / 7</td><td>1 byte</td><td>Range −128…127; dramatic precision loss</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">For a 1B-param model: FP16/BF16 halve memory (4 GB → 2 GB), INT8 halves again (→ 1 GB) — the model still has 1B parameters. <strong>BF16</strong> is the popular choice: FP32's range at half the footprint, with faster calculations.</div>
+    </div>
+
+    <div class="section-divider"><span>20 · Distributed Training at Scale</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🖧</span> Training Across Many GPUs</h2>
+      <p>When a model is too big for one GPU — or just to train faster — you distribute across GPUs.</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">DDP (Distributed Data Parallel)</div>
+          <ul>
+            <li>Copies the full model onto each GPU; sends batches in parallel.</li>
+            <li>A sync step combines results and updates every (identical) copy.</li>
+            <li>Requires the whole model + states to fit on a single GPU.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">FSDP (Fully Sharded Data Parallel)</div>
+          <ul>
+            <li>Based on Microsoft's <strong>ZeRO</strong> (Zero Redundancy Optimizer, 2019).</li>
+            <li><strong>Shards</strong> parameters, gradients, and optimizer states across GPUs instead of replicating.</li>
+            <li>Gathers shards on-demand for forward/backward, then releases them — a memory vs. communication trade-off.</li>
+          </ul>
+        </div>
+      </div>
+      <p><strong>ZeRO stages</strong> (largest memory cost is optimizer states, ~2× weights):</p>
+      <ul>
+        <li><strong>Stage 1:</strong> shard optimizer states → up to 4× memory reduction.</li>
+        <li><strong>Stage 2:</strong> + shard gradients → up to 8× reduction.</li>
+        <li><strong>Stage 3:</strong> + shard parameters → reduction scales linearly with GPU count.</li>
+      </ul>
+      <div class="callout">FSDP's <strong>sharding factor</strong> tunes the trade-off: 1 = full replication (like DDP), max GPUs = full sharding (most savings, most communication). It scales both small and large models seamlessly.</div>
+    </div>
+
+    <div class="section-divider"><span>21 · Scaling Laws &amp; Compute-Optimal Models</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> How Big Does a Model Need to Be?</h2>
+      <p>Pre-training aims to minimize loss on next-token prediction. You can improve performance by increasing <strong>dataset size</strong> or <strong>parameter count</strong> — but a <span class="term">compute budget</span> (GPUs × time × money) constrains both.</p>
+      <div class="formula-block">
+        <div class="formula-label">Unit of Compute</div>
+        <div class="formula-legend">
+          <span>1 petaFLOP/s-day</span> = one quadrillion floating-point ops/second, run for a full day.<br />
+          ≈ <span>8 NVIDIA V100</span> GPUs (or <span>2 A100</span>) at full efficiency for one day.<br />
+          For scale: <span>T5-XL (3B)</span> ≈ 100 PF/s-days; <span>GPT-3 (175B)</span> ≈ 3,700 PF/s-days.
+        </div>
+      </div>
+      <p>OpenAI found <strong>power-law relationships</strong> between test loss and each of compute, dataset size, and model size (straight lines on log-log plots) when the others aren't bottlenecks.</p>
+      <div class="callout"><strong>Chinchilla (2022):</strong> many 100B+ models (e.g. GPT-3) are <em>over-parameterized and under-trained</em>. The compute-optimal dataset is about <strong>20× the parameter count</strong> (a 70B model → ~1.4T tokens). Compute-optimal Chinchilla beat larger non-optimal models — expect a move away from "bigger is always better."</div>
+    </div>
+
+    <div class="section-divider"><span>22 · When to Pre-train From Scratch</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Domain Adaptation</h2>
+      <p>You'll usually reuse an existing model, but <strong>highly specialized domains</strong> can justify pre-training from scratch when vocabulary and structure rarely appear in everyday text:</p>
+      <ul>
+        <li><strong>Law:</strong> terms like <em>mens rea</em>, <em>res judicata</em>; everyday words with special meaning (e.g. "consideration" in contracts).</li>
+        <li><strong>Medicine:</strong> uncommon condition/procedure names; idiosyncratic shorthand (e.g. a prescription that means "one tablet by mouth four times a day, after meals and at bedtime").</li>
+        <li>Also finance and science — pre-training from scratch yields better models for these.</li>
+      </ul>
+      <div class="callout"><strong>BloombergGPT (2023):</strong> a 50B-param finance model pre-trained on 51% financial + 49% public data, following Chinchilla guidance. Its tokens (569B) fell below the Chinchilla-optimal value due to limited financial data — a real-world reminder that constraints force trade-offs.</div>
+    </div>
+
+    <div class="section-divider"><span>23 · Instruction Fine-Tuning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Teaching a Base Model to Follow Instructions</h2>
+      <p>A pre-trained base model has encoded rich knowledge about the world, but predicting the next word on the internet is <strong>not the same as following instructions</strong>. <span class="term">Instruction fine-tuning</span> changes the model's behavior so it responds helpfully to prompts — a major breakthrough in LLM history.</p>
+      <p>Unlike pre-training (self-supervised on unstructured text), fine-tuning is a <strong>supervised</strong> process using a dataset of labeled <span class="term">prompt–completion pairs</span>. Each example demonstrates how the model should respond to a specific instruction (e.g. "Classify this review:" → "Sentiment: positive").</p>
+      <ul>
+        <li>It fixes two drawbacks of in-context learning: small models can fail even with 5–6 examples, and examples eat up the context window.</li>
+        <li>When <strong>all weights</strong> are updated, it's called <span class="term">full fine-tuning</span> — needing the same memory/compute (gradients, optimizer states) as pre-training, so the same quantization and parallelism strategies apply.</li>
+        <li>The result is a new <strong>instruct model</strong>. Today "fine-tuning" almost always means instruction fine-tuning.</li>
+      </ul>
+      <p>The workflow:</p>
+      <ol class="algo-steps">
+        <li><strong>Prepare data:</strong> use <span class="term">prompt template libraries</span> to convert existing datasets (e.g. Amazon reviews) into instruction prompts for classification, generation, summarization, etc.</li>
+        <li><strong>Split:</strong> divide into training / validation / test sets, as in standard supervised learning.</li>
+        <li><strong>Train:</strong> pass training prompts to the LLM, generate completions, and compare against the labels.</li>
+        <li><strong>Compute loss:</strong> both completion and label are token probability distributions — use <strong>cross-entropy</strong> to measure the difference.</li>
+        <li><strong>Update:</strong> backpropagate to update weights over many batches and epochs; measure validation accuracy, then final test accuracy.</li>
+      </ol>
+    </div>
+
+    <div class="section-divider"><span>24 · Catastrophic Forgetting</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> The Cost of Single-Task Fine-Tuning</h2>
+      <p>You can fine-tune for a <strong>single task</strong> (e.g. summarization) — and surprisingly good results come from just <strong>500–1,000 examples</strong>, versus the billions of tokens seen in pre-training. But there's a catch.</p>
+      <p><span class="term">Catastrophic forgetting</span> happens because full fine-tuning modifies the original weights: the model gets great at the new task but can <strong>degrade on others</strong>. A model that once did named entity recognition (identifying "Charlie" as a cat's name) may lose that ability after fine-tuning on sentiment.</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Ways to avoid it</div>
+          <ul>
+            <li>Decide if it even matters — single-task reliability may be all you need.</li>
+            <li><strong>Multitask fine-tuning</strong> across many tasks (50–100k examples) to keep generalization.</li>
+            <li><strong>PEFT</strong> — train small task-specific adapters, leaving most pre-trained weights frozen.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Trade-offs</div>
+          <ul>
+            <li>Single-task fine-tuning is cheap but narrows the model.</li>
+            <li>Multitask needs much more data and compute.</li>
+            <li>PEFT is most robust to forgetting and far cheaper than full fine-tuning.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout"><strong>PEFT (parameter-efficient fine-tuning)</strong> preserves the original weights and trains only a small number of adapter layers — strong robustness to forgetting and a small memory footprint. <strong>LoRA</strong> (low-rank matrices) is a popular PEFT method delivering near full-fine-tuning performance with minimal compute. Covered in depth later this week.</div>
+    </div>
+
+    <div class="section-divider"><span>25 · Multitask Fine-Tuning &amp; FLAN</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🍰</span> One Model, Many Tasks</h2>
+      <p><span class="term">Multitask fine-tuning</span> uses a mixed dataset spanning many tasks (summarization, review rating, code translation, entity recognition) so the model improves at all of them simultaneously — avoiding catastrophic forgetting. The cost is data: often <strong>50–100k examples</strong>.</p>
+      <p>The <span class="term">FLAN</span> family (Fine-tuned LAnguage Net) is a set of instructions applied as the <em>last</em> training step — the authors called it "the metaphorical dessert to the main course of pre-training."</p>
+      <ul>
+        <li><strong>FLAN-T5</strong> = FLAN-instruct version of T5; <strong>FLAN-PALM</strong> = FLAN-instruct version of PaLM.</li>
+        <li>FLAN-T5 is a strong general-purpose instruct model, fine-tuned on <strong>473 datasets across 146 task categories</strong>.</li>
+        <li><strong>SAMSum</strong> (16k linguist-crafted messenger conversations + summaries) trains dialogue summarization; its template phrases the same instruction many ways to aid generalization.</li>
+      </ul>
+      <div class="callout"><strong>Lab scenario:</strong> FLAN-T5's SAMSum-based summaries are friend-to-friend chats, not support chats. Further fine-tuning on <strong>dialogsum</strong> (13k+ support dialogues, unseen by FLAN-T5) removes fabricated details (invented hotel/city names) and captures all key info — and in practice your own company's data works best.</div>
+    </div>
+
+    <div class="section-divider"><span>26 · Paper · Scaling Instruction-Finetuned LMs</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📄</span> The FLAN Paper (Chung et al., 2022)</h2>
+      <p>The paper behind FLAN — <em>Scaling Instruction-Finetuned Language Models</em> — studies instruction fine-tuning along three axes:</p>
+      <ul>
+        <li><strong>Scaling tasks:</strong> more fine-tuning tasks → better generalization to unseen tasks.</li>
+        <li><strong>Scaling model size:</strong> larger models gain more from instruction tuning.</li>
+        <li><strong>Chain-of-thought (CoT) data:</strong> including CoT examples boosts reasoning performance.</li>
+      </ul>
+      <div class="callout">Flan-PaLM 540B (tuned on <strong>1.8K tasks</strong>) beats PaLM 540B by <strong>+9.4%</strong> on average and hits <strong>75.2%</strong> on five-shot MMLU. The released <strong>Flan-T5</strong> checkpoints rival much larger models (e.g. PaLM 62B). Takeaway: instruction fine-tuning is a general, low-cost way to improve performance and usability.</div>
+      <p class="paper-source">Source: <a href="https://arxiv.org/abs/2210.11416">arXiv:2210.11416</a></p>
+    </div>
+
+    <div class="section-divider"><span>27 · Evaluating LLMs — ROUGE &amp; BLEU</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Measuring Generated Text</h2>
+      <p>Traditional ML uses deterministic metrics like <strong>accuracy</strong>. But LLM output is <strong>non-deterministic</strong> and language-based — "Mike adores sipping tea" is close to "Mike really loves drinking tea", while "Mike does/does not drink coffee" differ by one word but mean opposites. Two simple, low-cost metrics help:</p>
+      <ul>
+        <li><span class="term">ROUGE</span> (Recall-Oriented Understudy for Gisting Evaluation) — for <strong>summarization</strong>, vs. human reference summaries.</li>
+        <li><span class="term">BLEU</span> (Bilingual Evaluation Understudy) — for <strong>translation</strong>, vs. human reference translations.</li>
+      </ul>
+      <p>Terminology: a <strong>unigram</strong> is one word, a <strong>bigram</strong> two, an <strong>n-gram</strong> a group of n words.</p>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Based on</th><th>Captures</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>ROUGE-1</strong></td><td>Unigram matches (recall, precision, F1)</td><td>Individual words only; ignores order</td></tr>
+          <tr><td><strong>ROUGE-2</strong></td><td>Bigram matches</td><td>Some word ordering; scores usually lower</td></tr>
+          <tr><td><strong>ROUGE-L</strong></td><td>Longest common subsequence (LCS)</td><td>Longest in-order overlap (e.g. "cold outside")</td></tr>
+          <tr><td><strong>BLEU</strong></td><td>Average precision across several n-gram sizes</td><td>Translation quality; → 1 as output nears reference</td></tr>
+        </tbody>
+      </table>
+      <div class="formula-block">
+        <div class="formula-label">ROUGE-1 (unigram)</div>
+        <div class="formula-main">recall = matches / words-in-reference<br />precision = matches / words-in-output<br />F1 = harmonic mean(recall, precision)</div>
+      </div>
+      <div class="callout">Simple ROUGE can be fooled: "cold, cold, cold, cold" scores high on precision. A <strong>clipping function</strong> caps matches at the reference count to fix this — but reordered words ("outside cold it is") can still slip through. Use ROUGE/BLEU for <strong>diagnostic</strong> iteration only, never as the sole final evaluation; scores are comparable only within the same task. (Libraries like Hugging Face implement both.)</div>
+    </div>
+
+    <div class="section-divider"><span>28 · Evaluation Benchmarks</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏁</span> Holistic Model Comparison</h2>
+      <p>For overall capability, use research <span class="term">benchmarks</span> with curated datasets that isolate specific skills (reasoning, common-sense knowledge) or risks (disinformation, copyright). Crucially, evaluate on data the model <strong>hasn't seen during training</strong>.</p>
+      <table>
+        <thead>
+          <tr><th>Benchmark</th><th>Year</th><th>Focus</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>GLUE</strong></td><td>2018</td><td>General language understanding — sentiment, Q&amp;A; encourages multi-task generalization</td></tr>
+          <tr><td><strong>SuperGLUE</strong></td><td>2019</td><td>Harder successor — multi-sentence reasoning, reading comprehension; has leaderboards</td></tr>
+          <tr><td><strong>MMLU</strong></td><td>Modern</td><td>World knowledge &amp; problem-solving — math, US history, CS, law, beyond language</td></tr>
+          <tr><td><strong>BIG-bench</strong></td><td>Modern</td><td>204 tasks (linguistics, math, reasoning, bias, dev…); 3 sizes to control inference cost</td></tr>
+          <tr><td><strong>HELM</strong></td><td>Living</td><td>7 metrics × 16 core scenarios — adds fairness, bias, toxicity beyond accuracy</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">As models grow, they begin matching human scores on benchmarks like SuperGLUE — driving an "arms race" between emergent abilities and the benchmarks built to measure them. <strong>HELM</strong> stands out for exposing trade-offs and tracking fairness, bias, and toxicity as models become more capable.</div>
+    </div>
+
+    <div class="section-divider"><span>29 · Parameter-Efficient Fine-Tuning (PEFT)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪶</span> Fine-Tuning Without the Full Cost</h2>
+      <p>Full fine-tuning updates <strong>every</strong> weight and needs memory for optimizer states, gradients, activations, and temp variables — often many times the model size, and a fresh full-size model per task. <span class="term">PEFT</span> instead trains only a <strong>small subset</strong> of parameters (sometimes 15–20%), keeping most weights frozen.</p>
+      <ul>
+        <li>Far smaller memory footprint — often trainable on a <strong>single GPU</strong>.</li>
+        <li>Less prone to <strong>catastrophic forgetting</strong> since original weights are mostly unchanged.</li>
+        <li>Trained weights can be as small as <strong>megabytes</strong> and <strong>swapped per task</strong> at inference — no storing multiple full models.</li>
+      </ul>
+      <table>
+        <thead>
+          <tr><th>Class</th><th>How it works</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Selective</strong></td><td>Fine-tune only some existing parameters/layers</td><td>Mixed results; not covered here</td></tr>
+          <tr><td><strong>Reparameterization</strong></td><td>Low-rank transformations of original weights</td><td>LoRA</td></tr>
+          <tr><td><strong>Additive</strong></td><td>Freeze weights, add new trainable components</td><td>Adapter layers; soft prompts (prompt tuning)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>30 · LoRA</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧮</span> Low-Rank Adaptation</h2>
+      <p><span class="term">LoRA</span> (reparameterization) freezes the original weights and injects a pair of small <strong>rank-decomposition matrices</strong> alongside them. You train only the small matrices; for inference, their product is added back to the frozen weights — so there's <strong>little to no inference latency</strong> impact.</p>
+      <ul>
+        <li>Applying LoRA to just the <strong>self-attention layers</strong> is usually enough (most parameters live there).</li>
+        <li>Small matrices → fine-tune per task on a single GPU and swap them at inference.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Parameter Savings (512×64 weights, rank = 8)</div>
+        <div class="formula-legend">
+          Full: <span>512 × 64 = 32,768</span> trainable params.<br />
+          LoRA A: <span>8 × 64 = 512</span> &nbsp;+&nbsp; LoRA B: <span>512 × 8 = 4,096</span> = <span>4,608</span> params.<br />
+          → an <span>~86% reduction</span> in trainable parameters.
+        </div>
+      </div>
+      <div class="callout">On FLAN-T5 dialogue summarization, full fine-tuning lifted ROUGE-1 by <strong>+0.19</strong> over base; LoRA achieved <strong>+0.17</strong> — slightly less, but with far fewer parameters and compute. Microsoft's paper found loss <strong>plateaus past rank 16</strong>; ranks of <strong>4–32</strong> give a good trade-off. Combine LoRA with quantization → <strong>QLoRA</strong> for even smaller footprints.</div>
+    </div>
+
+    <div class="section-divider"><span>31 · Prompt Tuning (Soft Prompts)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> Training the Input, Not the Model</h2>
+      <p><span class="term">Prompt tuning</span> is an additive PEFT method — not to be confused with prompt engineering. Instead of hand-crafting words, you prepend a <span class="term">soft prompt</span>: trainable "virtual tokens" whose values are learned via supervised learning while the <strong>model weights stay frozen</strong>.</p>
+      <ul>
+        <li>Soft prompt vectors match the embedding length; <strong>20–100 virtual tokens</strong> often suffice.</li>
+        <li>Unlike "hard" word tokens, virtual tokens can take <strong>any value</strong> in the continuous embedding space.</li>
+        <li>Tiny on disk — train a different soft prompt per task and swap at inference, reusing the same LLM.</li>
+      </ul>
+      <div class="callout">Per Lester et al. (Google): prompt tuning lags full fine-tuning for small models, but <strong>matches it once models reach ~10B parameters</strong> — far beating prompt engineering alone. The learned virtual tokens have no vocabulary word, yet their nearest neighbors form <strong>tight, task-related semantic clusters</strong>.</div>
+    </div>
+
+    <div class="section-divider"><span>32 · Aligning Models — HHH</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🤝</span> Why Alignment Is Needed</h2>
+      <p>Fine-tuning makes responses more natural — but natural language brings new problems. Because models train on vast internet text, they can produce <strong>toxic</strong>, combative, misleading, or dangerous completions (a "knock-knock" answered with "clap, clap", confidently endorsing debunked health advice, or explaining how to hack a neighbor's WiFi).</p>
+      <div class="callout">The guiding principles are <span class="term">HHH</span> — <strong>Helpful, Honest, Harmless</strong>. Additional fine-tuning with human feedback better aligns models with these values, reducing toxicity and incorrect information.</div>
+    </div>
+
+    <div class="section-divider"><span>33 · RLHF &amp; the RL Framework</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎮</span> Reinforcement Learning from Human Feedback</h2>
+      <p><span class="term">RLHF</span> uses reinforcement learning to fine-tune an LLM with human feedback, aligning it with human preferences — maximizing usefulness/relevance and minimizing harm. OpenAI's 2020 summarization paper showed an RLHF model beating pre-trained, instruct, and even the human reference baseline.</p>
+      <p>In RL, an <strong>agent</strong> takes <strong>actions</strong> in an <strong>environment</strong>, observes <strong>states</strong>, and learns a <strong>policy</strong> that maximizes cumulative <strong>reward</strong> through trial and error. Mapping the Tic-Tac-Toe analogy onto an LLM:</p>
+      <table>
+        <thead>
+          <tr><th>RL concept</th><th>Tic-Tac-Toe</th><th>LLM (RLHF)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Agent / policy</strong></td><td>The player model</td><td>The LLM</td></tr>
+          <tr><td><strong>Objective</strong></td><td>Win the game</td><td>Generate human-aligned text (helpful, accurate, non-toxic)</td></tr>
+          <tr><td><strong>Environment</strong></td><td>3×3 board</td><td>The context window</td></tr>
+          <tr><td><strong>State</strong></td><td>Current board</td><td>Current context (text in the window)</td></tr>
+          <tr><td><strong>Action</strong></td><td>Place a mark</td><td>Generate the next token</td></tr>
+          <tr><td><strong>Action space</strong></td><td>Open positions</td><td>The token vocabulary</td></tr>
+          <tr><td><strong>Reward</strong></td><td>Progress toward a win</td><td>Alignment with human preference</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">The sequence of actions/states is called a <span class="term">rollout</span> (vs. "playout" in classic RL). Since human reward is costly, a <strong>reward model</strong> — trained on a small set of human examples — automates scoring and becomes the central component of RLHF.</div>
+    </div>
+
+    <div class="section-divider"><span>34 · Collecting Feedback &amp; Training the Reward Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏷️</span> From Human Rankings to a Classifier</h2>
+      <p>Start with an instruct model with some task capability, then generate <strong>multiple completions per prompt</strong> and have human labelers rank them by a chosen criterion (e.g. helpfulness, toxicity).</p>
+      <ol class="algo-steps">
+        <li><strong>Rank:</strong> labelers order completions (e.g. for "my house is too hot", the most actionable answer ranks first). The same sets go to <strong>multiple labelers</strong> for consensus and to catch poor/confused labelers.</li>
+        <li><strong>Clear instructions:</strong> detailed guidance (fact-check via internet, handle ties sparingly, mark nonsensical answers as "F") raises quality and consistency; labelers should reflect diverse, global thinking.</li>
+        <li><strong>Convert to pairs:</strong> turn rankings into pairwise comparisons — for N completions, <strong>N-choose-2</strong> pairs; assign reward 1 to the preferred, 0 to the other.</li>
+        <li><strong>Reorder:</strong> place the preferred completion (<em>y<sub>j</sub></em>) first, as the reward model expects.</li>
+      </ol>
+      <div class="formula-block">
+        <div class="formula-label">Reward Model Training Objective</div>
+        <div class="formula-main">loss = −log σ( r<sub>j</sub> − r<sub>k</sub> )</div>
+        <div class="formula-legend">
+          <span>r<sub>j</sub></span> — reward for the human-preferred completion (always first).<br />
+          <span>r<sub>k</sub></span> — reward for the less-preferred completion.<br />
+          The model (often a BERT-style LM) learns to favor <span>y<sub>j</sub></span> over <span>y<sub>k</sub></span>.
+        </div>
+      </div>
+      <div class="callout">Ranked feedback yields more training pairs than simple thumbs-up/down. Once trained, the reward model acts as a <strong>binary classifier</strong> outputting logits (e.g. <em>not-hate</em> vs. <em>hate</em>); the positive-class logit becomes the reward value (softmax → probabilities). <strong>No more humans in the loop.</strong></div>
+    </div>
+
+    <div class="section-divider"><span>35 · The RLHF Fine-Tuning Loop &amp; PPO</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Updating the LLM Toward Higher Reward</h2>
+      <p>With the reward model ready, each RLHF iteration aligns the instruct LLM:</p>
+      <ol class="algo-steps">
+        <li>Pass a prompt (e.g. "a dog is") to the instruct LLM → it generates a completion ("a furry animal").</li>
+        <li>Send the prompt–completion pair to the <strong>reward model</strong> → it returns a reward (higher = more aligned, e.g. 0.24 vs. −0.53).</li>
+        <li>Feed the reward to the <strong>RL algorithm</strong>, which updates the LLM weights toward higher-reward responses → the "RL-updated LLM".</li>
+        <li>Repeat over epochs; reward should climb each iteration as completions become more aligned.</li>
+        <li>Stop at an evaluation threshold (e.g. target helpfulness) or a max step count (e.g. 20,000) → the <strong>human-aligned LLM</strong>.</li>
+      </ol>
+      <div class="callout">The RL algorithm that converts reward into weight updates is commonly <span class="term">PPO</span> (Proximal Policy Optimization) — powerful but tricky to implement; understanding it helps with troubleshooting.</div>
+    </div>
+
+    <div class="section-divider"><span>36 · PPO in Brief</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛡️</span> Proximal Policy Optimization</h2>
+      <p><span class="term">PPO</span> optimizes the policy (the LLM) so reward is maximized, making <strong>small, bounded updates</strong> that keep the new model close to the previous one ("proximal") — which makes learning stable. Each cycle has two phases:</p>
+      <ul>
+        <li><strong>Phase 1 — Experiments:</strong> the LLM completes prompts; the reward model scores each completion. A <strong>value function</strong> (a separate head) estimates expected future reward; minimizing the <strong>value loss</strong> makes those estimates accurate.</li>
+        <li><strong>Phase 2 — Update:</strong> make small weight updates guided by rewards and the <strong>advantage term</strong> (how much better/worse a token is vs. average), staying inside the <strong>trust region</strong>.</li>
+      </ul>
+      <div class="callout">The <strong>policy loss</strong> increases the probability of tokens with positive advantage and demotes negative ones, but clips updates to the trust region so estimates stay reliable. An <strong>entropy loss</strong> preserves creativity during training (like temperature does at inference). The full objective is a weighted sum (coefficients c<sub>1</sub>, c<sub>2</sub>), applied via backprop over many cycles → the human-aligned LLM.</div>
+      <p>Alternatives exist — <strong>Q-learning</strong>, and the simpler <strong>DPO</strong> (Direct Preference Optimization, Stanford) — but PPO is currently most popular for its balance of complexity and performance.</p>
+    </div>
+
+    <div class="section-divider"><span>37 · Reward Hacking &amp; KL Divergence</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Keeping the Aligned Model Honest</h2>
+      <p><span class="term">Reward hacking</span> is when the agent cheats — maximizing the reward metric while degrading actual quality. A detoxifying LLM might learn to spam "most awesome, most incredible…" or emit nonsensical text that happens to score low-toxicity but is useless.</p>
+      <p>The fix: keep a frozen <span class="term">reference model</span> (the original instruct LLM) and penalize drift using <span class="term">KL divergence</span> — a measure of how different two probability distributions are.</p>
+      <ol class="algo-steps">
+        <li>Pass each prompt to <strong>both</strong> the frozen reference model and the RL-updated model.</li>
+        <li>Compute <strong>KL divergence</strong> between their completions (per token across the vocabulary; softmax keeps it tractable, but it's compute-heavy — use GPUs).</li>
+        <li>Add a <strong>KL penalty</strong> to the reward so the updated model is punished for diverging too far from the reference.</li>
+      </ol>
+      <div class="callout">This needs <strong>two full copies</strong> of the LLM (frozen reference + PPO model). Combining RLHF with <strong>PEFT</strong> lets you update only an adapter and reuse one underlying LLM for both roles — cutting the training memory footprint by ~half. Evaluate success with a <strong>toxicity score</strong> (avg. probability of the toxic class) before vs. after — it should drop.</div>
+      <p class="paper-source">Tooling: <a href="https://huggingface.co/docs/trl/index">TRL (Transformer Reinforcement Learning)</a> implements PPO and integrates with PEFT/LoRA.</p>
+    </div>
+
+    <div class="section-divider"><span>38 · Scaling Feedback — Constitutional AI</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📜</span> RLHF Without (Much) Human Labor</h2>
+      <p>Training a reward model needs huge human-labeling effort — thousands of labelers. <span class="term">Constitutional AI</span> (Anthropic, 2022) scales feedback via <strong>model self-supervision</strong>: a set of rules + sample prompts forms the <strong>constitution</strong>, and the model learns to critique and revise its own responses to comply.</p>
+      <p>It also fixes an RLHF side effect: an over-helpful aligned model may reveal harmful info (e.g. how to hack a neighbor's WiFi). Constitutional principles (be helpful/honest/harmless, but prioritize harmlessness by checking for illegal/unethical activity) balance these competing goals. Two phases:</p>
+      <ol class="algo-steps">
+        <li><strong>Supervised (self-critique):</strong> <span class="term">red-team</span> the model into harmful responses, ask it to critique them against the constitution, and revise. Fine-tune on the red-team-prompt + revised-response pairs.</li>
+        <li><strong>Reinforcement (RLAIF):</strong> the fine-tuned model generates responses, then picks the constitution-preferred one — an <strong>AI-generated preference dataset</strong> that trains a reward model for PPO. This is <span class="term">RLAIF</span> (RL from AI Feedback).</li>
+      </ol>
+      <div class="callout">RLHF recap: a reward model scores completions against a human-preference metric, and PPO updates the LLM weights over many iterations until aligned. Constitutional AI/RLAIF pushes this further by replacing human feedback with model feedback — alignment remains a fast-moving research area.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← Gen AI Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
