@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gen AI Fundamentals — Short Notes</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── mind-map node grid ── */
+    .mm-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.6rem; margin-top:0.6rem; }
+    .mm-node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.7rem 0.85rem; border-left:3px solid #6366f1; }
+    .mm-node .k { display:block; color:#a5b4fc; font-weight:700; font-size:0.86rem; margin-bottom:0.25rem; }
+    .mm-node .v { color:#94a3b8; font-size:0.82rem; line-height:1.5; }
+    .mm-node .v b { color:#c7d2fe; font-weight:600; }
+
+    /* ── flow chips (sequences / pipelines) ── */
+    .mm-flow { display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; margin:0.7rem 0 0.2rem; }
+    .mm-chip { background:#1e2130; border:1px solid #2d3148; border-radius:999px; padding:0.32rem 0.75rem; font-size:0.8rem; color:#c7d2fe; }
+    .mm-chip b { color:#a5b4fc; }
+    .mm-arrow { color:#475569; font-weight:700; }
+
+    /* ── tiny key-term legend row ── */
+    .mm-keys { display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.5rem; }
+    .mm-keys .term { font-size:0.78rem; }
+
+    @media (max-width: 540px) {
+      .mm-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Short Notes Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Short Notes · Gen AI</p>
+      <h1>Gen AI Fundamentals — Mind Map</h1>
+      <p>The whole Gen AI fundamentals course, distilled into scannable branches: architecture → prompting → training → fine-tuning → alignment → deployment → apps.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Foundations</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌐</span> What Gen AI Is</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Gen AI</span><span class="v">Subset of ML; learns <b>statistical patterns</b> from massive human text.</span></div>
+        <div class="mm-node"><span class="k">Foundation / base models</span><span class="v">Billions of <b>parameters</b> (= memory); trained on trillions of words.</span></div>
+        <div class="mm-node"><span class="k">Emergent properties</span><span class="v">Reasoning, task breakdown — beyond pure language.</span></div>
+        <div class="mm-node"><span class="k">General-purpose tech</span><span class="v">Like electricity/deep learning — useful across the economy.</span></div>
+      </div>
+      <div class="callout">A small fine-tuned model can rival a giant on a focused task — <strong>bigger isn't always needed</strong>.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · Talking to a Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💬</span> Core Vocabulary</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Prompt</span><span class="v">The text you pass in.</span></div>
+        <div class="mm-node"><span class="k">Context window</span><span class="v">Memory available for the prompt (few thousand words).</span></div>
+        <div class="mm-node"><span class="k">Inference</span><span class="v">The act of generating text.</span></div>
+        <div class="mm-node"><span class="k">Completion</span><span class="v">Output = prompt + generated text.</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>3 · Transformer Architecture</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> Attention Is All You Need (2017)</h2>
+      <p>Replaced <span class="term">RNNs</span> (poor at long context, hard to scale). Wins: scales on <strong>GPUs</strong>, <strong>parallel</strong> processing, learns to <strong>pay attention</strong> to word meaning.</p>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Self-attention</span><span class="v">Weighs every word vs. <b>every other word</b>; weights learned in training.</span></div>
+        <div class="mm-node"><span class="k">Multi-head attention</span><span class="v"><b>12–100</b> heads, each learns a different language aspect, in parallel.</span></div>
+        <div class="mm-node"><span class="k">Encoder</span><span class="v">Encodes input into a deep representation.</span></div>
+        <div class="mm-node"><span class="k">Decoder</span><span class="v">Generates tokens in a loop until a stop token.</span></div>
+      </div>
+      <div class="mm-flow">
+        <span class="mm-chip"><b>1</b> Tokenize</span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>2</b> Embedding</span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>3</b> Positional encoding</span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>4</b> Self-attention</span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>5</b> Feed-forward + softmax → logits</span>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>4 · Model Variants</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪢</span> Three Families</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Encoder-only (autoencoding)</span><span class="v"><b>Masked LM</b>, bi-directional. Classification, NER. → <b>BERT, RoBERTa</b>.</span></div>
+        <div class="mm-node"><span class="k">Decoder-only (autoregressive)</span><span class="v"><b>Causal LM</b>, uni-directional. Text gen, strong zero-shot. → <b>GPT, BLOOM, LLaMA</b>.</span></div>
+        <div class="mm-node"><span class="k">Encoder-decoder (seq2seq)</span><span class="v"><b>Span corruption</b> (T5). Translation, summarization, Q&amp;A. → <b>T5, BART</b>.</span></div>
+        <div class="mm-node"><span class="k">Rule of thumb</span><span class="v">Larger models of any type generalize better with less help.</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>5 · Prompting &amp; In-Context Learning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✍️</span> Teach by Example</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Zero-shot</span><span class="v">Instruction only. Best for the <b>largest</b> models.</span></div>
+        <div class="mm-node"><span class="k">One-shot</span><span class="v">One example + input. For smaller models.</span></div>
+        <div class="mm-node"><span class="k">Few-shot</span><span class="v">Several mixed examples. For even smaller models.</span></div>
+        <div class="mm-node"><span class="k">Prompt engineering</span><span class="v">Iteratively revise wording to get desired behavior.</span></div>
+      </div>
+      <div class="callout">Mind the <strong>context window</strong>: if ~5–6 examples still fail → <strong>fine-tune</strong> instead.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Inference Config</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎛️</span> Controlling Output</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Max new tokens</span><span class="v">Caps generated length (a limit, not a guarantee).</span></div>
+        <div class="mm-node"><span class="k">Greedy</span><span class="v">Always highest-prob word; repetitive.</span></div>
+        <div class="mm-node"><span class="k">Random sampling</span><span class="v">Weighted by probability; less repetition.</span></div>
+        <div class="mm-node"><span class="k">Top-k / Top-p</span><span class="v">Sample from <b>k</b> best, or from cumulative prob ≤ <b>p</b> (nucleus).</span></div>
+      </div>
+      <div class="mm-flow">
+        <span class="mm-chip"><b>Temp &lt; 1</b> peaked → less random</span>
+        <span class="mm-chip"><b>Temp = 1</b> default</span>
+        <span class="mm-chip"><b>Temp &gt; 1</b> flatter → more creative</span>
+      </div>
+      <div class="callout">Temperature actually <strong>alters the distribution</strong>; top-k/top-p only restrict sampling.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · Project Lifecycle</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗺️</span> Idea → Launch</h2>
+      <div class="mm-flow">
+        <span class="mm-chip"><b>Scope</b></span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>Select</b></span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>Adapt &amp; align</b> (prompt → fine-tune → RLHF)</span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>Evaluate</b></span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>Deploy &amp; optimize</b></span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>Augment</b></span>
+      </div>
+      <div class="callout"><strong>Scope</strong> is most important — define the use case as narrowly as possible to save time &amp; compute.</div>
+    </div>
+
+    <div class="section-divider"><span>8 · Pre-training &amp; Memory</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💾</span> Training Cost</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Pre-training</span><span class="v"><b>Self-supervised</b> on vast unstructured text; only <b>1–3%</b> of tokens survive curation.</span></div>
+        <div class="mm-node"><span class="k">Memory math</span><span class="v">1 param = <b>4 bytes</b> (FP32). 1B params = 4 GB weights; <b>~24 GB</b> to train (≈6×).</span></div>
+        <div class="mm-node"><span class="k">Model cards</span><span class="v">On HF/PyTorch hubs — best uses, training, limits.</span></div>
+        <div class="mm-node"><span class="k">CUDA</span><span class="v">NVIDIA libs PyTorch/TF use for matrix math.</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>9 · Quantization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📉</span> Precision vs. Memory</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">FP32</span><span class="v">4 bytes — default, full precision.</span></div>
+        <div class="mm-node"><span class="k">FP16</span><span class="v">2 bytes — some precision loss.</span></div>
+        <div class="mm-node"><span class="k">BF16</span><span class="v">2 bytes — keeps FP32 range, stable; <b>popular pick</b>.</span></div>
+        <div class="mm-node"><span class="k">INT8</span><span class="v">1 byte — big precision loss.</span></div>
+      </div>
+      <div class="callout">Quantization shrinks footprint but <strong>param count stays the same</strong>.</div>
+    </div>
+
+    <div class="section-divider"><span>10 · Distributed Training</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🖧</span> Across Many GPUs</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">DDP</span><span class="v">Full model <b>copied</b> per GPU; needs to fit on one GPU.</span></div>
+        <div class="mm-node"><span class="k">FSDP</span><span class="v"><b>Shards</b> params/grads/optimizer states (based on ZeRO).</span></div>
+      </div>
+      <div class="mm-flow">
+        <span class="mm-chip"><b>ZeRO-1</b> optimizer → 4×</span>
+        <span class="mm-chip"><b>ZeRO-2</b> + grads → 8×</span>
+        <span class="mm-chip"><b>ZeRO-3</b> + params → scales with GPUs</span>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>11 · Scaling Laws</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> How Big?</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Compute budget</span><span class="v">GPUs × time × money. Unit: <b>petaFLOP/s-day</b>.</span></div>
+        <div class="mm-node"><span class="k">Power laws</span><span class="v">Loss vs. compute / data / model size (log-log lines).</span></div>
+        <div class="mm-node"><span class="k">Chinchilla (2022)</span><span class="v">Optimal data ≈ <b>20× params</b>; many big models under-trained.</span></div>
+        <div class="mm-node"><span class="k">From scratch</span><span class="v">Worth it for niche domains (law, medicine) — e.g. <b>BloombergGPT</b>.</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>12 · Instruction Fine-Tuning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Follow Instructions</h2>
+      <p><strong>Supervised</strong> training on labeled <span class="term">prompt–completion pairs</span> → an <strong>instruct model</strong>. Full fine-tuning = all weights updated (same cost as pre-training).</p>
+      <div class="mm-node"><span class="k">Catastrophic forgetting</span><span class="v">Single-task tuning degrades other abilities. Fix: <b>multitask</b> tuning or <b>PEFT</b>.</span></div>
+      <div class="callout"><strong>FLAN-T5</strong>: tuned on 473 datasets / 146 task categories; SAMSum &amp; dialogsum for dialogue summarization.</div>
+    </div>
+
+    <div class="section-divider"><span>13 · PEFT &amp; LoRA</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪶</span> Cheap Fine-Tuning</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">PEFT</span><span class="v">Train a small subset, freeze the rest. Single GPU, robust to forgetting, swap per task.</span></div>
+        <div class="mm-node"><span class="k">Selective</span><span class="v">Tune some existing params.</span></div>
+        <div class="mm-node"><span class="k">Reparameterization</span><span class="v">Low-rank matrices → <b>LoRA</b>.</span></div>
+        <div class="mm-node"><span class="k">Additive</span><span class="v">Adapter layers; <b>soft prompts</b> (prompt tuning).</span></div>
+      </div>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">LoRA</span><span class="v">Inject rank-decomp matrices on attention layers; ranks <b>4–32</b> (plateau past 16). ~86% fewer params. <b>QLoRA</b> = + quantization.</span></div>
+        <div class="mm-node"><span class="k">Prompt tuning</span><span class="v">Train <b>20–100 virtual tokens</b>, weights frozen. Matches full FT at ~10B+ params.</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>14 · Evaluation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Metrics &amp; Benchmarks</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">ROUGE</span><span class="v"><b>Summarization</b> — uni/bi-gram &amp; LCS overlap vs. reference.</span></div>
+        <div class="mm-node"><span class="k">BLEU</span><span class="v"><b>Translation</b> — avg n-gram precision.</span></div>
+        <div class="mm-node"><span class="k">Diagnostic only</span><span class="v">Clipping fixes repetition; never the sole final metric.</span></div>
+        <div class="mm-node"><span class="k">Benchmarks</span><span class="v"><b>GLUE, SuperGLUE, MMLU, BIG-bench, HELM</b> (adds fairness/bias/toxicity).</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>15 · Alignment &amp; RLHF</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🤝</span> Helpful · Honest · Harmless</h2>
+      <p><span class="term">RLHF</span> aligns the LLM with human preferences via RL. Mapping: <strong>agent</strong> = LLM, <strong>action</strong> = next token, <strong>environment</strong> = context window, <strong>reward</strong> = human-preference alignment.</p>
+      <div class="mm-flow">
+        <span class="mm-chip">Prompt → LLM completion</span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>Reward model</b> scores it</span><span class="mm-arrow">→</span>
+        <span class="mm-chip"><b>PPO</b> updates weights</span><span class="mm-arrow">→</span>
+        <span class="mm-chip">repeat → aligned LLM</span>
+      </div>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Reward model</span><span class="v">Humans <b>rank</b> completions → pairwise loss <b>−log σ(r<sub>j</sub>−r<sub>k</sub>)</b> → binary classifier (no humans after).</span></div>
+        <div class="mm-node"><span class="k">PPO</span><span class="v">Small, bounded updates in a <b>trust region</b>; uses advantage + value + entropy loss.</span></div>
+        <div class="mm-node"><span class="k">Reward hacking</span><span class="v">Model games the metric. Fix: frozen <b>reference model</b> + <b>KL-divergence</b> penalty.</span></div>
+        <div class="mm-node"><span class="k">Constitutional AI / RLAIF</span><span class="v">Rules-based self-critique replaces human feedback (Anthropic).</span></div>
+      </div>
+      <div class="callout">Alternatives to PPO: <strong>Q-learning</strong> and the simpler <strong>DPO</strong>. Combine RLHF + PEFT to reuse one base model and halve memory.</div>
+    </div>
+
+    <div class="section-divider"><span>16 · Deployment Optimization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> Smaller, Faster</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Distillation</span><span class="v">Teacher trains a smaller <b>student</b>; best for encoder-only.</span></div>
+        <div class="mm-node"><span class="k">PTQ</span><span class="v">Quantize to 16/8-bit after training (needs calibration).</span></div>
+        <div class="mm-node"><span class="k">Pruning</span><span class="v">Drop near-zero weights; may need retraining.</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>17 · Limitations &amp; Augmentation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> What Training Can't Fix</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Knowledge cutoff</span><span class="v">Frozen at pre-training time.</span></div>
+        <div class="mm-node"><span class="k">Weak math</span><span class="v">Predicts tokens, doesn't compute.</span></div>
+        <div class="mm-node"><span class="k">Hallucination</span><span class="v">Confidently invents answers.</span></div>
+        <div class="mm-node"><span class="k">Orchestration</span><span class="v"><b>LangChain</b> connects model to data &amp; APIs at runtime.</span></div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>18 · RAG</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📚</span> External Knowledge</h2>
+      <div class="mm-flow">
+        <span class="mm-chip">Query encoder</span><span class="mm-arrow">→</span>
+        <span class="mm-chip">Search <b>vector store</b></span><span class="mm-arrow">→</span>
+        <span class="mm-chip">Expanded prompt</span><span class="mm-arrow">→</span>
+        <span class="mm-chip">LLM completion</span>
+      </div>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Chunks</span><span class="v">Split long sources to fit the context window.</span></div>
+        <div class="mm-node"><span class="k">Vector store / DB</span><span class="v">Embed + cosine similarity; DB adds keys → citations.</span></div>
+      </div>
+      <div class="callout">Fixes knowledge cutoff &amp; hallucination far cheaper than retraining.</div>
+    </div>
+
+    <div class="section-divider"><span>19 · Reasoning &amp; Agents</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> LLM as Reasoning Engine</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">Chain-of-Thought (CoT)</span><span class="v">Include intermediate reasoning steps in examples → step-by-step answers.</span></div>
+        <div class="mm-node"><span class="k">PAL</span><span class="v">LLM writes a <b>Python script</b>; interpreter runs it for reliable math.</span></div>
+        <div class="mm-node"><span class="k">ReAct</span><span class="v">Loop of <b>thought → action → observation</b>; actions from a fixed set (search/lookup/finish).</span></div>
+        <div class="mm-node"><span class="k">Orchestrator</span><span class="v">Automates hand-offs to tools, APIs, interpreters.</span></div>
+      </div>
+      <div class="callout">A <strong>limited action set</strong> is critical — LLMs are creative and may propose impossible steps.</div>
+    </div>
+
+    <div class="section-divider"><span>20 · LangChain &amp; App Architecture</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏛️</span> Full Stack</h2>
+      <div class="mm-grid">
+        <div class="mm-node"><span class="k">LangChain</span><span class="v"><b>Prompt templates</b>, <b>memory</b>, <b>tools</b>; connect into <b>chains</b>; <b>agents</b> for PAL/ReAct.</span></div>
+        <div class="mm-node"><span class="k">The stack</span><span class="v">Infrastructure → models → external sources → tools/frameworks → interface &amp; security.</span></div>
+      </div>
+      <div class="callout">Prefer <strong>large models</strong> for reasoning; later fine-tune a smaller one on collected data.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← Short Notes Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
