@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Model Deployment — MLOps Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .node.dashed { border-style:dashed; color:#94a3b8; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    /* ── mode cards ── */
+    .mode-list { list-style:none; padding:0; margin:0.8rem 0; }
+    .mode-item { display:flex; gap:0.9rem; background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.6rem; }
+    .mode-item .mode-icon { flex:0 0 auto; font-size:1.4rem; }
+    .mode-item .mode-body h3 { margin:0 0 0.3rem 0; font-size:0.95rem; color:#e2e8f0; }
+    .mode-item .mode-body p { margin:0; font-size:0.85rem; color:#94a3b8; line-height:1.6; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ MLOps Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">MLOps Zoomcamp · Module 4</p>
+      <h1>Model Deployment</h1>
+      <p>The operate phase — taking a trained model and serving it. Batch, web service, and streaming modes, with hands-on Flask, Docker, the MLflow registry, AWS Kinesis + Lambda, and batch scoring.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Where Deployment Fits</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> From Training to Operating</h2>
+      <p>So far the course covered <strong>design</strong> (is ML the right tool?) and <strong>train</strong> (experiment tracking + turning the notebook into a pipeline). The output of the training pipeline is a model. This module is the <span class="term">operate</span> phase — taking that model and deploying it.</p>
+      <div class="flow">
+        <div class="node">Design</div>
+        <div class="arrow">→</div>
+        <div class="node">Train (tracking + pipeline)</div>
+        <div class="arrow">→</div>
+        <div class="node accent">Operate (deploy)</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>2 · The Three Deployment Modes</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔀</span> Do You Need Predictions Now?</h2>
+      <p>The first question: do predictions need to be <strong>immediate</strong>, or can they wait an hour / day / week? The answer splits deployment into two families — and the online family splits again.</p>
+      <ul class="mode-list">
+        <li class="mode-item">
+          <div class="mode-icon">📦</div>
+          <div class="mode-body">
+            <h3>Batch (offline)</h3>
+            <p>The model is <strong>not</strong> running all the time. A scoring job runs at regular intervals (every 10 min, hourly, daily, weekly), pulls the last interval's data, applies the model, and writes predictions somewhere.</p>
+          </div>
+        </li>
+        <li class="mode-item">
+          <div class="mode-icon">🌐</div>
+          <div class="mode-body">
+            <h3>Online — Web Service</h3>
+            <p>The model is up all the time, reachable over HTTP. A client sends a request and holds the connection open until it gets the prediction back. One-to-one, client–server.</p>
+          </div>
+        </li>
+        <li class="mode-item">
+          <div class="mode-icon">📡</div>
+          <div class="mode-body">
+            <h3>Online — Streaming</h3>
+            <p>Producers push events to a stream; one or many consumers listen and react. The producer doesn't know or care who consumes — an implicit, one-to-many (or many-to-many) relationship.</p>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>3 · Batch Mode — Concept</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> The Scoring Job Pattern</h2>
+      <p>A typical batch setup: a database holds the data; a <strong>scoring job</strong> (with the model inside) pulls the last interval's rows, applies the model, and writes results to another database. A downstream consumer — a report, say — reads the predictions and reacts.</p>
+      <div class="flow">
+        <div class="node">Data DB</div>
+        <div class="arrow">→</div>
+        <div class="node accent">Scoring job (model)</div>
+        <div class="arrow">→</div>
+        <div class="node">Predictions DB</div>
+        <div class="arrow">→</div>
+        <div class="node">Report / action</div>
+      </div>
+      <div class="callout"><strong>Churn prediction</strong> is the classic batch use case. You don't need to know the instant a user decides to leave — a daily or weekly job identifies likely churners, and a marketing job sends them an incentive (a push, a reward).</div>
+    </div>
+
+    <div class="section-divider"><span>4 · Web Service vs Streaming — Concept</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Connection vs Events</h2>
+      <p>The <strong>ride-duration</strong> model is a great web-service example: the app's backend asks the duration service for a prediction, the user sees "≈ 30 min", and decides whether to hire the taxi. The decision is needed <em>immediately</em> on screen — you can't wait five minutes.</p>
+      <p><strong>Streaming</strong> is different. When the ride <em>starts</em>, the backend becomes a <span class="term">producer</span> and pushes a <code>ride_started</code> event. Independent <span class="term">consumers</span> react: a tip-prediction model, a more accurate duration model that updates the earlier estimate ("actually 20 min, not 30"), and so on.</p>
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>Web Service</th><th>Streaming</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Relationship</td><td>One-to-one (client ↔ server)</td><td>One-to-many / many-to-many</td></tr>
+          <tr><td>Connection</td><td>Explicit, kept alive until response</td><td>Implicit — producer fires and forgets</td></tr>
+          <tr><td>Producer knows consumers?</td><td>Yes</td><td>No (doesn't care who/how many)</td></tr>
+          <tr><td>Good for</td><td>Immediate single decision</td><td>Many independent reactions to one event</td></tr>
+        </tbody>
+      </table>
+      <div class="callout"><strong>Content moderation</strong> is the canonical streaming example: a video-upload event fans out to copyright, NSFW, and violence/hate-speech consumers, each pushing a verdict to a predictions stream that a decision service acts on. Adding a new check is just adding a new consumer — the system scales to arbitrarily many models.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Web Service with Flask</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Wrapping the Pickle in Flask</h2>
+      <p>Module 1 left us a pickle file (<code>lin_reg.bin</code>) holding the <code>DictVectorizer</code> and the linear regression. The plan: isolated env with Pipenv → script → Flask app → Docker.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Pin the environment</h3>
+      <p>Match the exact scikit-learn version used to create the pickle, or unpickling may fail. Pin Python too (3.9 to be safe):</p>
+      <div class="code-block"><pre><code>pip freeze | grep scikit-learn        <span class="cm"># e.g. scikit-learn==1.0.2</span>
+pipenv install scikit-learn==1.0.2 flask --python=3.9
+pipenv shell</code></pre></div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">predict.py — load, prepare, predict, serve</h3>
+      <div class="code-block"><pre><code>import pickle
+from flask import Flask, request, jsonify
+
+with open('lin_reg.bin', 'rb') as f_in:
+    (dv, model) = pickle.load(f_in)
+
+def prepare_features(ride):
+    features = {}
+    features['PU_DO'] = '%s_%s' % (ride['PULocationID'], ride['DOLocationID'])
+    features['trip_distance'] = ride['trip_distance']
+    return features
+
+def predict(features):
+    X = dv.transform(features)
+    preds = model.predict(X)
+    return float(preds[0])
+
+app = Flask('duration-prediction')
+
+@app.route('/predict', methods=['POST'])
+def predict_endpoint():
+    ride = request.get_json()
+    features = prepare_features(ride)
+    pred = predict(features)
+    return jsonify({'duration': pred})
+
+if __name__ == "__main__":
+    app.run(debug=True, host='0.0.0.0', port=9696)</code></pre></div>
+      <div class="callout"><strong>Feature engineering must match training.</strong> The <code>PU_DO</code> interaction feature is built by string-concatenating the location IDs — do it identically in serving, or predictions will be wrong.</div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Production server + test client</h3>
+      <p>Flask's built-in server warns it's for development only. Use <strong>gunicorn</strong> in production. Keep <code>requests</code> as a dev-only dependency since it's only needed for tests:</p>
+      <div class="code-block"><pre><code>pipenv install gunicorn
+pipenv install --dev requests
+
+gunicorn --bind=0.0.0.0:9696 predict:app</code></pre></div>
+      <div class="code-block"><pre><code><span class="cm"># test.py</span>
+import requests
+
+ride = {"PULocationID": 10, "DOLocationID": 50, "trip_distance": 40}
+url = 'http://localhost:9696/predict'
+response = requests.post(url, json=ride)
+print(response.json())</code></pre></div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Dockerfile</h3>
+      <div class="code-block"><pre><code>FROM python:3.9.7-slim
+
+RUN pip install -U pip
+RUN pip install pipenv
+
+WORKDIR /app
+COPY [ "Pipfile", "Pipfile.lock", "./" ]
+RUN pipenv install --system --deploy
+
+COPY [ "predict.py", "lin_reg.bin", "./" ]
+
+EXPOSE 9696
+ENTRYPOINT [ "gunicorn", "--bind=0.0.0.0:9696", "predict:app" ]</code></pre></div>
+      <div class="code-block"><pre><code>docker build -t ride-duration-prediction-service:v1 .
+docker run -it --rm -p 9696:9696 ride-duration-prediction-service:v1</code></pre></div>
+      <p><code>--system --deploy</code> installs straight into the container's system Python (no nested virtualenv) using the locked versions. With a Docker image you can deploy anywhere Docker runs — Elastic Beanstalk, Kubernetes, etc.</p>
+    </div>
+
+    <div class="section-divider"><span>6 · Web Service + MLflow Registry</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗂️</span> Fetching the Model Instead of Emailing It</h2>
+      <p>Rather than shipping a pickle by email, pull the model from the MLflow registry by <code>run_id</code>. The naive version uses the client to download the vectorizer artifact separately:</p>
+      <div class="code-block"><pre><code>import mlflow
+from mlflow.tracking import MlflowClient
+
+MLFLOW_TRACKING_URI = 'http://localhost:5000'
+RUN_ID = 'abc123...'
+
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
+
+path = client.download_artifacts(run_id=RUN_ID, path='dict_vectorizer.bin')
+with open(path, 'rb') as f_out:
+    dv = pickle.load(f_out)
+
+logged_model = f'runs:/{RUN_ID}/model'
+model = mlflow.pyfunc.load_model(logged_model)</code></pre></div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Cleaner: bundle DV + model in a pipeline</h3>
+      <p>Carrying the vectorizer as a separate artifact is ugly. Put both in a scikit-learn <code>Pipeline</code> at training time, then the registry stores one self-contained model:</p>
+      <div class="code-block"><pre><code>from sklearn.pipeline import make_pipeline
+
+pipeline = make_pipeline(
+    DictVectorizer(),
+    RandomForestRegressor(**params, n_jobs=-1)
+)
+pipeline.fit(dicts, y_train)
+mlflow.sklearn.log_model(pipeline, artifact_path="model")</code></pre></div>
+      <p>Serving then collapses to a single <code>load_model</code> — no separate vectorizer download.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Remove the tracking-server dependency</h3>
+      <p>Setting <code>set_tracking_uri</code> makes serving depend on the tracking server being up — a problem when an autoscaled instance can't start because the server is down. Point directly at the <strong>S3 artifact location</strong> instead, and make the run ID configurable via an env var:</p>
+      <div class="code-block"><pre><code>import os
+RUN_ID = os.getenv('RUN_ID')
+
+logged_model = f's3://mlflow-models-alexey/1/{RUN_ID}/artifacts/model'
+model = mlflow.pyfunc.load_model(logged_model)</code></pre></div>
+      <div class="callout">Returning the <code>model_version</code> (run ID) in the response is good practice — you always know which model produced a given prediction. In Kubernetes you just set a different <code>RUN_ID</code> env var to roll the model forward.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · Streaming with Kinesis + Lambda</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📡</span> Serverless Stream Consumer (Optional)</h2>
+      <p>AWS <strong>Kinesis</strong> is the event stream (like Kafka); AWS <strong>Lambda</strong> is the consumer — "run code without thinking about servers". The flow: ride-started events land on a Kinesis stream, Lambda reads them, applies the model, and pushes predictions to a second stream.</p>
+      <ol class="algo-steps">
+        <li>Create an <strong>IAM role</strong> for Lambda with permission to read from Kinesis (and write CloudWatch logs); attach the policy.</li>
+        <li>Create the Lambda function (Python 3.9) using the role; test with a sample event.</li>
+        <li>Create the input Kinesis stream (<code>ride_events</code>, provisioned, 1 shard) and wire it as a Lambda trigger.</li>
+        <li>Decode records — Kinesis delivers a <strong>list of records</strong>, each base64-encoded.</li>
+        <li>Apply the model, then <strong>put results</strong> on the output stream (<code>ride_predictions</code>) with boto3.</li>
+      </ol>
+      <div class="code-block"><pre><code>import os, json, base64
+import boto3, mlflow
+
+kinesis_client = boto3.client('kinesis')
+PREDICTIONS_STREAM_NAME = os.getenv('PREDICTIONS_STREAM_NAME', 'ride_predictions')
+RUN_ID = os.getenv('RUN_ID')
+TEST_RUN = os.getenv('TEST_RUN', 'False') == 'True'
+
+model = mlflow.pyfunc.load_model(f's3://.../{RUN_ID}/artifacts/model')
+
+def lambda_handler(event, context):
+    predictions = []
+    for record in event['Records']:
+        encoded = record['kinesis']['data']
+        decoded = base64.b64decode(encoded).decode('utf-8')
+        ride_event = json.loads(decoded)
+
+        ride = ride_event['ride']
+        ride_id = ride_event['ride_id']
+        features = prepare_features(ride)
+        prediction = predict(features)
+
+        prediction_event = {
+            'model': 'ride_duration_prediction_model',
+            'version': RUN_ID,
+            'prediction': {'ride_duration': prediction, 'ride_id': ride_id},
+        }
+        if not TEST_RUN:
+            kinesis_client.put_record(
+                StreamName=PREDICTIONS_STREAM_NAME,
+                Data=json.dumps(prediction_event),
+                PartitionKey=str(ride_id),
+            )
+        predictions.append(prediction_event)
+    return {'predictions': predictions}</code></pre></div>
+      <div class="callout"><strong>Correlation IDs matter in streaming.</strong> Unlike a web service, the producer never sees the response — so every event carries a <code>ride_id</code>, and every prediction echoes the model name + version so downstream consumers know what produced it.</div>
+      <p>Packaging uses the AWS Lambda base image (from ECR Public), installs deps, and sets the handler. Push to <strong>ECR</strong>, then create a container-image Lambda with <code>RUN_ID</code> / <code>PREDICTIONS_STREAM_NAME</code> env vars. Grant the role <strong>S3 get/list</strong> so it can load the model, give it enough memory/timeout (first invocation is slow), and pin scikit-learn (and ideally cloudpickle) to avoid version-mismatch warnings.</p>
+      <div class="code-block"><pre><code>FROM public.ecr.aws/lambda/python:3.9
+RUN pip install -U pip
+RUN pip install pipenv
+COPY [ "Pipfile", "Pipfile.lock", "./" ]
+RUN pipenv install --system --deploy
+COPY [ "lambda_function.py", "./" ]
+CMD [ "lambda_function.lambda_handler" ]</code></pre></div>
+    </div>
+
+    <div class="section-divider"><span>8 · Batch Scoring Script</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📝</span> Notebook → Parameterized score.py</h2>
+      <p>For batch, repurpose the registry notebook from <em>training</em> to <em>applying</em> the model. The use case: compare actual vs predicted duration for analytics (spotting traffic jams, driver deviation). Add an artificial <code>ride_id</code> (UUID) so each prediction is traceable.</p>
+      <div class="code-block"><pre><code>import uuid
+import pandas as pd
+import mlflow
+
+def generate_uuids(n):
+    return [str(uuid.uuid4()) for _ in range(n)]
+
+def read_dataframe(filename):
+    df = pd.read_parquet(filename)
+    df['duration'] = df.lpep_dropoff_datetime - df.lpep_pickup_datetime
+    df['duration'] = df.duration.dt.total_seconds() / 60
+    df = df[(df.duration >= 1) & (df.duration <= 60)].copy()
+    df['ride_id'] = generate_uuids(len(df))
+    return df
+
+def apply_model(input_file, run_id, output_file):
+    df = read_dataframe(input_file)
+    dicts = prepare_dictionaries(df)
+    model = load_model(run_id)
+    y_pred = model.predict(dicts)
+
+    df_result = pd.DataFrame()
+    df_result['ride_id'] = df['ride_id']
+    df_result['lpep_pickup_datetime'] = df['lpep_pickup_datetime']
+    df_result['PULocationID'] = df['PULocationID']
+    df_result['DOLocationID'] = df['DOLocationID']
+    df_result['actual_duration'] = df['duration']
+    df_result['predicted_duration'] = y_pred
+    df_result['diff'] = df_result['actual_duration'] - df_result['predicted_duration']
+    df_result['model_version'] = run_id
+
+    df_result.to_parquet(output_file, index=False)</code></pre></div>
+      <p>Parameterize input/output paths by taxi type, year, and month — pandas can read a URL directly, so no manual download:</p>
+      <div class="code-block"><pre><code>def run():
+    taxi_type = sys.argv[1]   <span class="cm"># green</span>
+    year = int(sys.argv[2])   <span class="cm"># 2021</span>
+    month = int(sys.argv[3])  <span class="cm"># 4</span>
+    run_id = sys.argv[4]
+
+    input_file = f'https://.../{taxi_type}_tripdata_{year:04d}-{month:02d}.parquet'
+    output_file = f'output/{taxi_type}/{year:04d}-{month:02d}.parquet'
+    apply_model(input_file=input_file, run_id=run_id, output_file=output_file)</code></pre></div>
+      <div class="code-block"><pre><code>jupyter nbconvert --to script score.ipynb
+python score.py green 2021 4 &lt;RUN_ID&gt;</code></pre></div>
+      <div class="callout">When applying a model you usually <strong>don't have the target variable</strong> — here we keep <code>duration</code> only because the analytics compares actual vs predicted. Next steps: write output to S3, package in Docker, and schedule with AWS Batch / ECS / a Kubernetes job — or orchestrate with Prefect.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · Batch Scoring with Mage</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> Orchestrating the Batch Job (No Video — You Already Know This)</h2>
+      <p>There is no walkthrough video for this unit — it reuses what you learned about Mage in the orchestration module plus the <code>score.py</code> logic above. The idea: instead of running the script by hand, turn batch scoring into a Mage pipeline whose blocks pull the model from the MLflow registry and apply it.</p>
+      <ol class="algo-steps">
+        <li><strong>Connect to MLflow</strong> — point Mage at your tracking server / artifact store so blocks can reach the registry.</li>
+        <li><strong>Create a transformation block</strong> — the block that does the scoring work.</li>
+        <li><strong>Get the model from the registry and apply it</strong> — load by <code>run_id</code> (or stage), run <code>predict</code>, return the results.</li>
+      </ol>
+      <div class="flow">
+        <div class="node accent">load_data</div>
+        <div class="arrow">→</div>
+        <div class="node accent">transform · score</div>
+        <div class="arrow">→</div>
+        <div class="node">export predictions</div>
+      </div>
+      <p>A transformation block that fetches the model and scores the data:</p>
+      <div class="code-block"><pre><code>import os
+import mlflow
+
+if 'transformer' not in globals():
+    from mage_ai.data_preparation.decorators import transformer
+
+MLFLOW_TRACKING_URI = os.getenv('MLFLOW_TRACKING_URI', 'http://localhost:5000')
+RUN_ID = os.getenv('RUN_ID')
+
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+@transformer
+def transform(df, *args, **kwargs):
+    <span class="cm"># model is a pipeline (DictVectorizer + regressor) from the registry</span>
+    model = mlflow.pyfunc.load_model(f'runs:/{RUN_ID}/model')
+
+    dicts = prepare_dictionaries(df)
+    df['predicted_duration'] = model.predict(dicts)
+    df['model_version'] = RUN_ID
+    return df</code></pre></div>
+      <div class="callout">Because the model is logged as a <strong>pipeline</strong>, the block doesn't need a separate vectorizer — connect to MLflow, load by run ID, and apply. The upstream data-loader block feeds <code>df</code>; a downstream exporter block writes predictions to Parquet / S3.</div>
+    </div>
+
+    <div class="section-divider"><span>10 · Choosing a Mode</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Quick Decision Guide</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Reach for batch when…</div>
+          <ul>
+            <li>Predictions can wait (hours/days)</li>
+            <li>Work is periodic — marketing, churn, analytics</li>
+            <li>You want the simplest ops (a scheduled job)</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Reach for online when…</div>
+          <ul>
+            <li><strong>Web service:</strong> one immediate decision per request (ride duration)</li>
+            <li><strong>Streaming:</strong> one event, many independent reactions (moderation, recs)</li>
+            <li>Latency matters to the end user</li>
+          </ul>
+        </div>
+      </div>
+      <p>Reference code: <a href="https://github.com/DataTalksClub/mlops-zoomcamp/tree/main/04-deployment" style="color:#6366f1;">DataTalksClub/mlops-zoomcamp · 04-deployment</a> (<code>web-service</code>, <code>web-service-mlflow</code>, <code>streaming</code>, <code>batch</code>).</p>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← MLOps Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

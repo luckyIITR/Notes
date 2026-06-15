@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Best Practices — MLOps Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .node.dashed { border-style:dashed; color:#94a3b8; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    /* ── tool-tier cards ── */
+    .tier-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.8rem; margin:0.8rem 0; }
+    .tier { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .tier .tier-num { font-size:0.7rem; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; }
+    .tier h4 { margin:0.25rem 0 0.5rem; color:#e2e8f0; font-size:0.95rem; }
+    .tier p { margin:0; font-size:0.85rem; color:#94a3b8; line-height:1.6; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+      .tier-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ MLOps Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">MLOps Zoomcamp · Module 6</p>
+      <h1>Best Engineering Practices</h1>
+      <p>Turning a working model service into solid software — unit &amp; integration tests, testing cloud services locally, linting and formatting, pre-commit hooks, Makefiles, Infrastructure as Code with Terraform, and CI/CD with GitHub Actions.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · The Starting Point</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> The Streaming Example from Module 4</h2>
+      <p>This module reuses the optional <strong>streaming</strong> service built in Module 4 and improves it from an engineering point of view. The architecture is intentionally simple:</p>
+      <div class="flow">
+        <div class="node">input stream<br>(events)</div>
+        <div class="arrow">→</div>
+        <div class="node accent">Lambda<br>(model service)</div>
+        <div class="arrow">→</div>
+        <div class="node dashed">S3 model</div>
+        <div class="arrow">→</div>
+        <div class="node">predictions stream</div>
+      </div>
+      <p>A <span class="term">Kinesis</span> stream carries ride events. An AWS <span class="term">Lambda</span> reads each event, fetches the model from an <strong>S3 bucket</strong>, computes the trip duration, and writes the prediction to a second Kinesis stream. Two streams, one function, one bucket.</p>
+      <div class="callout">The goal of Module 6 isn't new ML — it's taking existing code and making it <strong>reliable, readable, and automated</strong>. Start by copying the Module 4 streaming folder so you never touch the original.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · Unit Tests with pytest</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Setting Up the Test Environment</h2>
+      <p>The first improvement is a test suite. <span class="term">pytest</span> is installed as a <strong>dev dependency</strong> — needed when developing, not in production:</p>
+      <div class="code-block"><pre><code><span class="cm"># install only for the dev environment</span>
+pipenv install --dev pytest</code></pre></div>
+      <ul>
+        <li>Create a <code>tests/</code> folder with an <code>__init__.py</code> so Python treats it as a package and tests can <code>import</code> the application code.</li>
+        <li>In VS Code, select the right interpreter (use <code>pipenv --venv</code> to find the virtualenv path) and configure the testing panel to use pytest pointed at <code>tests/</code>.</li>
+        <li>Tests can also run from the shell with <code>pipenv run pytest tests/</code>.</li>
+      </ul>
+      <div class="callout"><span class="term">Unit tests</span> check small, isolated pieces of code — individual functions and methods. They must be <strong>fast and independent</strong>: no S3 calls, no model downloads, no network.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">♻️</span> Refactoring for Testability</h2>
+      <p>The original Lambda code resisted testing: simply importing <code>lambda_function</code> ran <strong>module-level code</strong> that tried to download the model and crashed. Long functions plus global side-effects make code hard to test.</p>
+      <p>The fix is to wrap everything in a <code>ModelService</code> class so nothing executes on import. The Lambda handler becomes a thin delegate:</p>
+      <div class="code-block"><pre><code><span class="cm"># lambda_function.py — just wiring</span>
+import model
+
+PREDICTIONS_STREAM_NAME = os.getenv('PREDICTIONS_STREAM_NAME', 'ride_predictions')
+RUN_ID = os.getenv('RUN_ID')
+TEST_RUN = os.getenv('TEST_RUN', 'False') == 'True'
+
+model_service = model.init(
+    prediction_stream_name=PREDICTIONS_STREAM_NAME,
+    run_id=RUN_ID,
+    test_run=TEST_RUN,
+)
+
+def lambda_handler(event, context):
+    return model_service.lambda_handler(event)</code></pre></div>
+      <div class="code-block"><pre><code><span class="cm"># model.py — logic lives in a class</span>
+class ModelService:
+    def __init__(self, model, model_version=None, callbacks=None):
+        self.model = model
+        self.model_version = model_version
+        self.callbacks = callbacks or []
+
+    def prepare_features(self, ride):
+        features = {}
+        features['PU_DO'] = '%s_%s' % (ride['PULocationID'], ride['DOLocationID'])
+        features['trip_distance'] = ride['trip_distance']
+        return features
+
+    def predict(self, features):
+        pred = self.model.predict(features)
+        return float(pred[0])</code></pre></div>
+      <div class="callout">The class is slightly more verbose, but it never runs on import, is easier to extend, and — crucially — is <strong>testable</strong>.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">✅</span> Writing the First Tests</h2>
+      <p>With the refactor in place, test the pure pieces. Pass <code>None</code> as the model when the method under test doesn't use it:</p>
+      <div class="code-block"><pre><code>import model
+
+def test_prepare_features():
+    model_service = model.ModelService(None)
+    ride = {'PULocationID': 130, 'DOLocationID': 205, 'trip_distance': 3.66}
+
+    actual_features = model_service.prepare_features(ride)
+    expected_features = {'PU_DO': '130_205', 'trip_distance': 3.66}
+
+    assert actual_features == expected_features</code></pre></div>
+      <p>The base64 decode logic — easy to get wrong — is extracted into its own method and tested in isolation:</p>
+      <div class="code-block"><pre><code>def test_base64_decode():
+    base64_input = read_text('data.b64')          <span class="cm"># the encoded Kinesis record</span>
+
+    actual_result = model_service.base64_decode(base64_input)
+    expected_result = {
+        'ride': {'PULocationID': 130, 'DOLocationID': 205, 'trip_distance': 3.66},
+        'ride_id': 256,
+    }
+    assert actual_result == expected_result</code></pre></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🎭</span> Mocking the Model</h2>
+      <p>To test <code>predict</code> without touching S3 or MLflow, swap the real model for a tiny <span class="term">mock</span> — an object that mimics the real thing but returns a fixed value:</p>
+      <div class="code-block"><pre><code>class ModelMock:
+    def __init__(self, value):
+        self.value = value
+
+    def predict(self, X):
+        return [self.value] * len(X)      <span class="cm"># same value for every row</span>
+
+def test_predict():
+    model_mock = ModelMock(10.0)
+    model_service = model.ModelService(model_mock)
+
+    features = {'PU_DO': '130_205', 'trip_distance': 3.66}
+    actual_prediction = model_service.predict(features)
+
+    assert actual_prediction == 10.0</code></pre></div>
+      <div class="callout">A mock keeps the test <strong>fast and offline</strong>. You're verifying your code's flow, not the model's accuracy.</div>
+    </div>
+
+    <div class="section-divider"><span>3 · Decoupling Side-Effects with Callbacks</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔌</span> Keeping Kinesis out of the Core</h2>
+      <p>Putting records onto Kinesis is a side-effect that would force <code>ModelService</code> to know about clients and stream names. Instead, the class accepts a list of <span class="term">callbacks</span> invoked after each prediction; the Kinesis writer becomes one such callback in its own class:</p>
+      <div class="code-block"><pre><code>class KinesisCallback:
+    def __init__(self, kinesis_client, prediction_stream_name):
+        self.kinesis_client = kinesis_client
+        self.prediction_stream_name = prediction_stream_name
+
+    def put_record(self, prediction_event):
+        ride_id = prediction_event['prediction']['ride_id']
+        self.kinesis_client.put_record(
+            StreamName=self.prediction_stream_name,
+            Data=json.dumps(prediction_event),
+            PartitionKey=str(ride_id),
+        )
+
+def init(prediction_stream_name, run_id, test_run):
+    model = load_model(run_id)
+    callbacks = []
+    if not test_run:                               <span class="cm"># only wire Kinesis for real runs</span>
+        kinesis_client = boto3.client('kinesis')
+        kinesis_callback = KinesisCallback(kinesis_client, prediction_stream_name)
+        callbacks.append(kinesis_callback.put_record)
+    return ModelService(model, run_id, callbacks)</code></pre></div>
+      <p>In the handler, the service just loops over callbacks: <code>for callback in self.callbacks: callback(prediction_event)</code>. Default is an empty list, so existing tests keep passing untouched.</p>
+      <div class="callout">Use the Python idiom <code>callbacks or []</code> — if <code>callbacks</code> is <code>None</code>, the expression evaluates to an empty list.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧬</span> Testing the Whole Handler</h2>
+      <p>A final unit test runs the full <code>lambda_handler</code> end-to-end with the mock model, asserting on the complete response dictionary:</p>
+      <div class="code-block"><pre><code>def test_lambda_handler():
+    model_mock = ModelMock(10.0)
+    model_version = 'Test123'
+    model_service = model.ModelService(model_mock, model_version)
+
+    event = read_json('event.json')               <span class="cm"># a trimmed Kinesis event</span>
+    actual_predictions = model_service.lambda_handler(event)
+
+    expected_predictions = {
+        'predictions': [{
+            'model': 'ride_duration_prediction_model',
+            'version': model_version,
+            'prediction': {'ride_duration': 10.0, 'ride_id': 256},
+        }]
+    }
+    assert actual_predictions == expected_predictions</code></pre></div>
+    </div>
+
+    <div class="section-divider"><span>4 · Integration Tests</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> From Manual Script to Real Test</h2>
+      <p>Unit tests check pieces in isolation; an <span class="term">integration test</span> checks the whole service works together. The starting point is the manual <code>test_docker.py</code> that sends a request to the containerized service and prints the response. Turning it into a real test is mostly <strong>adding asserts</strong>:</p>
+      <div class="code-block"><pre><code>actual_response = requests.post(url, json=event).json()
+print('actual response:')
+print(json.dumps(actual_response, indent=2))
+
+assert actual_response == expected_response</code></pre></div>
+      <div class="callout"><code>assert</code> is built into Python — pytest just makes running many tests convenient. A failing assert exits with a non-zero code, which is exactly what CI needs.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔬</span> DeepDiff for Friendly Comparisons</h2>
+      <p>A bare assert tells you <em>that</em> two dicts differ, not <em>where</em>. The <span class="term">DeepDiff</span> library pinpoints the difference and supports float tolerance — vital since we care about minutes, not floating-point noise:</p>
+      <div class="code-block"><pre><code>from deepdiff import DeepDiff
+
+diff = DeepDiff(actual_response, expected_response, significant_digits=1)
+print(f'diff = {diff}')
+
+assert 'type_changes' not in diff
+assert 'values_changed' not in diff</code></pre></div>
+      <p><code>significant_digits=1</code> tells DeepDiff to ignore everything past the first decimal, so an approximate duration still passes. An empty diff means the responses match.</p>
+      <div class="callout">This comparison surfaced a real bug — the model <code>version</code> came back <code>null</code> because <code>ModelService</code> wasn't initialized with <code>model_version</code> and <code>callbacks</code>. Good tests find your mistakes.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📦</span> Removing the S3 Dependency</h2>
+      <p>An integration test shouldn't depend on S3 — the network might be down, the bucket gone, or permissions missing. The model loader is made flexible enough to read from a <strong>local path</strong> instead, configured via environment variables:</p>
+      <div class="code-block"><pre><code>def get_model_location(run_id):
+    model_location = os.getenv('MODEL_LOCATION')
+    if model_location is not None:                 <span class="cm"># local path wins if set</span>
+        return model_location
+
+    model_bucket = os.getenv('MODEL_BUCKET', 'mlflow-models-alexey')
+    experiment_id = os.getenv('MLFLOW_EXPERIMENT_ID', '1')
+    return f's3://{model_bucket}/{experiment_id}/{run_id}/artifacts/model'</code></pre></div>
+      <p>Download the model once into an <code>integration-test/model/</code> folder and mount it into the container so the test runs fully offline:</p>
+      <div class="code-block"><pre><code>aws s3 cp --recursive s3://&lt;bucket&gt;/1/&lt;run_id&gt;/ ./model
+docker run -it --rm \
+  -p 8080:8080 \
+  -e MODEL_LOCATION=/app/model \
+  -v $(pwd)/model:/app/model \
+  stream-model-duration:v2</code></pre></div>
+    </div>
+
+    <div class="section-divider"><span>5 · Automating the Integration Test</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🤖</span> A run.sh Orchestrator</h2>
+      <p>Building, running, and testing by hand across terminals is tedious. A single <code>run.sh</code> automates everything. Key tricks:</p>
+      <ul>
+        <li><strong>cd to the script's own directory</strong> so it works no matter where it's called from.</li>
+        <li>Tag the image with a <strong>timestamp</strong> (not just <code>latest</code>) so each build is identifiable — a git hash isn't enough when code is uncommitted.</li>
+        <li>Use <strong>docker-compose</strong> to keep configuration tidy, and start it in <strong>detached</strong> mode (<code>up -d</code>) so the script keeps control of the terminal.</li>
+      </ul>
+      <div class="code-block"><pre><code>cd "$(dirname "$0")"
+
+LOCAL_TAG=$(date +"%Y-%m-%d-%H-%M")
+export LOCAL_IMAGE_NAME="stream-model-duration:${LOCAL_TAG}"
+
+docker build -t ${LOCAL_IMAGE_NAME} ..
+docker-compose up -d
+sleep 1                                 <span class="cm"># give services time to start</span>
+
+pipenv run python test_docker.py
+ERROR_CODE=$?
+
+if [ ${ERROR_CODE} != 0 ]; then
+    docker-compose logs                 <span class="cm"># show why it failed</span>
+    docker-compose down
+    exit ${ERROR_CODE}
+fi
+
+docker-compose down</code></pre></div>
+      <div class="callout">Capture the exit code in a variable rather than relying on <code>set -e</code> — otherwise an early exit skips <code>docker-compose down</code> and leaves containers running. A non-zero exit makes CI mark the job failed.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Testing Cloud Services with LocalStack</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">☁️</span> A Local AWS for the Kinesis Callback</h2>
+      <p>The one piece still untested is the <code>KinesisCallback</code> — it only fires on real runs. <span class="term">LocalStack</span> provides a fully local AWS stack so you can test Kinesis (or S3) with <strong>no AWS account and no internet</strong>. Add it to docker-compose:</p>
+      <div class="code-block"><pre><code><span class="cm"># docker-compose.yaml</span>
+kinesis:
+  image: localstack/localstack
+  ports:
+    - "4566:4566"
+  environment:
+    - SERVICES=kinesis</code></pre></div>
+      <p>The AWS CLI talks to LocalStack by overriding the endpoint URL — nothing reaches the real cloud:</p>
+      <div class="code-block"><pre><code>aws --endpoint-url=http://localhost:4566 \
+    kinesis list-streams
+
+aws --endpoint-url=http://localhost:4566 \
+    kinesis create-stream --stream-name ride_predictions --shard-count 1</code></pre></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔧</span> Pointing the Code at LocalStack</h2>
+      <p>The service picks up an endpoint from an environment variable. Inside the compose network, services reference each other by <strong>name</strong> (<code>kinesis</code>); from outside, use <code>localhost</code>:</p>
+      <div class="code-block"><pre><code>def create_kinesis_client():
+    endpoint_url = os.getenv('KINESIS_ENDPOINT_URL')
+    if endpoint_url is None:
+        return boto3.client('kinesis')
+    return boto3.client('kinesis', endpoint_url=endpoint_url)</code></pre></div>
+      <p>A <code>test_kinesis.py</code> script (using boto3) fetches a shard iterator, reads the records, decodes them, and compares against the expected record with DeepDiff. The integration <code>run.sh</code> creates the stream, runs <code>test_docker.py</code>, then <code>test_kinesis.py</code>, tearing everything down at the end.</p>
+      <div class="callout">In Lambda you never write this shard-iterator plumbing — AWS handles consuming records for you. LocalStack is what lets you verify the producer side locally.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · Code Quality: Linting</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔎</span> pylint &amp; PEP 8</h2>
+      <p>Beyond reliability, code should be clean. <span class="term">PEP 8</span> is Python's style guide; a <span class="term">linter</span> statically analyzes code to check style and catch common mistakes (unused arguments, bad names, missing docstrings, global variables). The module uses <strong>pylint</strong>:</p>
+      <div class="code-block"><pre><code>pipenv install --dev pylint
+pylint --recursive=y .</code></pre></div>
+      <p>pylint integrates with VS Code (highlights warnings inline) and — importantly — exits with a <strong>non-zero code</strong> when warnings exist, so it can gate commits and CI. Some warnings are genuinely useful: it flagged a real cross-platform bug where files were opened without <code>encoding='utf-8'</code>.</p>
+      <div class="callout">Suppress warnings deliberately, not blindly — disable globally for conventions you accept (e.g. <code>missing-docstring</code>), or locally for one class with an inline <code>&#35; pylint: disable=...</code> comment.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Configuring via pyproject.toml</h2>
+      <p>Rather than scattering config files, modern tools share a single <code>pyproject.toml</code>. Disable accepted warnings there:</p>
+      <div class="code-block"><pre><code>[tool.pylint.message_control]
+disable = [
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "too-few-public-methods",
+]</code></pre></div>
+      <p>Long inline data (like base64 strings) that triggered <code>line-too-long</code> is moved into separate files (<code>data.b64</code>, <code>event.json</code>) and read at runtime — cleaner code <em>and</em> no warning. Use <code>pathlib.Path(__file__).parent</code> so the file is found relative to the script.</p>
+    </div>
+
+    <div class="section-divider"><span>8 · Code Quality: Formatting</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎨</span> black &amp; isort</h2>
+      <p>Two tools automate formatting so you never do it by hand:</p>
+      <div class="tier-grid">
+        <div class="tier">
+          <div class="tier-num">Formatter</div>
+          <h4>black</h4>
+          <p>Reformats code to a consistent style — spacing, line length, trailing commas. Opinionated, but configurable.</p>
+        </div>
+        <div class="tier">
+          <div class="tier-num">Import sorter</div>
+          <h4>isort</h4>
+          <p>Sorts and groups imports (standard library, then third-party, then named imports).</p>
+        </div>
+      </div>
+      <p>Preview before applying with <code>black --diff .</code> and <code>isort --diff .</code>. <strong>Commit first</strong> so changes are reversible. Configure both in <code>pyproject.toml</code>:</p>
+      <div class="code-block"><pre><code>[tool.black]
+line-length = 88
+target-version = ['py39']
+skip-string-normalization = true     <span class="cm"># keep single quotes</span>
+
+[tool.isort]
+line_length = 88
+length_sort = true                    <span class="cm"># sort imports by length</span></code></pre></div>
+      <div class="callout">A trailing comma in a multi-line collection tells black to <strong>leave it multi-line</strong>. The full quality run is: <code>isort .</code> → <code>black .</code> → <code>pylint --recursive=y .</code> → <code>pytest tests/</code>.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · Pre-commit Hooks</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🪝</span> Run Checks Before Code Enters Git</h2>
+      <p>It's easy to forget to format or test. A <span class="term">git pre-commit hook</span> runs checks automatically <strong>before every commit</strong>, blocking it if anything fails. The <code>pre-commit</code> tool manages these hooks:</p>
+      <div class="code-block"><pre><code>pipenv install --dev pre-commit
+pre-commit sample-config &gt; .pre-commit-config.yaml
+pre-commit install                    <span class="cm"># writes .git/hooks/pre-commit</span></code></pre></div>
+      <p>Since the hook lives in <code>.git/hooks</code> (never committed), every teammate must run <code>pre-commit install</code> once after cloning. The config chains the same quality tools:</p>
+      <div class="code-block"><pre><code>repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks: [{ id: isort }]
+  - repo: https://github.com/psf/black
+    rev: 22.6.0
+    hooks: [{ id: black }]
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types: [python]
+        args: ["--recursive=y"]
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
+        args: ["tests/"]</code></pre></div>
+      <div class="callout">If black reformats a file, the commit fails but the file is <strong>already fixed</strong> — just <code>git add</code> and commit again. This saves you from ever forgetting to test or format.</div>
+    </div>
+
+    <div class="section-divider"><span>10 · Makefiles</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> One Command Instead of Many</h2>
+      <p>A <strong>Makefile</strong> defines named aliases (targets) and dependencies between them, forming a graph of steps. Instead of remembering long commands, run <code>make test</code> or <code>make publish</code> — with tab auto-completion:</p>
+      <div class="code-block"><pre><code>LOCAL_TAG := $(shell date +"%Y-%m-%d-%H-%M")
+LOCAL_IMAGE_NAME := stream-model-duration:${LOCAL_TAG}
+
+test:
+	pytest tests/
+
+quality_checks:
+	isort .
+	black .
+	pylint --recursive=y .
+
+build: quality_checks test
+	docker build -t ${LOCAL_IMAGE_NAME} .
+
+integration_test: build
+	LOCAL_IMAGE_NAME=${LOCAL_IMAGE_NAME} bash integration-test/run.sh
+
+publish: build integration_test
+	bash scripts/publish.sh ${LOCAL_IMAGE_NAME}
+
+setup:
+	pipenv install --dev
+	pre-commit install</code></pre></div>
+      <div class="callout">Use <code>$(shell ...)</code>, not <code>$(...)</code>, so the date is evaluated <strong>once in bash</strong> and reused — otherwise each target re-evaluates it and the tag can drift between build and test. <code>make setup</code> bootstraps a fresh clone in one step.</div>
+    </div>
+
+    <div class="section-divider"><span>11 · Infrastructure as Code with Terraform</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> Defining the Pipeline as Code</h2>
+      <p><span class="term">Infrastructure as Code (IaC)</span> lets you define and automate cloud resources in version-controlled files instead of clicking through a console. <strong>Terraform</strong> is the chosen tool — open source and cloud-agnostic. The same streaming pipeline is provisioned in AWS:</p>
+      <div class="flow">
+        <div class="node">Kinesis<br>(source)</div>
+        <div class="arrow">→</div>
+        <div class="node accent">Lambda</div>
+        <div class="arrow">→</div>
+        <div class="node dashed">S3 model</div>
+        <div class="arrow">→</div>
+        <div class="node">Kinesis<br>(output)</div>
+      </div>
+      <p>An <strong>ECR</strong> repository holds the Lambda's Docker image, and a CloudWatch event source mapping triggers the Lambda whenever a record arrives in the source stream.</p>
+      <div class="callout">Terraform stores its <span class="term">state</span> (a snapshot of managed resources) in a backend. Here it's a remote <strong>S3 bucket</strong> you must create manually first — Terraform won't create its own state bucket.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧩</span> Modules &amp; Output Variables</h2>
+      <p>A Terraform project needs at least a <code>main.tf</code>; <code>variables.tf</code> holds inputs and defaults. The core building blocks:</p>
+      <ul>
+        <li><span class="term">Provider</span> — installs the AWS plugin (analogous to importing a library); configures region and credentials.</li>
+        <li><span class="term">Resource</span> — a physical or logical component (a Kinesis stream, an S3 bucket).</li>
+        <li><span class="term">Module</span> — a reusable, black-box component, ideal for avoiding duplication across <strong>staging and production</strong>.</li>
+        <li><span class="term">Output variable</span> — a value a module returns after creation (e.g. a stream's ARN), used to wire one resource into another and manage dependencies.</li>
+      </ul>
+      <div class="code-block"><pre><code><span class="cm"># modules/kinesis/main.tf</span>
+resource "aws_kinesis_stream" "stream" {
+  name             = var.stream_name
+  shard_count      = var.shard_count
+  retention_period = var.retention_period
+  tags = { CreatedBy = var.tags }
+}
+
+output "stream_arn" {
+  value = aws_kinesis_stream.stream.arn   <span class="cm"># returned for use elsewhere</span>
+}</code></pre></div>
+      <div class="code-block"><pre><code><span class="cm"># main.tf — referencing the module</span>
+module "source_kinesis_stream" {
+  source           = "./modules/kinesis"
+  stream_name      = "${var.source_stream_name}-${var.project_id}"
+  shard_count      = 2
+  retention_period = 48
+}</code></pre></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⛓️</span> The Tricky Lambda Dependencies</h2>
+      <p>Modules are created in <strong>parallel</strong>, but the Lambda depends on the Kinesis streams, the S3 model, and an existing image in ECR. In a monorepo you must force this ordering. A <code>null_resource</code> builds and pushes the image first, with a <code>local-exec</code> provisioner and an MD5 trigger so the image rebuilds only when the Dockerfile or handler changes:</p>
+      <div class="code-block"><pre><code>resource "null_resource" "ecr_image" {
+  triggers = {
+    python_file = md5(file(var.lambda_function_local_path))
+    docker_file = md5(file(var.docker_image_local_path))
+  }
+  provisioner "local-exec" {
+    command = &lt;&lt;EOF
+      ... docker build &amp; push to ECR ...
+    EOF
+  }
+}</code></pre></div>
+      <p>The standard workflow is <code>terraform init</code> → <code>plan</code> (a dry run against state) → <code>apply</code>. Per-environment values live in <code>.tfvars</code> files (<code>stg.tfvars</code>, <code>prod.tfvars</code>), passed with <code>-var-file</code>, and a suffix on every resource keeps staging and prod clusters separate.</p>
+      <div class="callout">An IAM role grants the Lambda permission to read the input stream, write the output stream, fetch the S3 model, and log to CloudWatch. The CloudWatch event source mapping is what actually triggers the function on each new record.</div>
+    </div>
+
+    <div class="section-divider"><span>12 · CI/CD with GitHub Actions</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚦</span> Continuous Integration &amp; Delivery</h2>
+      <p><span class="term">CI/CD</span> shortens and de-risks delivery. <strong>CI</strong> develops, tests, and packages code; <strong>CD</strong> ships it to the environments that depend on it. Workflows live in <code>.github/workflows/</code> and are triggered by repo events. The module builds two:</p>
+      <div class="tier-grid">
+        <div class="tier">
+          <div class="tier-num">Workflow 1 · CI</div>
+          <h4>On pull request</h4>
+          <p>Runs unit tests, integration tests (against LocalStack), and linting; runs <code>terraform plan</code> to validate infrastructure changes.</p>
+        </div>
+        <div class="tier">
+          <div class="tier-num">Workflow 2 · CD</div>
+          <h4>On merge / push</h4>
+          <p>Runs <code>terraform apply</code>, builds &amp; pushes the Docker image to ECR, then updates the Lambda config.</p>
+        </div>
+      </div>
+      <div class="callout">Each <strong>job runs in its own container</strong>, so every job re-checks out the repo and re-configures AWS. Jobs run in parallel unless you declare dependencies. Secrets (AWS keys) come from the repo's GitHub Secrets.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📝</span> The CI Workflow</h2>
+      <p>The CI workflow triggers on a pull request to <code>develop</code>, scoped to the module's path. Its <code>test</code> job sets up Python, installs dependencies, then runs the full local test suite:</p>
+      <div class="code-block"><pre><code>name: CI-Tests
+on:
+  pull_request:
+    branches: ['develop']
+    paths: ['06-best-practices/code/**']
+
+env:
+  AWS_DEFAULT_REGION: 'eu-west-1'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v2
+        with: { python-version: '3.9' }
+      - name: Install dependencies
+        run: pip install pipenv &amp;&amp; pipenv install --dev
+      - name: Run unit tests
+        run: pipenv run pytest tests/
+      - name: Lint
+        run: pipenv run pylint --recursive=y .
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Integration Test
+        run: bash integration-test/run.sh
+
+  tf-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v1
+        with: { ... }
+      - uses: hashicorp/setup-terraform@v2
+      - name: TF plan
+        run: terraform init &amp;&amp; terraform plan -var-file=vars/prod.tfvars</code></pre></div>
+      <div class="callout">A small flag in <code>run.sh</code> detects the GitHub CI environment so the working-directory logic behaves both locally and in CI. LocalStack in CI also needs dummy AWS keys set in the integration test's docker-compose.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🚀</span> The CD Workflow</h2>
+      <p>The CD workflow triggers on <strong>push</strong> to <code>develop</code> (i.e. when a PR merges) and runs as one sequential job with three sections:</p>
+      <ol class="algo-steps">
+        <li><strong>Define infrastructure</strong> — <code>terraform init</code> + <code>plan</code>, then <code>apply -auto-approve</code> (only if the plan step succeeded). Output variables expose the ECR repo, prediction stream, model bucket, and Lambda name.</li>
+        <li><strong>Build &amp; push</strong> — log in to ECR, build the Lambda image, and push it (tagged <code>latest</code>, or a git SHA for blue-green style versioning).</li>
+        <li><strong>Deploy</strong> — fetch the latest model <code>run_id</code>, copy artifacts into the Terraform-created bucket, then <code>aws lambda update-function-configuration</code> with the fresh environment variables.</li>
+      </ol>
+      <div class="callout">The image is first deployed by Terraform, but the CD <strong>deploy step keeps the application logic fresh</strong> independently of infrastructure changes — that's why the two are decoupled. Add a short sleep so the Lambda finishes bootstrapping before you update its config.</div>
+    </div>
+
+    <div class="section-divider"><span>13 · Module Recap</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎓</span> What Good Engineering Looks Like</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Reliability</div>
+          <ul>
+            <li>Unit tests for isolated functions</li>
+            <li>Integration tests for the whole service</li>
+            <li>LocalStack to test cloud services offline</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Automation &amp; Hygiene</div>
+          <ul>
+            <li>Linting &amp; formatting (pylint, black, isort)</li>
+            <li>Pre-commit hooks &amp; Makefiles</li>
+            <li>Terraform IaC + GitHub Actions CI/CD</li>
+          </ul>
+        </div>
+      </div>
+      <p>Together these practices take a fragile script and turn it into a service you can change with confidence — tests catch regressions, formatters keep it readable, and automation deploys it the same way every time.</p>
+      <div class="callout">The natural next step is <strong>Continuous Training (CT)</strong> — automating model retraining and registry integration so new model versions flow into production through the same CI/CD machinery.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← MLOps Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

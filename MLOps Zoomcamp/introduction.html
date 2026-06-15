@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Introduction to MLOps — MLOps Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    /* ── maturity ladder ── */
+    .maturity-list { list-style:none; padding:0; margin:0.8rem 0; }
+    .maturity-item { display:flex; gap:0.9rem; background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.6rem; }
+    .maturity-item .level { flex:0 0 auto; width:2.2rem; height:2.2rem; border-radius:8px; background:#6366f1; color:#fff; font-weight:800; font-size:0.95rem; display:flex; align-items:center; justify-content:center; }
+    .maturity-item .level-body h3 { margin:0 0 0.3rem 0; font-size:0.95rem; color:#e2e8f0; }
+    .maturity-item .level-body p { margin:0; font-size:0.85rem; color:#94a3b8; line-height:1.6; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ MLOps Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">MLOps Zoomcamp · Module 1</p>
+      <h1>Introduction to MLOps</h1>
+      <p>What MLOps actually is, the ride-duration example, the simplified design → train → operate process, a baseline training notebook, the problems that motivate the course, and the MLOps maturity model.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · What Is MLOps?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> A Set of Best Practices for Production ML</h2>
+      <p>Search any engine for "MLOps" and you will land on Wikipedia, where you read that <span class="term">MLOps</span> is a set of <strong>best practices for putting machine learning into production</strong>. That single idea is the entire focus of this course — the practices, and the tools that implement them, for taking a model out of a notebook and into the real world.</p>
+      <div class="callout">MLOps is not one tool. It is a collection of practices for <strong>automating everything</strong> and for <strong>working together as a team</strong> across the whole lifecycle of a machine learning project.</div>
+      <p>Concretely, MLOps helps at every stage: experimenting without losing your mind, reproducing results, retraining a model with one click, deploying it easily, and monitoring its quality once it is live.</p>
+    </div>
+
+    <div class="section-divider"><span>2 · The Running Example — Predicting Ride Duration</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚕</span> How Long Will the Trip Take?</h2>
+      <p>Throughout the course we use one problem: <strong>predicting the duration of a taxi ride</strong>. Imagine you need a taxi. You open an app, give your <em>pickup</em> location and your <em>drop-off</em> location, and you want to know how long the trip will take.</p>
+      <div class="flow">
+        <div class="node">Pickup location</div>
+        <div class="arrow">+</div>
+        <div class="node">Drop-off location</div>
+        <div class="arrow">→</div>
+        <div class="node accent">Model</div>
+        <div class="arrow">→</div>
+        <div class="node">Duration ≈ 10 min</div>
+      </div>
+      <p>This is a <strong>regression</strong> problem — the target is a number (minutes). It is simple enough to keep out of the way, so the focus stays on the MLOps practices wrapped around it rather than the model itself.</p>
+    </div>
+
+    <div class="section-divider"><span>3 · A Simplified ML Project Process</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> Design → Train → Operate</h2>
+      <p>To see where best practices fit, it helps to look at a very simplified view of an ML project. In reality there are more stages, but in the simplest form there are three.</p>
+      <div class="flow">
+        <div class="node accent">1 · Design</div>
+        <div class="arrow">→</div>
+        <div class="node accent">2 · Train</div>
+        <div class="arrow">→</div>
+        <div class="node accent">3 · Operate</div>
+      </div>
+      <ul>
+        <li><span class="term">Design</span> — decide whether machine learning is even the right tool. Do we actually need ML to predict trip duration, or is something simpler enough? If ML <em>is</em> warranted, move on.</li>
+        <li><span class="term">Train</span> — run experiments to find the best possible model. The output of this stage is a trained model ready to apply to new data.</li>
+        <li><span class="term">Operate</span> — put the model to work. Typically <span class="term">deploy</span> it as a web service behind an API so the customer's phone can send pickup/drop-off and get back a predicted duration.</li>
+      </ul>
+      <div class="callout"><strong>Deployment lives inside the operate stage</strong> — but operating doesn't stop there. Once the model is live we must make sure it keeps performing well and does not <strong>degrade</strong> over time, which is where monitoring comes in.</div>
+    </div>
+
+    <div class="section-divider"><span>4 · Reading the NYC Taxi Data (Parquet)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> CSV Is Gone — Everything Is Parquet Now</h2>
+      <p>The NYC TLC trip-record dataset used to be distributed as CSV, but it has since switched to the <span class="term">Parquet</span> format. Parquet files are <strong>much smaller</strong> than the equivalent CSV, which is almost certainly why the switch was made.</p>
+      <p>Download the files with <code>wget</code> (the February URL follows the same pattern — just swap the month):</p>
+      <div class="code-block"><pre><code><span class="cm"># inside the data folder</span>
+wget https://.../green_tripdata_2021-01.parquet
+wget https://.../green_tripdata_2021-02.parquet</code></pre></div>
+      <p>Read them with Pandas using <code>read_parquet</code> instead of <code>read_csv</code>. This needs an engine — install <code>pyarrow</code> (or <code>fastparquet</code>) first:</p>
+      <div class="code-block"><pre><code><span class="cm"># pip install pyarrow</span>
+import pandas as pd
+
+df = pd.read_parquet("data/green_tripdata_2021-01.parquet")</code></pre></div>
+      <div class="callout">A pleasant side effect: with Parquet the datetime columns arrive already typed as <strong>datetime</strong>, so the manual <code>pd.to_datetime(...)</code> parsing step needed for CSV is <strong>no longer required</strong>.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · A Baseline Duration Model (Optional)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Building the Model the Data-Science Way</h2>
+      <p>This walkthrough is optional — you can skip to the result. It shows how a data scientist typically works: open a notebook, import, experiment, and execute cells in a very particular order.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Compute the target</h3>
+      <p>The target is <strong>trip duration in minutes</strong>, derived from the drop-off and pickup timestamps:</p>
+      <div class="code-block"><pre><code>df["duration"] = df.lpep_dropoff_datetime - df.lpep_pickup_datetime
+df["duration"] = df.duration.apply(lambda td: td.total_seconds() / 60)</code></pre></div>
+      <p>The raw distribution has a very long tail — some trips last almost a full day, others under a minute. Filtering to a sensible business range (1 to 60 minutes) removes the noise:</p>
+      <div class="code-block"><pre><code>df = df[(df.duration &gt;= 1) &amp; (df.duration &lt;= 60)]</code></pre></div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Vectorize the features</h3>
+      <p>Use pickup and drop-off location IDs as <strong>categorical</strong> features and trip distance as a <strong>numerical</strong> feature. Cast the categoricals to strings so <code>DictVectorizer</code> one-hot encodes them instead of treating them as numbers:</p>
+      <div class="code-block"><pre><code>from sklearn.feature_extraction import DictVectorizer
+
+categorical = ["PULocationID", "DOLocationID"]
+numerical = ["trip_distance"]
+df[categorical] = df[categorical].astype(str)
+
+train_dicts = df[categorical + numerical].to_dict(orient="records")
+dv = DictVectorizer()
+X_train = dv.fit_transform(train_dicts)
+y_train = df["duration"].values</code></pre></div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Train and evaluate</h3>
+      <p>Fit a plain linear regression and measure the <strong>root mean squared error</strong>:</p>
+      <div class="code-block"><pre><code>from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+
+y_pred = lr.predict(X_train)
+mean_squared_error(y_train, y_pred, squared=False)   <span class="cm"># ≈ 9 min</span></code></pre></div>
+      <p>Around <strong>9 minutes</strong> of error on train, ~10 on validation (February). Lasso and Ridge with various <code>alpha</code> values did not beat plain linear regression on this data.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">A better feature: the pickup–dropoff pair</h3>
+      <p>Instead of using the two locations separately, combine them into a single <strong>interaction feature</strong>. This captures "the typical duration from <em>this</em> pickup to <em>this</em> drop-off" and improves the model significantly:</p>
+      <div class="code-block"><pre><code>df["PU_DO"] = df["PULocationID"] + "_" + df["DOLocationID"]
+categorical = ["PU_DO"]</code></pre></div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Save the model</h3>
+      <p>Persist both the vectorizer <em>and</em> the model together with pickle — you need both to make predictions later:</p>
+      <div class="code-block"><pre><code>import pickle
+
+with open("models/lin_reg.bin", "wb") as f_out:
+    pickle.dump((dv, lr), f_out)</code></pre></div>
+      <div class="callout">This notebook is intentionally messy — you cannot just run it top to bottom and expect the best model. That fragility is exactly the motivation for the rest of the course.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Notebook Problems → Course Modules</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗺️</span> Mapping the Mess to the Solutions</h2>
+      <p>Looking back at the notebook reveals recurring problems — and each problem maps to a module of the course that fixes it.</p>
+      <table>
+        <thead>
+          <tr><th>Problem in the notebook</th><th>MLOps solution</th><th>Module</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>History of experiments is lost — only the last run survives, relying on memory or spreadsheets</td><td>Experiment tracking &amp; model registry (MLflow)</td><td>2</td></tr>
+          <tr><td>Cells must run in a fragile order; hard to re-run for a new month</td><td>ML pipelines (Prefect, Kubeflow)</td><td>3</td></tr>
+          <tr><td>A saved <code>.bin</code> model with no metadata — which model is this, how good was it?</td><td>Model serving / deployment</td><td>4</td></tr>
+          <tr><td>No idea whether a live model keeps performing</td><td>Model monitoring</td><td>5</td></tr>
+          <tr><td>Code is not tested, packaged, or maintainable</td><td>Best practices (tests, Docker, CI/CD)</td><td>6</td></tr>
+          <tr><td>Data scientists work in isolation from engineers</td><td>Processes &amp; team collaboration</td><td>7</td></tr>
+        </tbody>
+      </table>
+      <p>The pipeline naturally decomposes into steps that don't all need re-running every time: <strong>load &amp; prepare data → vectorize → train model</strong>. Once parameterized (which month, which model), the whole thing reduces to a single command like <code>python pipeline.py</code>.</p>
+      <div class="callout">At the highest level of automation, monitoring detects a performance drop, <strong>automatically triggers the pipeline</strong> to retrain on fresh data, and <strong>automatically deploys</strong> the new model — no human in the loop.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · The MLOps Maturity Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> Five Levels, From No MLOps to Full Automation</h2>
+      <p>Borrowed from Microsoft's MLOps maturity article, the model defines five levels — from <strong>level 0</strong> (no MLOps) to <strong>level 4</strong> (full automation). The numbering starts at zero, for fun.</p>
+      <ul class="maturity-list">
+        <li class="maturity-item">
+          <div class="level">0</div>
+          <div class="level-body">
+            <h3>No MLOps automation</h3>
+            <p>All work in sloppy Jupyter notebooks — no pipelines, no experiment tracking, no model metadata. Data scientists work alone and hand notebooks to engineers to re-implement. Fine for a proof of concept.</p>
+          </div>
+        </li>
+        <li class="maturity-item">
+          <div class="level">1</div>
+          <div class="level-body">
+            <h3>DevOps, but no MLOps</h3>
+            <p>Solid software engineering: automated releases, unit &amp; integration tests, CI/CD, and operational metrics (requests/sec, network). But the system is <strong>not ML-aware</strong> — no experiment tracking, hard to reproduce a model.</p>
+          </div>
+        </li>
+        <li class="maturity-item">
+          <div class="level">2</div>
+          <div class="level-body">
+            <h3>Automated training</h3>
+            <p>A parameterized training pipeline (even just <code>python train.py</code>), plus experiment tracking and a model registry. Deployment is still manual but low-friction. Data scientists and engineers work together. Worthwhile once you have 2–3 proven use cases.</p>
+          </div>
+        </li>
+        <li class="maturity-item">
+          <div class="level">3</div>
+          <div class="level-body">
+            <h3>Automated deployment</h3>
+            <p>Deploying a model is effortless — often a single API call to an ML platform — and can be part of the training pipeline. Adds A/B testing between model versions and model monitoring.</p>
+          </div>
+        </li>
+        <li class="maturity-item">
+          <div class="level">4</div>
+          <div class="level-body">
+            <h3>Full MLOps automation</h3>
+            <p>Training and deployment fully automated together. Monitoring detects drift, triggers retraining, deploys (and A/B tests) the new model, and rolls it out — with no human involved. Requires deep trust in the system.</p>
+          </div>
+        </li>
+      </ul>
+      <div class="callout"><strong>Be pragmatic.</strong> Not every project needs level 4 — for many models level 2 (perhaps with monitoring) is plenty. Match the maturity level to the value and risk of the use case rather than chasing full automation everywhere. This course aims to get you to a solid level 2 touching level 3.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← MLOps Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

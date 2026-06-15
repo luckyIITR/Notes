@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Experiment Tracking with MLflow — MLOps Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    /* ── stage ladder ── */
+    .stage-list { list-style:none; padding:0; margin:0.8rem 0; }
+    .stage-item { display:flex; gap:0.9rem; background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.6rem; }
+    .stage-item .badge { flex:0 0 auto; padding:0.25rem 0.6rem; height:fit-content; border-radius:6px; background:#6366f1; color:#fff; font-weight:700; font-size:0.72rem; letter-spacing:0.05em; text-transform:uppercase; }
+    .stage-item .stage-body h3 { margin:0 0 0.3rem 0; font-size:0.95rem; color:#e2e8f0; }
+    .stage-item .stage-body p { margin:0; font-size:0.85rem; color:#94a3b8; line-height:1.6; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ MLOps Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">MLOps Zoomcamp · Module 2</p>
+      <h1>Experiment Tracking with MLflow</h1>
+      <p>What experiment tracking is and why it matters, plus a deep tour of MLflow — logging runs, hyperparameter tuning, model management, the model registry, and how to run MLflow in real teams.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Key Vocabulary</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📚</span> The Terms We Keep Using</h2>
+      <p>Before anything else, a few words that come up constantly. Note that <strong>experiment</strong> here means <em>offline</em> ML experiments — building a model — not A/B testing.</p>
+      <ul>
+        <li><span class="term">ML experiment</span> — the whole process of building a model (e.g. playing with different models and hyperparameters for one problem).</li>
+        <li><span class="term">Experiment run</span> — a single trial inside an experiment. This is exactly how MLflow models the problem: one experiment is a bunch of runs.</li>
+        <li><span class="term">Run artifact</span> — any file associated with a run (a plot, a pickled model, a dataset…).</li>
+        <li><span class="term">Experiment metadata</span> — all the information related to a run: source code, version, environment, and so on.</li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>2 · What Is Experiment Tracking?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔍</span> Keeping Track of What Matters</h2>
+      <p><span class="term">Experiment tracking</span> is the process of keeping track of all the <strong>relevant information</strong> from an ML experiment — and "relevant" depends entirely on what you're doing. If you're varying the data, you track the data source, version, and preprocessing. If you're tuning hyperparameters, you track those values.</p>
+      <p>Because it's hard to pin down the exact set of things to record, the common approach is to capture a lot of <strong>standard items</strong> — source code, version, environment — and then customize per experiment.</p>
+      <div class="callout">Experiment tracking matters for three big reasons: <strong>reproducibility</strong> (science should be repeatable), <strong>organization</strong> (so anyone — including future-you — can find things), and <strong>optimization</strong> (visualizing results to improve the model).</div>
+      <p>The most basic "tracking system" is a spreadsheet of metrics — and it has real problems:</p>
+      <ul>
+        <li><strong>Error prone</strong> — usually filled in manually by copy-pasting results.</li>
+        <li><strong>No standard format</strong> — a new data scientist can't easily tell what was tested, which hyperparameters changed, or what data was used.</li>
+        <li><strong>Poor visibility &amp; collaboration</strong> — a manager would have to collect everyone's spreadsheets; a teammate has to reverse-engineer what you did.</li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>3 · Meet MLflow</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌊</span> An Open-Source ML Lifecycle Platform</h2>
+      <p><span class="term">MLflow</span> is "an open source platform for the machine learning lifecycle." Unlike tools that need extra infrastructure (e.g. Kubeflow), MLflow is just a <strong>simple Python package</strong> — <code>pip install mlflow</code> gives you a local setup immediately. You can later run a server for collaboration, but that's not required at first.</p>
+      <p>The package has four main modules:</p>
+      <table>
+        <thead>
+          <tr><th>Module</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Tracking</strong></td><td>Experiment tracking — the focus of this module.</td></tr>
+          <tr><td><strong>Models</strong></td><td>A standard format for packaging models.</td></tr>
+          <tr><td><strong>Model Registry</strong></td><td>Managing model versions and lifecycle stages.</td></tr>
+          <tr><td><strong>Projects</strong></td><td>Packaging reproducible runs (out of scope for the course).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>4 · What MLflow Tracks Per Run</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏷️</span> Parameters, Metrics, Tags, Artifacts, Models</h2>
+      <p>MLflow organizes experiments into <strong>runs</strong>, and for each run you can track several kinds of entities:</p>
+      <ul>
+        <li><span class="term">Parameters</span> — hyperparameters <em>and</em> anything else that affects the metric, like the <strong>path to the training data</strong> or a preprocessing choice.</li>
+        <li><span class="term">Metrics</span> — any evaluation number (accuracy, F1, RMSE…), on train, validation, or test.</li>
+        <li><span class="term">Tags</span> — metadata for later search/filter, e.g. the developer's name or the algorithm type.</li>
+        <li><span class="term">Artifacts</span> — any file (a visualization, even the dataset — though logging data as an artifact doesn't scale well due to duplication).</li>
+        <li><span class="term">Models</span> — the trained model itself (sometimes you skip this — during a hyperparameter sweep you may only care about the metrics).</li>
+      </ul>
+      <div class="callout">On top of what you log manually, MLflow <strong>automatically</strong> records extra info: the source file name, the code version (git commit), start/end time, and the author.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Setup &amp; Basic Logging</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> From Install to First Run</h2>
+      <p>Work inside an isolated environment so you don't pollute your system. Then install the requirements and launch the UI — crucially, with a <strong>backend store</strong> so the model registry works:</p>
+      <div class="code-block"><pre><code><span class="cm"># create + activate an isolated env, then:</span>
+pip install -r requirements.txt
+
+<span class="cm"># launch the UI backed by a SQLite database</span>
+mlflow ui --backend-store-uri sqlite:///mlflow.db</code></pre></div>
+      <p>In the notebook, point MLflow at that backend and name the experiment (MLflow creates it if it doesn't exist, otherwise appends runs to it):</p>
+      <div class="code-block"><pre><code>import mlflow
+
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_experiment("nyc-taxi-experiment")</code></pre></div>
+      <p>Wrap a trial in <code>start_run()</code> — everything inside the <code>with</code> block is attached to that run:</p>
+      <div class="code-block"><pre><code>with mlflow.start_run():
+    mlflow.set_tag("developer", "cristian")
+    mlflow.log_param("train-data-path", "data/green_tripdata_2021-01.parquet")
+    mlflow.log_param("valid-data-path", "data/green_tripdata_2021-02.parquet")
+
+    alpha = 0.01
+    mlflow.log_param("alpha", alpha)
+    lr = Lasso(alpha)
+    lr.fit(X_train, y_train)
+
+    rmse = mean_squared_error(y_val, lr.predict(X_val), squared=False)
+    mlflow.log_metric("rmse", rmse)</code></pre></div>
+      <div class="callout">Logging the <strong>data paths as parameters</strong> is a poor-man's data versioning — if metrics suddenly shift later, you can see whether a different dataset was the cause. Logging a metric over epochs gives you a <strong>learning-curve plot</strong> in the UI.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Hyperparameter Tuning &amp; Visualization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎛️</span> Searching With Hyperopt + XGBoost</h2>
+      <p><span class="term">Hyperopt</span> uses Bayesian methods to find good hyperparameters. Your model becomes an <strong>objective function</strong> that takes parameters and returns a value to minimize; <code>fmin</code> drives the search over a defined <strong>search space</strong> using the <code>tpe</code> algorithm, and a <code>Trials</code> object records each run.</p>
+      <div class="code-block"><pre><code>import xgboost as xgb
+from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+from hyperopt.pyll import scope
+
+def objective(params):
+    with mlflow.start_run():
+        mlflow.set_tag("model", "xgboost")
+        mlflow.log_params(params)
+        booster = xgb.train(
+            params=params, dtrain=train, num_boost_round=1000,
+            evals=[(valid, "validation")], early_stopping_rounds=50,
+        )
+        y_pred = booster.predict(valid)
+        rmse = mean_squared_error(y_val, y_pred, squared=False)
+        mlflow.log_metric("rmse", rmse)
+    return {"loss": rmse, "status": STATUS_OK}
+
+search_space = {
+    "max_depth": scope.int(hp.quniform("max_depth", 4, 100, 1)),
+    "learning_rate": hp.loguniform("learning_rate", -3, 0),
+    "reg_alpha": hp.loguniform("reg_alpha", -5, -1),
+    "reg_lambda": hp.loguniform("reg_lambda", -6, -1),
+    "min_child_weight": hp.loguniform("min_child_weight", -1, 3),
+    "objective": "reg:linear",
+    "seed": 42,
+}
+
+best = fmin(fn=objective, space=search_space, algo=tpe.suggest,
+            max_evals=50, trials=Trials())</code></pre></div>
+      <p>XGBoost needs its own data type — wrap the feature matrices in <code>DMatrix</code>:</p>
+      <div class="code-block"><pre><code>train = xgb.DMatrix(X_train, label=y_train)
+valid = xgb.DMatrix(X_val, label=y_val)</code></pre></div>
+      <p>With every trial logged and tagged <code>model=xgboost</code>, you can filter to those runs in the UI, select them all, and compare. Three visualizations are especially useful:</p>
+      <ul>
+        <li><strong>Parallel coordinates plot</strong> — see all hyperparameters at once and which combinations drive low RMSE (e.g. lower <code>min_child_weight</code> correlates with lower error).</li>
+        <li><strong>Scatter plot</strong> — one hyperparameter vs the metric, to spot patterns and regions worth exploring.</li>
+        <li><strong>Contour plot</strong> — two hyperparameters vs the metric at once, to find promising regions.</li>
+      </ul>
+      <div class="callout">The "best" model isn't only about the lowest metric. Also weigh <strong>training time</strong> and <strong>model size/complexity</strong> — a slightly worse but far smaller, faster model is often the better production choice.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · Autolog</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> Logging in One Line</h2>
+      <p>For supported frameworks (scikit-learn, TensorFlow/Keras, Gluon, XGBoost, LightGBM, statsmodels, Spark, fastai, PyTorch), <span class="term">autolog</span> records parameters, metrics, model, and even feature-importance plots automatically:</p>
+      <div class="code-block"><pre><code>mlflow.xgboost.autolog()
+<span class="cm"># ...then just train as usual — MLflow logs everything</span></code></pre></div>
+      <p>Autolog captures far more parameters than you'd bother to log by hand, saves the model in MLflow's format, and records the environment — at the cost of a slightly longer run while it does the logging.</p>
+    </div>
+
+    <div class="section-divider"><span>8 · Model Management</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📦</span> Saving Models the MLflow Way</h2>
+      <p>Model management is the broader area around experiment tracking that also covers model versioning, deployment, and scaling. There are two ways to save a model with MLflow.</p>
+      <p><strong>Option A — as a plain artifact</strong> (the basic way). You still have to know how to load and run the pickle yourself:</p>
+      <div class="code-block"><pre><code>mlflow.log_artifact("models/lin_reg.bin", artifact_path="models_pickle")</code></pre></div>
+      <p><strong>Option B — as an MLflow model</strong> (the good way). MLflow stores extra metadata that makes the model easy to reload later:</p>
+      <div class="code-block"><pre><code>mlflow.xgboost.log_model(booster, artifact_path="models_mlflow")</code></pre></div>
+      <p>This produces an <code>MLmodel</code> file describing the model, the available <strong>flavors</strong> (every model gets a generic <code>python_function</code> flavor, plus a framework one like <code>xgboost</code>), and a <code>conda.yaml</code> / <code>requirements.txt</code> recording the exact dependencies (it infers them from your environment).</p>
+      <p>It's a good idea to also save the <strong>preprocessor</strong> (e.g. the <code>DictVectorizer</code>) as an artifact, since you'll need to transform raw data the same way before predicting:</p>
+      <div class="code-block"><pre><code>with open("models/preprocessor.b", "wb") as f_out:
+    pickle.dump(dv, f_out)
+mlflow.log_artifact("models/preprocessor.b", artifact_path="preprocessor")</code></pre></div>
+      <p>Loading a logged model later — in two flavors — using its <code>model_uri</code> (<code>runs:/&lt;run_id&gt;/&lt;artifact_path&gt;</code>):</p>
+      <div class="code-block"><pre><code><span class="cm"># generic python function</span>
+model = mlflow.pyfunc.load_model(model_uri)
+
+<span class="cm"># native xgboost object (exposes booster methods)</span>
+booster = mlflow.xgboost.load_model(model_uri)
+y_pred = booster.predict(valid)</code></pre></div>
+      <div class="callout">Because the saved model carries its flavors and environment, you can later deploy it as a Python function, a Docker container, a Spark batch job, on Kubernetes, or to SageMaker / Azure — without rewriting loading code.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · The Model Registry</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗂️</span> Promoting Models to Production</h2>
+      <p>Imagine a data scientist emails you a new model to deploy. You immediately have questions: what changed, what preprocessing is needed, which environment and library versions? And if production breaks, how do you roll back? The <span class="term">model registry</span> solves this by being the central place where production-ready models live.</p>
+      <p>The data scientist <strong>registers</strong> promising models; the deployment engineer inspects them (hyperparameters, size, performance) and moves them between <strong>stages</strong>:</p>
+      <ul class="stage-list">
+        <li class="stage-item"><div class="badge">Staging</div><div class="stage-body"><h3>Candidate</h3><p>A model considered ready and under evaluation for production.</p></div></li>
+        <li class="stage-item"><div class="badge">Production</div><div class="stage-body"><h3>Live</h3><p>The model currently serving (the registry only labels it — it does not deploy).</p></div></li>
+        <li class="stage-item"><div class="badge">Archived</div><div class="stage-body"><h3>Retired</h3><p>Older models kept around; can be pulled back to production for a rollback.</p></div></li>
+      </ul>
+      <div class="callout">The registry <strong>does not deploy</strong> anything — stages are just labels. You complement it with CI/CD code that does the actual deployment.</div>
+      <p>You can drive the registry from Python with <code>MlflowClient</code> — searching runs, registering models, and transitioning stages:</p>
+      <div class="code-block"><pre><code>from mlflow.tracking import MlflowClient
+from mlflow.entities import ViewType
+
+client = MlflowClient(tracking_uri="sqlite:///mlflow.db")
+
+runs = client.search_runs(
+    experiment_ids="1",
+    filter_string="metrics.rmse < 6.8",
+    run_view_type=ViewType.ACTIVE_ONLY,
+    max_results=5,
+    order_by=["metrics.rmse ASC"],
+)
+
+<span class="cm"># register a run's model</span>
+mlflow.register_model(model_uri="runs:/&lt;run_id&gt;/model",
+                      name="nyc-taxi-regressor")
+
+<span class="cm"># move version 4 to Production</span>
+client.transition_model_version_stage(
+    name="nyc-taxi-regressor", version=4,
+    stage="Production", archive_existing_versions=True,
+)</code></pre></div>
+      <div class="callout"><strong>Model lineage:</strong> each registered version links back to the run that produced it, so you can always recover its parameters, metrics, data paths, and environment. Versioning is automatic, and you can annotate versions with descriptions and tags.</div>
+      <p>To choose between candidates, load each stage's model and compare on fresh test data (e.g. March), weighing both error <em>and</em> latency before promoting.</p>
+    </div>
+
+    <div class="section-divider"><span>10 · MLflow in Practice</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏢</span> Three Scenarios, Three Setups</h2>
+      <p>How you run MLflow depends on context. Three configuration knobs matter: the <span class="term">backend store</span> (metadata — local files or a SQL database), the <span class="term">artifact store</span> (models/files — local or S3), and whether you run a <span class="term">tracking server</span> (none, local, or remote).</p>
+      <table>
+        <thead>
+          <tr><th>Scenario</th><th>Tracking server</th><th>Backend store</th><th>Artifact store</th><th>Registry?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Solo data scientist (competition)</td><td>None</td><td>Local files</td><td>Local files</td><td>Not needed</td></tr>
+          <tr><td>Cross-functional team, one DS</td><td>Local</td><td>SQLite</td><td>Local (or cloud)</td><td>Useful</td></tr>
+          <tr><td>Multiple DS collaborating</td><td>Remote (e.g. EC2)</td><td>Postgres (RDS)</td><td>S3</td><td>Required</td></tr>
+        </tbody>
+      </table>
+      <p>With no configuration, MLflow defaults to a local <code>mlruns/</code> folder and the model registry is <strong>unavailable</strong> — switch the backend to SQLite to enable it. A common gotcha: launch <code>mlflow ui</code> from the same directory where the runs were created, or it won't find them.</p>
+      <p>For a full team setup, run a remote server backed by Postgres + S3:</p>
+      <div class="code-block"><pre><code>mlflow server \
+  -h 0.0.0.0 -p 5000 \
+  --backend-store-uri postgresql://USER:PASS@ENDPOINT:5432/DB_NAME \
+  --default-artifact-root s3://mlflow-artifacts-remote</code></pre></div>
+      <p>The AWS recipe: launch an EC2 instance, create an S3 bucket, create a Postgres RDS database, open the right security-group ports (5000 for HTTP, 5432 for Postgres), then SSH in and start the server. Clients point at it with <code>mlflow.set_tracking_uri("http://&lt;public-dns&gt;:5000")</code> — and must have AWS credentials configured locally so MLflow can write artifacts to S3.</p>
+    </div>
+
+    <div class="section-divider"><span>11 · Limits, Issues &amp; Alternatives</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Where MLflow Stops</h2>
+      <p>Running a shared remote server raises real operational issues:</p>
+      <ul>
+        <li><strong>Security</strong> — restrict access (e.g. behind a VPN) so outsiders can't see experiments and models.</li>
+        <li><strong>Scalability</strong> — for thousands of runs, consider deploying on AWS Fargate or scaling patterns used by large teams.</li>
+        <li><strong>Isolation</strong> — shared servers get messy; standardize experiment/model naming (prefix with team name) and enforce default tags to keep teams' runs separable. Use separate S3 buckets/accounts to control artifact access.</li>
+      </ul>
+      <p>Known limitations of open-source MLflow:</p>
+      <ul>
+        <li><strong>No authentication / users / teams</strong> (the managed Databricks version adds this).</li>
+        <li><strong>No built-in data versioning</strong> — work around it with data paths, hashes, or (for small data) artifacts.</li>
+        <li><strong>No model/data monitoring &amp; alerting</strong> — outside MLflow's scope; better handled by a dedicated tool.</li>
+      </ul>
+      <div class="callout">Alternatives like <strong>Neptune</strong>, <strong>Weights &amp; Biases</strong>, and <strong>Comet</strong> are free for individuals but paid for teams. They offer similar tracking, sometimes with extras MLflow lacks — users/teams, dirty-commit detection, hardware-consumption logging, and richer integrations.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← MLOps Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

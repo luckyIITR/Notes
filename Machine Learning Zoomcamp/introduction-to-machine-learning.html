@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Introduction to Machine Learning — Machine Learning Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Machine Learning Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">ML Zoomcamp · Session 1</p>
+      <h1>Introduction to Machine Learning</h1>
+      <p>What machine learning is, how it differs from rule-based systems, the kinds of supervised learning, the CRISP-DM process, model selection, and the core tools — NumPy, linear algebra, and Pandas.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · What Is Machine Learning?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚗</span> Learning From a Car-Price Example</h2>
+      <p>Imagine a car classifieds website. A seller uploads a picture, a title, and a description — then must set a <strong>price</strong>. Too high and nobody buys; too low and they leave money on the table. Finding the price that is <em>just right</em> is hard.</p>
+      <p>An expert at a dealership can look at a car and name a fair price, because they have seen the prices of many similar cars. They <strong>learned this from data</strong> — extracting patterns like "older cars are cheaper" and "more mileage means lower value". If an expert can learn from data, so can a model.</p>
+      <div class="callout">The essence of <span class="term">machine learning</span>: we feed data to an algorithm, and the model <strong>extracts the patterns itself</strong>, replicating what a human expert learns from experience.</div>
+      <p>The data has two parts:</p>
+      <ul>
+        <li><span class="term">Features</span> — everything we know about the object (age, manufacturer, mileage, model, number of doors…).</li>
+        <li><span class="term">Target</span> — what we want to predict (the price).</li>
+      </ul>
+      <div class="flow">
+        <div class="node">Features + Target</div>
+        <div class="arrow">→</div>
+        <div class="node accent">Train Model</div>
+        <div class="arrow">→</div>
+        <div class="node">Model (encapsulated patterns)</div>
+      </div>
+      <div class="flow">
+        <div class="node">Features only</div>
+        <div class="arrow">→</div>
+        <div class="node accent">Model</div>
+        <div class="arrow">→</div>
+        <div class="node">Predicted price</div>
+      </div>
+      <p>The model won't always predict the exact price of a specific car, but its predictions are <strong>correct on average</strong>. We can drop the prediction back into the seller's form to suggest a price, which they are free to adjust.</p>
+    </div>
+
+    <div class="section-divider"><span>2 · ML vs Rule-Based Systems</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📧</span> The Spam Detection Example</h2>
+      <p>Suppose users complain about spam. A <span class="term">rule-based system</span> starts by analyzing spam manually and hard-coding rules:</p>
+      <div class="code-block"><pre><code><span class="cm"># hand-written rules</span>
+if sender == "promotions@online.com":
+    return SPAM
+if "tax review" in subject and sender_domain == "online.com":
+    return SPAM
+if "deposit" in body:
+    return SPAM
+return GOOD</code></pre></div>
+      <p>This works for a while — until spam evolves. A legitimate person uses the word "deposit", or new kinds of spam appear, and we keep adding rules. The code grows endlessly, becomes a <strong>nightmare to maintain</strong>, and every change breaks something else.</p>
+      <p>Machine learning flips the approach. We turn the same rules into <span class="term">features</span> and let the model learn how to combine them:</p>
+      <ul>
+        <li>Length of title &gt; 10 characters → binary feature (1 / 0)</li>
+        <li>Length of body, specific sender, specific domain, contains "deposit"…</li>
+      </ul>
+      <p>It's a good idea to <strong>start with a rule-based system</strong> and then use those rules as features. We encode each email as a vector of binary features plus the target (spam = 1 from the user's "spam" button), train a model, and it outputs a <strong>probability</strong> (e.g. 0.8). A decision rule (≥ 0.5 → spam) converts that into the spam/inbox action.</p>
+      <div class="callout">The key difference: in software we <strong>hard-code the outcome</strong> into the code. In machine learning the <strong>outcome is an input</strong> — we give the model data <em>and</em> the answers, and it produces a model that predicts outcomes for new data.</div>
+      <table>
+        <thead>
+          <tr><th>Approach</th><th>Inputs</th><th>Output</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Rule-based</strong></td><td>Data + hand-written code (rules)</td><td>Predictions</td></tr>
+          <tr><td><strong>Machine learning</strong></td><td>Data + outcomes (labels)</td><td>A model → then predictions</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>3 · Supervised Machine Learning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎓</span> Teaching the Machine by Example</h2>
+      <p>In both examples we acted as <strong>teachers</strong>, showing the model labelled examples (cars with prices, emails marked spam or not). From these examples the algorithm learns patterns and generalizes to new, unseen objects. This is <span class="term">supervised machine learning</span>.</p>
+      <p>The data is organized as a feature matrix and a target vector:</p>
+      <div class="formula-block">
+        <div class="formula-label">Formal Definition</div>
+        <div class="formula-main">g(X) ≈ y</div>
+        <div class="formula-legend">
+          <span>X</span> — the <strong>feature matrix</strong>: a 2-D array where rows are observations (objects) and columns are features.<br />
+          <span>y</span> — the <strong>target vector</strong>: a 1-D array, one value per row.<br />
+          <span>g</span> — the <strong>model</strong>: a function we train so that applying it to X produces something as close to y as possible.
+        </div>
+      </div>
+      <p>The goal of supervised learning is to find the function <strong>g</strong> that takes the feature matrix and outputs predictions close to the target. Depending on the kind of target, we get different problem types:</p>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Target / output</th><th>Examples</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Regression</strong></td><td>A number (any range, e.g. 0 → ∞)</td><td>Car price, house price</td></tr>
+          <tr><td><strong>Classification</strong></td><td>A category</td><td>Spam detection, image of car/cat/dog</td></tr>
+          <tr><td>· Binary</td><td>One of two classes (often a probability 0–1)</td><td>Spam / not spam</td></tr>
+          <tr><td>· Multi-class</td><td>One of many classes</td><td>Cars vs cats vs dogs</td></tr>
+          <tr><td><strong>Ranking</strong></td><td>An ordered list by score</td><td>Recommender systems, search</td></tr>
+        </tbody>
+      </table>
+      <div class="callout"><strong>Binary classification</strong> is probably the most widely used type of supervised learning in practice — you will almost certainly meet a problem that can be framed this way.</div>
+    </div>
+
+    <div class="section-divider"><span>4 · CRISP-DM — Organizing ML Projects</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> A Process for ML Projects</h2>
+      <p><span class="term">CRISP-DM</span> (Cross-Industry Standard Process for Data Mining) is a methodology from IBM in the 1990s that still works almost unchanged today. It breaks an ML project into six steps, with the freedom to loop back to earlier steps as you learn more.</p>
+      <ol class="algo-steps">
+        <li><strong>Business understanding:</strong> understand the problem, decide whether ML is even the right tool, and define a <em>measurable</em> goal (e.g. "reduce spam complaints by 50%").</li>
+        <li><strong>Data understanding:</strong> identify available data and ask if it is reliable, good enough, and large enough. The answer may be "we need to collect more first".</li>
+        <li><strong>Data preparation:</strong> clean the data, build pipelines that transform raw data into a tabular form, and extract features (the X and y).</li>
+        <li><strong>Modeling:</strong> where the actual machine learning happens — try different models (logistic regression, decision trees, neural networks…) and pick the best. Often sends you back to add features or fix data.</li>
+        <li><strong>Evaluation:</strong> measure against the business goal. Did we hit the target? Revise the goal, iterate, or even stop the project.</li>
+        <li><strong>Deployment:</strong> roll the model out to (a fraction of) real users — engineering quality, monitoring, reliability, and scalability matter here. Often merged with evaluation via online testing.</li>
+      </ol>
+      <div class="callout"><strong>Always start simple and iterate.</strong> Run quickly through one loop with a simple model, learn from feedback, deploy, then come back and make it more sophisticated. Small fast iterations waste less time and prove value early.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · The Model Selection Process</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Choosing the Best Model</h2>
+      <p>A model trained on July's data will be used on August's data — data it has never seen. To estimate how well it will perform, we <strong>hold out</strong> part of our data and pretend it doesn't exist during training.</p>
+      <p>We split the dataset into three non-overlapping parts (a common split is 60 / 20 / 20):</p>
+      <div class="flow">
+        <div class="node accent">Train · 60%</div>
+        <div class="node">Validation · 20%</div>
+        <div class="node">Test · 20%</div>
+      </div>
+      <p>We train on the training set, then apply the model to the validation set and compare predictions to the actual labels. For example, if a model predicts spam/not-spam correctly for 4 of 6 validation emails, its accuracy is 66%. We repeat this for several models and pick the most accurate one.</p>
+      <div class="callout"><strong>The multiple comparison problem:</strong> if you compare many models against the same validation set, one can get <em>lucky</em> by pure chance — like a coin that happens to guess a short sequence perfectly. That lucky result won't hold on different data.</div>
+      <p>To guard against this, we keep a separate <strong>test set</strong>. After selecting the best model on the validation set, we confirm it on the test set. If validation accuracy (e.g. 80%) and test accuracy (e.g. 79%) are close, we trust the result.</p>
+      <ol class="algo-steps">
+        <li><strong>Split</strong> the data into train / validation / test.</li>
+        <li><strong>Train</strong> the model on the training set.</li>
+        <li><strong>Validate</strong> on the validation set and record the metric.</li>
+        <li><strong>Repeat</strong> steps 2–3 for many models.</li>
+        <li><strong>Select</strong> the best model.</li>
+        <li><strong>Test</strong> the chosen model on the test set to confirm it wasn't just lucky.</li>
+      </ol>
+      <div class="callout">Don't waste the validation data: after selecting the best model, <strong>combine train + validation</strong> into one larger training set, retrain, and then evaluate on the test set — the extra data usually yields a slightly better final model.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · NumPy Essentials</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔢</span> Working With Arrays</h2>
+      <p><span class="term">NumPy</span> is the foundation for numerical computing in Python, imported by convention as <code>np</code>. It provides fast, vectorized operations on n-dimensional arrays.</p>
+      <div class="code-block"><pre><code>import numpy as np
+
+<span class="cm"># creating arrays</span>
+np.zeros(10)              <span class="cm"># 10 zeros</span>
+np.ones(10)              <span class="cm"># 10 ones</span>
+np.full(10, 2.5)          <span class="cm"># 10 copies of 2.5</span>
+a = np.array([1, 2, 3, 5, 7, 12])
+a[2]                     <span class="cm"># access: 3 (0-indexed)</span>
+a[2] = 10                <span class="cm"># assign</span>
+
+np.arange(10)            <span class="cm"># 0..9</span>
+np.arange(3, 10)          <span class="cm"># 3..9</span>
+np.linspace(0, 1, 11)     <span class="cm"># 11 evenly spaced numbers 0→1</span></code></pre></div>
+      <p>Two-dimensional arrays and indexing:</p>
+      <div class="code-block"><pre><code>n = np.array([[1, 2, 3],
+              [4, 5, 6],
+              [7, 8, 9]])
+n[0, 1]                  <span class="cm"># row 0, col 1 → 2</span>
+n[2]                     <span class="cm"># entire row 2</span>
+n[:, 1]                  <span class="cm"># entire column 1 (: = all rows)</span></code></pre></div>
+      <p>Random arrays — fix the seed for reproducibility:</p>
+      <div class="code-block"><pre><code>np.random.seed(2)
+np.random.rand(5, 2)      <span class="cm"># uniform [0,1)</span>
+np.random.randn(5, 2)     <span class="cm"># standard normal</span>
+np.random.randint(0, 100, size=(5, 2))   <span class="cm"># integers</span></code></pre></div>
+      <p>Element-wise and summarizing operations:</p>
+      <div class="code-block"><pre><code>a = np.arange(5)
+a + 1                    <span class="cm"># add 1 to every element</span>
+a * 2                    <span class="cm"># multiply each by 2</span>
+(a / 2 + 10) ** 2        <span class="cm"># chain operations</span>
+
+a + b                    <span class="cm"># element-wise sum of two arrays</span>
+a >= 2                   <span class="cm"># element-wise comparison → boolean array</span>
+a[a > b]                 <span class="cm"># boolean mask: keep where condition true</span>
+
+a.min(); a.max(); a.sum(); a.mean(); a.std()   <span class="cm"># summarizing</span></code></pre></div>
+      <div class="callout">The big win over plain Python lists: NumPy applies operations to <strong>every element at once</strong> (vectorization) — no explicit loops needed, and it's much faster.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · Linear Algebra Refresher</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> Vectors, Matrices &amp; Multiplication</h2>
+      <p>Multiplying a vector by a number or adding two vectors is done element-wise — the same as NumPy. The more interesting operations are the different kinds of multiplication.</p>
+      <div class="formula-block">
+        <div class="formula-label">Vector–Vector (Dot Product)</div>
+        <div class="formula-main">u<sup>T</sup>v = Σ u<sub>i</sub> · v<sub>i</sub></div>
+        <div class="formula-legend">
+          Multiply matching elements and <span>sum</span> the results → a single number.<br />
+          Note: this is <span>not</span> the element-wise product NumPy gives with <span>u * v</span>.
+        </div>
+      </div>
+      <div class="code-block"><pre><code>def vector_vector_mul(u, v):
+    assert u.shape[0] == v.shape[0]
+    n = u.shape[0]
+    result = 0.0
+    for i in range(n):
+        result = result + u[i] * v[i]
+    return result
+
+u.dot(v)                 <span class="cm"># the NumPy way → same number</span></code></pre></div>
+      <p><strong>Matrix–vector</strong> multiplication is a dot product between each <em>row</em> of the matrix and the vector. <strong>Matrix–matrix</strong> multiplication treats the second matrix as a set of columns, doing one matrix–vector multiplication per column.</p>
+      <div class="code-block"><pre><code>U.dot(v)                 <span class="cm"># matrix × vector</span>
+U.dot(V)                 <span class="cm"># matrix × matrix</span></code></pre></div>
+      <p>The <span class="term">identity matrix</span> <em>I</em> has ones on the diagonal and zeros elsewhere; it acts like the number 1: <em>U·I = U</em>. The <span class="term">inverse</span> <em>A<sup>-1</sup></em> (only for square matrices) satisfies <em>A<sup>-1</sup>·A = I</em>.</p>
+      <div class="code-block"><pre><code>I = np.eye(3)            <span class="cm"># 3×3 identity</span>
+Vs_inv = np.linalg.inv(Vs)   <span class="cm"># inverse of a square matrix</span>
+Vs_inv.dot(Vs)           <span class="cm"># → identity matrix</span></code></pre></div>
+      <div class="callout">Matrix inverse will be central to <strong>linear regression</strong> in the next session, where we solve for the model weights directly.</div>
+    </div>
+
+    <div class="section-divider"><span>8 · Pandas Essentials</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🐼</span> Manipulating Tabular Data</h2>
+      <p><span class="term">Pandas</span> (imported as <code>pd</code>) handles tabular data. Its main structure is the <span class="term">DataFrame</span> — a table built from columns, where each column is a <span class="term">Series</span>.</p>
+      <div class="code-block"><pre><code>import pandas as pd
+
+df = pd.DataFrame(data, columns=columns)
+df = pd.DataFrame(list_of_dicts)   <span class="cm"># keys become column names</span>
+df.head(2)               <span class="cm"># first rows — first thing to inspect</span></code></pre></div>
+      <p>Accessing columns and rows:</p>
+      <div class="code-block"><pre><code>df.Make                  <span class="cm"># dot notation (no spaces in name)</span>
+df["Engine HP"]          <span class="cm"># bracket notation (needed for spaces)</span>
+df[["Make", "Model", "MSRP"]]   <span class="cm"># subset of columns → DataFrame</span>
+
+df["id"] = [1, 2, 3, 4, 5]   <span class="cm"># add / replace a column</span>
+del df["id"]             <span class="cm"># delete a column
+
+df.loc[1]                <span class="cm"># row by index label</span>
+df.iloc[1]               <span class="cm"># row by positional index</span>
+df.reset_index(drop=True)    <span class="cm"># back to sequential 0..n index</span></code></pre></div>
+      <p>Element-wise ops, filtering, and string methods:</p>
+      <div class="code-block"><pre><code>df["Engine HP"] / 100    <span class="cm"># element-wise, like NumPy</span>
+df[df.Year >= 2015]      <span class="cm"># filter rows by condition</span>
+df[(df.Make == "Nissan") & (df.Year >= 2015)]   <span class="cm"># combine with &amp;</span>
+
+df["Vehicle_Style"].str.lower().str.replace(" ", "_")   <span class="cm"># clean strings</span></code></pre></div>
+      <p>Summaries, missing values, and grouping:</p>
+      <div class="code-block"><pre><code>df.MSRP.describe()       <span class="cm"># count, mean, std, min, percentiles, max</span>
+df.describe().round(2)   <span class="cm"># for all numeric columns</span>
+df.nunique()             <span class="cm"># unique values per column</span>
+df.isnull().sum()        <span class="cm"># count missing values per column</span>
+
+df.groupby("Transmission Type").MSRP.mean()   <span class="cm"># like SQL GROUP BY</span>
+df.MSRP.values           <span class="cm"># underlying NumPy array</span>
+df.to_dict(orient="records")   <span class="cm"># back to list of dicts</span></code></pre></div>
+      <div class="callout">Under the hood Pandas is built on NumPy, so the same element-wise and summarizing operations apply — but Series also carry an <strong>index</strong> and a <strong>name</strong>, and Pandas adds string handling and SQL-style grouping that NumPy lacks.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← Machine Learning Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

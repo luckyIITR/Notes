@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Model Monitoring — MLOps Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .node.dashed { border-style:dashed; color:#94a3b8; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    /* ── metric-tier cards ── */
+    .tier-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.8rem; margin:0.8rem 0; }
+    .tier { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.1rem; }
+    .tier .tier-num { font-size:0.7rem; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; }
+    .tier h4 { margin:0.25rem 0 0.5rem; color:#e2e8f0; font-size:0.95rem; }
+    .tier p { margin:0; font-size:0.85rem; color:#94a3b8; line-height:1.6; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+      .tier-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ MLOps Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">MLOps Zoomcamp · Module 5</p>
+      <h1>Model Monitoring</h1>
+      <p>Watching machine learning models in production — what metrics to track, batch vs online serving, and a hands-on stack with Evidently, Prefect, PostgreSQL, and Grafana.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Why Monitor Models?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📉</span> Models Degrade Over Time</h2>
+      <p>Building a model is hard; running a <strong>production service</strong> around that model is harder. When you plot model quality over time, you often see the same shape — performance is fine at launch, then slowly <span class="term">degrades</span> as the world changes around it.</p>
+      <p>Production software has had a solution for ages: <span class="term">monitoring</span>. We reuse that idea for ML, but a model needs <strong>extra layers</strong> beyond ordinary service health, because we also have to account for data and the model itself.</p>
+      <div class="callout">Monitoring is the answer to model decay. If you can implement only a few metrics, <strong>start with service health</strong> — first make sure the service even works.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · The Four Core Metric Groups</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> A Solid Starting Point</h2>
+      <p>For an ML-based service, four groups of metrics cover most of what you need. They build outward from plain software up to model- and data-specific concerns.</p>
+      <div class="tier-grid">
+        <div class="tier">
+          <div class="tier-num">Group 1 · Must-have</div>
+          <h4>Service health</h4>
+          <p>Is the service even up? Track uptime, memory usage, and latency — the same metrics you'd use for any production service.</p>
+        </div>
+        <div class="tier">
+          <div class="tier-num">Group 2</div>
+          <h4>Model performance</h4>
+          <p>How good are the predictions? The exact metrics depend on the problem statement.</p>
+        </div>
+        <div class="tier">
+          <div class="tier-num">Group 3</div>
+          <h4>Data quality &amp; integrity</h4>
+          <p>When the model misbehaves it's usually the input data. Catch issues early with data checks.</p>
+        </div>
+        <div class="tier">
+          <div class="tier-num">Group 4</div>
+          <h4>Data &amp; concept drift</h4>
+          <p>Has the world changed? Compare current distributions against a reference where the model worked well.</p>
+        </div>
+      </div>
+      <div class="callout">Service health, model performance, data quality &amp; integrity, and drift are a very good <strong>starting point</strong> — but never limit yourself to just these four. Scope depends on case sensitivity, risk, and resources.</div>
+    </div>
+
+    <div class="section-divider"><span>3 · Model Performance Metrics</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Pick Metrics by Problem Type</h2>
+      <p>The most straightforward way to ask "how good is the model" is its standard performance metrics — well-known and easy to interpret. The right set depends entirely on the problem statement:</p>
+      <table>
+        <thead>
+          <tr><th>Problem type</th><th>Example metrics</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Ranking</strong> (search, recommenders)</td><td>Ranking metrics (NDCG, MAP, etc.)</td><td>Content recommendation, SEO-style ordering</td></tr>
+          <tr><td><strong>Regression</strong></td><td>MAE, MAPE</td><td>Mean absolute / mean absolute percentage error</td></tr>
+          <tr><td><strong>Classification</strong></td><td>Log loss, precision, recall</td><td>Log loss especially for probabilistic classifiers</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">The taxi project is a <strong>regression</strong> problem (predict trip duration in minutes), so MAE and MAPE are the natural performance metrics.</div>
+    </div>
+
+    <div class="section-divider"><span>4 · The Ground-Truth Delay</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⏳</span> When You Can't Compute Error Yet</h2>
+      <p>Very often the <span class="term">ground truth</span> isn't available right when the model makes a prediction — there's a delay between generating output and learning the true label. During that gap you simply cannot compute error-based quality metrics.</p>
+      <p>Use a <span class="term">proxy</span> instead. Since problems usually trace back to the input data, <strong>data quality and integrity metrics</strong> let you catch and fix most issues even without labels:</p>
+      <ul>
+        <li>Share or count of <strong>missing values</strong></li>
+        <li><strong>Type checks</strong> — does a column match the type it's supposed to have?</li>
+        <li><strong>Value range</strong> checks per column</li>
+      </ul>
+      <p>A lot of subtle bugs get caught this way before they ever reach the model.</p>
+    </div>
+
+    <div class="section-divider"><span>5 · Data Drift &amp; Concept Drift</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌊</span> The World Keeps Changing</h2>
+      <p>Even with clean data you can still have problems, because a model never works in a vacuum — it interacts with a real-world environment, and environments change. Two related early-warning signals:</p>
+      <ul>
+        <li><span class="term">Data drift</span> — the distribution of <strong>input data</strong> shifts away from the reference.</li>
+        <li><span class="term">Concept drift</span> — the relationship between inputs and the <strong>target</strong> changes.</li>
+      </ul>
+      <p>Both work by comparing current distributions (inputs, model output, or target) against a <span class="term">reference dataset</span> — the data from when you were happy with the model's performance.</p>
+      <div class="callout">Drift doesn't guarantee something is wrong — but it's a very nice <strong>early signal</strong> of potential problems worth investigating.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Going Beyond the Four Groups</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> Extra Metrics for Higher-Risk Cases</h2>
+      <p>Depending on your domain and risk tolerance, you may want custom metrics that cover specific business risks:</p>
+      <ul>
+        <li><strong>Quality by segment</strong> — for wide/diverse audiences, split objects by category and track quality per category.</li>
+        <li><strong>Bias &amp; fairness</strong> — for sensitive domains like healthcare or finance.</li>
+        <li><strong>Outlier detection</strong> — when each individual error is costly, flag outliers for manual review to reduce risk.</li>
+        <li><strong>Explanations</strong> — for recommenders that retrain frequently, monitor the explanations you share with users to build trust.</li>
+      </ul>
+      <p>You can invent many custom metrics; the goal is to make sure you at least <em>understand</em> each risky aspect of your data pipeline and model.</p>
+    </div>
+
+    <div class="section-divider"><span>7 · Reusing Existing Monitoring</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">♻️</span> Start From What You Already Have</h2>
+      <p>You're lucky if production services already exist in your company — they probably come with monitoring you can reuse for ML:</p>
+      <ul>
+        <li><strong>Prometheus + Grafana</strong> — Prometheus pulls metrics from your service; Grafana uses it as a data source, visualizes dashboards, and fires alerts. Reuse this scheme for models.</li>
+        <li><strong>BI tools</strong> (Tableau, Looker) — if you only have batch pipelines, analyze each batch of predictions in a few dashboards. It's a low-effort way to reduce risk before automating.</li>
+      </ul>
+      <div class="callout">Always begin with something the company already has, then improve monitoring quality through iterations.</div>
+    </div>
+
+    <div class="section-divider"><span>8 · Batch vs Online Serving</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Deployment Shape Affects Monitoring</h2>
+      <p>Many metrics are inherently <strong>batch</strong> calculations — drift detection needs two distributions to compare, and quality metrics like precision/recall are computed over a set of rows, not a single object.</p>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Batch model</th><th>Online / REST API model</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Missing values, range violations</td><td>Per batch</td><td>Can compute in real time, per request</td></tr>
+          <tr><td>Data drift, model performance</td><td>Reference vs latest batch</td><td>Better to accumulate a small batch first</td></tr>
+        </tbody>
+      </table>
+      <p>For online models, use <span class="term">window functions</span>: choose a window size and step size, wait until you collect a small batch, compute the batch metrics, and store them.</p>
+      <div class="callout">Even with an online service, you can — and usually should — do <strong>data and ML monitoring in batch</strong>. Reference data is typically the validation set or a previous batch you were happy with.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · The Monitoring Scheme We Build</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> A General Logging-Based Architecture</h2>
+      <p>This scheme works for <strong>both batch and online</strong> models because it's built on top of prediction logs — if you have logs, you can monitor.</p>
+      <div class="flow">
+        <div class="node accent">ML service<br>(batch or online)</div>
+        <div class="arrow">→</div>
+        <div class="node">prediction logs</div>
+        <div class="arrow">→</div>
+        <div class="node accent">batch monitoring job</div>
+        <div class="arrow">→</div>
+        <div class="node">metrics DB</div>
+        <div class="arrow">→</div>
+        <div class="node accent">dashboard</div>
+      </div>
+      <p>A batch pipeline reads the prediction logs, calculates data/ML metrics, and stores them in a database. The dashboard tool then uses that database as its source. Concretely for this module:</p>
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Tool</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Prediction service</td><td>Taxi duration model (from Module 4)</td><td>REST API or batch — either works</td></tr>
+          <tr><td>Logs</td><td>Local files</td><td>Simulated production usage</td></tr>
+          <tr><td>Monitoring job</td><td><strong>Prefect</strong></td><td>Orchestrates metric calculation</td></tr>
+          <tr><td>Evaluation layer</td><td><strong>Evidently</strong></td><td>Computes metrics &amp; compares distributions — no hand-written metric code</td></tr>
+          <tr><td>Storage</td><td><strong>PostgreSQL</strong></td><td>Holds calculated metrics</td></tr>
+          <tr><td>Dashboards</td><td><strong>Grafana</strong></td><td>Reads Postgres, shows drift &amp; data panels</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>10 · Setting Up the Environment</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🐳</span> Conda, Requirements &amp; Docker Compose</h2>
+      <p>Create a working directory (e.g. <code>taxi_monitoring</code>), a Python 3.11 conda env, and a <code>requirements.txt</code> covering the whole stack:</p>
+      <div class="code-block"><pre><code><span class="cm"># requirements.txt</span>
+prefect
+tqdm
+requests
+joblib
+psycopg
+psycopg_binary
+evidently
+pandas
+numpy
+scikit-learn</code></pre></div>
+      <ol class="algo-steps">
+        <li>Create &amp; activate the env: <code>conda create -n py11 python=3.11</code> then <code>conda activate py11</code>.</li>
+        <li>Install everything: <code>pip install -r requirements.txt</code>.</li>
+        <li>Confirm Docker is installed and running, then describe all services in a <code>docker-compose.yml</code>.</li>
+      </ol>
+      <p>Docker Compose builds a multi-container app. The stack uses <strong>three services</strong> — a Postgres database, an Adminer DB UI, and Grafana — plus a Grafana volume (so dashboards/data sources survive a down/up) and two networks (<code>back_tier</code> for service-to-service, <code>front_tier</code> for browser access).</p>
+      <div class="code-block"><pre><code><span class="cm"># docker-compose.yml</span>
+version: '3.7'
+
+volumes:
+  grafana_data: {}
+
+networks:
+  front_tier:
+  back_tier:
+
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - "5432:5432"
+    networks:
+      - back_tier
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - back_tier
+      - front_tier
+
+  grafana:
+    image: grafana/grafana
+    user: "472"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana_datasources.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
+    networks:
+      - back_tier
+      - front_tier
+    restart: always</code></pre></div>
+      <p>Grafana needs to know where its data lives. Create a <code>config/</code> folder with <code>grafana_datasources.yaml</code> pointing at Postgres:</p>
+      <div class="code-block"><pre><code><span class="cm"># config/grafana_datasources.yaml</span>
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: db.:5432
+    database: test
+    user: postgres
+    secureJsonData:
+      password: 'example'
+    jsonData:
+      sslmode: 'disable'</code></pre></div>
+      <div class="callout">Bring everything up with <code>docker-compose up --build</code>. Grafana lives at <strong>localhost:3000</strong> (default login <code>admin</code> / <code>admin</code>), Adminer at <strong>localhost:8080</strong>. The data source <code>url</code>/port must match the Postgres service in compose.</div>
+    </div>
+
+    <div class="section-divider"><span>11 · Creating the Artifacts</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧪</span> Baseline Model + Reference Data</h2>
+      <p>We work with NYC <strong>green</strong> taxi data and predict trip duration in minutes. Two folders hold the outputs: <code>models/</code> and <code>data/</code>. In a notebook, download January + February 2022 data, train a baseline, and save a reference set for drift.</p>
+      <div class="flow">
+        <div class="node">download Jan + Feb</div>
+        <div class="arrow">→</div>
+        <div class="node accent">train on Jan</div>
+        <div class="arrow">→</div>
+        <div class="node">validate</div>
+        <div class="arrow">→</div>
+        <div class="node dashed">save model + reference</div>
+      </div>
+      <p>Key choices in the walkthrough:</p>
+      <ul>
+        <li><strong>Target</strong> = <code>(drop_off − pickup) / 60</code> minutes; filter to trips of 1–60 min and 1–6 passengers to drop outliers.</li>
+        <li><strong>Features</strong> — a handful of numeric (passenger count, trip distance, fare amount, total amount) plus categorical location IDs.</li>
+        <li><strong>Split by time</strong> — first chunk = train, rest = validation (the data is ordered by datetime, so this respects the time series).</li>
+        <li><strong>Model</strong> — a plain <code>LinearRegression</code>; no heavy experimentation, since the goal is just a baseline. MAE ≈ 4 minutes is good enough.</li>
+        <li><strong>Dump</strong> the model with joblib and save the validation set as <code>reference.parquet</code> — that becomes the drift reference.</li>
+      </ul>
+      <div class="callout">The <strong>validation set</strong> doubles as the reference dataset: it was held out from training and is the data where we judged the model "good enough." February data is saved for simulating production later.</div>
+    </div>
+
+    <div class="section-divider"><span>12 · The Evidently Report</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> Evidently as the Evaluation Layer</h2>
+      <p>Evidently computes the metrics so you write no metric code yourself. Three pieces to import:</p>
+      <ul>
+        <li><span class="term">ColumnMapping</span> — tells Evidently how to parse the frame (which column is the target, the prediction, which are numeric vs categorical). Important when categoricals are encoded as digits.</li>
+        <li><span class="term">Report</span> — a container of metric results that can render as HTML, JSON, or a Python dict.</li>
+        <li><strong>Metrics</strong> — e.g. <code>ColumnDriftMetric</code>, <code>DatasetDriftMetric</code>, <code>DatasetMissingValuesMetric</code>.</li>
+      </ul>
+      <div class="code-block"><pre><code>from evidently import ColumnMapping
+from evidently.report import Report
+from evidently.metrics import (
+    ColumnDriftMetric,
+    DatasetDriftMetric,
+    DatasetMissingValuesMetric,
+)
+
+column_mapping = ColumnMapping(
+    target=None,                 <span class="cm"># not analysing the target here</span>
+    prediction='prediction',
+    numerical_features=num_features,
+    categorical_features=cat_features,
+)
+
+report = Report(metrics=[
+    ColumnDriftMetric(column_name='prediction'),
+    DatasetDriftMetric(),
+    DatasetMissingValuesMetric(),
+])
+
+report.run(reference_data=ref, current_data=cur, column_mapping=column_mapping)
+report.show(mode='inline')       <span class="cm"># HTML view inside the notebook</span></code></pre></div>
+      <p>HTML is great for human analysis. For automation, render to a <strong>Python dict</strong> and pull out exactly the values you'll log to the database:</p>
+      <div class="code-block"><pre><code>result = report.as_dict()
+
+prediction_drift = result['metrics'][0]['result']['drift_score']
+num_drifted_cols = result['metrics'][1]['result']['number_of_drifted_columns']
+share_missing    = result['metrics'][2]['result']['current']['share_of_missing_values']</code></pre></div>
+      <div class="callout">Metrics live in a <strong>list</strong>, not a dict, so you index by position (<code>[0]</code>, <code>[1]</code>, …). That's because Evidently lets you add the same metric with different parameters, which would make name-based lookup ambiguous.</div>
+    </div>
+
+    <div class="section-divider"><span>13 · Evidently Monitoring Dashboards</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🖥️</span> A Quick Built-In Dashboard</h2>
+      <p>Before wiring up Grafana, Evidently offers its own dashboards — ideal for batch models when you have no monitoring infra yet. The recipe: compute reports on a schedule, store them in a <span class="term">workspace</span> (a local folder), and the UI builds panels for you.</p>
+      <ol class="algo-steps">
+        <li>Create a <code>Workspace</code> and a <code>Project</code> (give it a name + description, then <code>project.save()</code>).</li>
+        <li>Build a report (e.g. with <code>DataQualityPreset</code>), setting an explicit <code>timestamp</code> per report so each maps to a specific date.</li>
+        <li>Add it: <code>workspace.add_report(project.id, report)</code>.</li>
+        <li>Add dashboard panels — <code>DashboardPanelCounter</code> and <code>DashboardPanelPlot</code> (line, bar, scatter) — then <code>project.save()</code>.</li>
+        <li>Launch the UI from the project directory: <code>evidently ui</code>.</li>
+      </ol>
+      <p>Each report is one data point. Add reports for several dates (e.g. Jan 28 and Jan 29) and the trend lines come alive. With a workflow that produces reports on a schedule (daily, weekly, every 10 minutes), you get a nice monitoring dashboard almost for free.</p>
+    </div>
+
+    <div class="section-divider"><span>14 · Dummy Metrics → Postgres → Grafana</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧱</span> Prove the Pipe End-to-End First</h2>
+      <p>Before real metrics, write a script that creates the DB + table and inserts random rows — this verifies Postgres, Adminer, and Grafana are wired correctly.</p>
+      <ul>
+        <li><strong>prep_db()</strong> — connect with <code>psycopg</code>; <code>SELECT 1 FROM pg_database WHERE datname='test'</code>; create the DB if absent, then create the table.</li>
+        <li><strong>Table</strong> — <code>dummy_metrics</code> with a <code>timestamp</code> plus <code>value1/2/3</code> (drop if exists so each run starts clean).</li>
+        <li><strong>calculate_dummy_metrics_postgresql(curr)</strong> — generate random values and <code>INSERT</code> them with a timezone-aware timestamp.</li>
+        <li><strong>main()</strong> — call <code>prep_db()</code>, then loop ~100 iterations, sending a row every ~10 s (a <code>SEND_TIMEOUT</code> gap so plots look nice).</li>
+      </ul>
+      <div class="callout">Check the rows in Adminer (server <code>db</code>, user <code>postgres</code>, password <code>example</code>, database <code>test</code>), then build a Grafana panel: pick the PostgreSQL source, select a value column, and narrow the time range (e.g. last 5 minutes) to see the data flow.</div>
+    </div>
+
+    <div class="section-divider"><span>15 · Real Metrics &amp; the Prefect Pipeline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Swap Dummy Values for Evidently Metrics</h2>
+      <p>Now replace the dummy columns with real ones — <code>prediction_drift</code>, <code>num_drifted_columns</code>, <code>share_missing_values</code>. The <code>prep_db()</code> structure stays; only the metric calculation changes.</p>
+      <ul>
+        <li>Load <code>reference.parquet</code> and the joblib model once as globals.</li>
+        <li>Read the whole February dataset as <code>raw_data</code>; in the loop, slice it <strong>day by day</strong> to simulate daily batches.</li>
+        <li>Each iteration <code>i</code> (day): select rows in <code>[begin + i, begin + i + 1)</code>, fill NaNs, apply the model to get <code>prediction</code>, then run the report and derive the three values.</li>
+        <li><code>INSERT</code> the metrics keyed by the simulated date.</li>
+      </ul>
+      <p>The functions convert cleanly into a Prefect pipeline with decorators:</p>
+      <div class="code-block"><pre><code>from prefect import task, flow
+
+@task
+def prep_db(): ...
+
+@task
+def calculate_metrics_postgresql(curr, i): ...
+
+@flow
+def batch_monitoring_backfill():
+    prep_db()
+    ...   <span class="cm"># loop over days, insert metrics</span>
+
+if __name__ == '__main__':
+    batch_monitoring_backfill()</code></pre></div>
+      <div class="callout">Because rows use the <strong>simulated (historical) timestamps</strong>, set the Grafana panel range wide (e.g. last 2 years) to see them. Add panels for prediction drift, number of drifted columns, and missing values.</div>
+    </div>
+
+    <div class="section-divider"><span>16 · Saving the Grafana Dashboard</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💾</span> Make Dashboards Survive a Restart</h2>
+      <p>To reuse a dashboard after a container restart (without rebuilding), provision it from config files instead of clicking it together each time:</p>
+      <ol class="algo-steps">
+        <li>Add <code>config/grafana_dashboards.yaml</code> — a standard dashboard provider config pointing at a dashboards path.</li>
+        <li>Create <code>dashboards/data_drift.json</code> — Grafana stores dashboards as JSON.</li>
+        <li>Mount both into Grafana via the <code>volumes</code> section of <code>docker-compose.yml</code> (alongside the existing data-source mount).</li>
+        <li>In Grafana, open <strong>Dashboard settings → JSON Model</strong>, copy it, and paste into <code>data_drift.json</code>.</li>
+      </ol>
+      <p>Now <code>docker-compose down</code> then <code>up</code> (without <code>--build</code>) brings the same dashboard back automatically — no manual panel rebuilding.</p>
+    </div>
+
+    <div class="section-divider"><span>17 · Debugging with Evidently</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔍</span> Test Suites &amp; Reports for Root Cause</h2>
+      <p>The point of monitoring is to detect when something breaks and then fix it. Suppose a Grafana threshold on prediction drift is crossed on <strong>Feb 2nd</strong> — open a notebook, load that day's slice, and dig in with two Evidently tools.</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Test Suites</div>
+          <ul>
+            <li>Check whether each metric meets a condition / threshold</li>
+            <li>Use presets like <code>DataDriftTestPreset</code></li>
+            <li>Quickly see which tests <strong>passed vs failed</strong></li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Reports</div>
+          <ul>
+            <li>Maximize information rather than pass/fail</li>
+            <li>Use presets like <code>DataDriftPreset</code></li>
+            <li>Inspect per-column distributions &amp; trends</li>
+          </ul>
+        </div>
+      </div>
+      <div class="code-block"><pre><code>from evidently.test_suite import TestSuite
+from evidently.test_preset import DataDriftTestPreset
+from evidently.metric_preset import DataDriftPreset
+
+<span class="cm"># remember to apply the model + fill NaNs on the current slice first,</span>
+<span class="cm"># or Evidently errors: "prediction column is partially present"</span>
+
+suite = TestSuite(tests=[DataDriftTestPreset()])
+suite.run(reference_data=ref, current_data=cur, column_mapping=column_mapping)
+suite.show(mode='inline')
+
+report = Report(metrics=[DataDriftPreset()])
+report.run(reference_data=ref, current_data=cur, column_mapping=column_mapping)
+report.show(mode='inline')</code></pre></div>
+      <p>The test suite summary shows e.g. 8 tests, 1 passed, 7 failed — drill into "share of drifted columns" to see which columns shifted (the prediction column shows clear distribution shift; passenger count looks stable, as expected). The report's <strong>Data Drift tab</strong> adds value-over-time plots, helping you spot trends (e.g. a rising fare amount) and form a hypothesis.</p>
+      <div class="callout">All formats (HTML, JSON, dict) are available. Use <code>save_html()</code> to share a standalone report with non-Python colleagues; use the dict/JSON form to drive downstream pipeline tasks based on which tests failed.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← MLOps Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

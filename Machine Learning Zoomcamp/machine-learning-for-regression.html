@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Machine Learning for Regression — Machine Learning Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Machine Learning Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">ML Zoomcamp · Session 2</p>
+      <h1>Machine Learning for Regression</h1>
+      <p>A hands-on project: predict car prices with linear regression — from data prep and EDA to a validation framework, the normal equation, and a baseline model.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · The Project</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏷️</span> Predicting Car Prices</h2>
+      <p>Back to the scenario from the introduction: help a seller on a car classifieds website pick the <strong>best price</strong>. In this session we build that model for real, using a Kaggle dataset of car prices.</p>
+      <p>The dataset holds many characteristics of cars — make, model, year, engine type, fuel type, transmission, and so on — plus the target column <span class="term">MSRP</span> (Manufacturer Suggested Retail Price), which is the price we want to predict.</p>
+      <div class="callout">The full plan: <strong>get the data → EDA → train linear regression → implement it ourselves → evaluate with RMSE → feature engineering → fix numerical issues with regularization → use the model</strong>.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · Data Preparation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧹</span> Cleaning &amp; Normalizing</h2>
+      <p>Download the CSV and load it with Pandas, then inspect the first rows. The column names are inconsistent — mixed case, some with spaces, some with underscores — which makes them awkward to access (a space breaks dot notation).</p>
+      <div class="code-block"><pre><code>import pandas as pd
+
+df = pd.read_csv("data.csv")
+df.head()
+
+<span class="cm"># normalize column names: lowercase + underscores</span>
+df.columns = df.columns.str.lower().str.replace(" ", "_")</code></pre></div>
+      <p>The string <em>values</em> have the same problem (sometimes all caps, sometimes not). First find the string columns via <code>dtypes</code> (type <code>object</code>), then normalize each one the same way.</p>
+      <div class="code-block"><pre><code>strings = list(df.dtypes[df.dtypes == "object"].index)
+
+for col in strings:
+    df[col] = df[col].str.lower().str.replace(" ", "_")</code></pre></div>
+      <div class="callout">The <code>columns</code> attribute is an <strong>Index</strong>, which (like a Series) has a <code>.str</code> accessor — so the same string methods work on column names and on column values alike.</div>
+    </div>
+
+    <div class="section-divider"><span>3 · Exploratory Data Analysis</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔍</span> Understanding the Data</h2>
+      <p>Loop over the columns to get a feel for what's there — the first few values, the unique values, and how many unique values each column has.</p>
+      <div class="code-block"><pre><code>for col in df.columns:
+    print(col)
+    print(df[col].unique()[:5])
+    print(df[col].nunique())
+    print()</code></pre></div>
+      <p>This reveals the mix of categorical columns (make, model, fuel type, transmission…) and numerical ones (engine HP, cylinders, MPG, popularity, MSRP). <strong>Popularity</strong> is interesting — the dataset authors counted Twitter mentions, the idea being that more popular cars are mentioned more.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📊</span> The Price Distribution &amp; Long Tail</h2>
+      <p>Plot the price with a histogram using Matplotlib + Seaborn. Most cars are cheap, but a few are extremely expensive — a <span class="term">long-tail distribution</span>.</p>
+      <div class="code-block"><pre><code>import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+sns.histplot(df.msrp, bins=50)
+sns.histplot(df.msrp[df.msrp < 100000], bins=50)   <span class="cm"># zoom in</span></code></pre></div>
+      <p>Long tails confuse models. The fix is to apply a <strong>logarithm</strong>, which compresses large values. To avoid <code>log(0)</code> (undefined), add 1 first — NumPy's <code>log1p</code> does exactly this.</p>
+      <div class="formula-block">
+        <div class="formula-label">Log Transform</div>
+        <div class="formula-main">y<sub>log</sub> = log(y + 1) = np.log1p(y)</div>
+        <div class="formula-legend">Turns the long-tail shape into something close to a <span>normal distribution</span> (bell curve) — far easier for models to predict.</div>
+      </div>
+      <div class="code-block"><pre><code>import numpy as np
+
+log_price = np.log1p(df.msrp)
+sns.histplot(log_price, bins=50)   <span class="cm"># tail gone, bell-shaped</span></code></pre></div>
+      <div class="callout">Models predict a target far better when it's roughly <strong>normally distributed</strong>. Long-tail targets (common for prices) should usually be log-transformed first.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🕳️</span> Missing Values</h2>
+      <p>Some cells are <code>NaN</code> (missing). Count them per column — we'll have to handle these before training.</p>
+      <div class="code-block"><pre><code>df.isnull().sum()   <span class="cm"># missing count per column</span></code></pre></div>
+    </div>
+
+    <div class="section-divider"><span>4 · Setting Up Validation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✂️</span> Train / Validation / Test Split</h2>
+      <p>As covered in Session 1, split the data into three parts (60 / 20 / 20). We do it manually with plain NumPy and Pandas. Compute the sizes, deriving the train size by subtraction so rounding never drops a record.</p>
+      <div class="code-block"><pre><code>n = len(df)
+n_val = int(0.2 * n)
+n_test = int(0.2 * n)
+n_train = n - n_val - n_test   <span class="cm"># subtract to avoid rounding loss</span></code></pre></div>
+      <p>The data is ordered (all BMWs together, etc.), so we must <strong>shuffle</strong> before splitting — otherwise a class could land entirely in one split. Use a fixed seed for reproducibility.</p>
+      <div class="code-block"><pre><code>idx = np.arange(n)
+np.random.seed(2)
+np.random.shuffle(idx)
+
+df_train = df.iloc[idx[:n_train]]
+df_val   = df.iloc[idx[n_train:n_train + n_val]]
+df_test  = df.iloc[idx[n_train + n_val:]]
+
+df_train = df_train.reset_index(drop=True)
+df_val   = df_val.reset_index(drop=True)
+df_test  = df_test.reset_index(drop=True)</code></pre></div>
+      <p>Apply the log transform to the target for each split, store it as a NumPy array, then <strong>delete the target column</strong> from the feature frames.</p>
+      <div class="code-block"><pre><code>y_train = np.log1p(df_train.msrp.values)
+y_val   = np.log1p(df_val.msrp.values)
+y_test  = np.log1p(df_test.msrp.values)
+
+del df_train["msrp"]
+del df_val["msrp"]
+del df_test["msrp"]</code></pre></div>
+      <div class="callout">Always remove the target from the feature frame after splitting. Leaving it in means you might <strong>accidentally train on the answer</strong> — the model looks perfect and you waste hours debugging.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Linear Regression — One Car</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> The Model for a Single Observation</h2>
+      <p><span class="term">Linear regression</span> solves regression problems — it predicts a number. For one car described by a feature vector <em>x<sub>i</sub></em> = (x<sub>i1</sub>, x<sub>i2</sub>, …, x<sub>in</sub>), the prediction combines a bias term with a weighted sum of the features.</p>
+      <div class="formula-block">
+        <div class="formula-label">Linear Regression (single observation)</div>
+        <div class="formula-main">g(x<sub>i</sub>) = w<sub>0</sub> + Σ<sub>j</sub> w<sub>j</sub> · x<sub>ij</sub></div>
+        <div class="formula-legend">
+          <span>w<sub>0</sub></span> — the <strong>bias term</strong>: the baseline prediction when we know nothing about the car.<br />
+          <span>w<sub>j</sub></span> — the <strong>weight</strong> for feature j; each feature contributes its value × its weight.
+        </div>
+      </div>
+      <div class="code-block"><pre><code>def linear_regression(xi):
+    n = len(xi)
+    pred = w0
+    for j in range(n):
+        pred = pred + w[j] * xi[j]
+    return pred
+
+<span class="cm"># example: engine_hp, city_mpg, popularity</span>
+xi = [453, 11, 86]
+w0 = 7.17
+w  = [0.01, 0.04, 0.002]</code></pre></div>
+      <p>Interpreting the parts: the bias (7.17) is the baseline; each extra horsepower adds 0.01, each extra city-MPG adds 0.04, and popularity barely moves the price. The result (~12.3) is in <strong>log space</strong>, so undo the transform to get dollars.</p>
+      <div class="formula-block">
+        <div class="formula-label">Undo the Log</div>
+        <div class="formula-main">price = exp(pred) − 1 = np.expm1(pred)</div>
+        <div class="formula-legend"><span>expm1</span> is the inverse of <span>log1p</span> — it exponentiates and subtracts 1 in one step.</div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>6 · Linear Regression — Vector Form</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧮</span> From a Loop to Matrix Multiplication</h2>
+      <p>The weighted sum is just a <strong>dot product</strong>, so the model simplifies to <em>x<sub>i</sub><sup>T</sup>w</em>. To absorb the lone bias term, add a virtual feature that is <strong>always 1</strong> as the first element of every feature vector, with <em>w<sub>0</sub></em> as its weight.</p>
+      <div class="formula-block">
+        <div class="formula-label">Vector &amp; Matrix Forms</div>
+        <div class="formula-main">g(x<sub>i</sub>) = x<sub>i</sub><sup>T</sup>w &nbsp;&nbsp;→&nbsp;&nbsp; predictions = X · w</div>
+        <div class="formula-legend">
+          Prepend a column of <span>1</span>s to X (the bias feature) so X is <span>m × (n+1)</span> and w is length <span>n+1</span>.<br />
+          Applying the model to <strong>every</strong> car is just <span>matrix × vector</span> multiplication.
+        </div>
+      </div>
+      <div class="code-block"><pre><code>X = np.array([
+    [1, 148, 24, 1385],
+    [1, 132, 25, 2031],
+    [1, 453, 11, 86],
+])
+w_new = [7.17, 0.01, 0.04, 0.002]   <span class="cm"># bias first</span>
+
+predictions = X.dot(w_new)   <span class="cm"># one prediction per row</span></code></pre></div>
+      <div class="callout">The progression: a <strong>for loop</strong> → recognizing a <strong>dot product</strong> → adding a <strong>fictional 1-feature</strong> to fold in the bias → generalizing to the whole feature matrix as <strong>X · w</strong>.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · Training — The Normal Equation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Where Do the Weights Come From?</h2>
+      <p>We want <em>X · w ≈ y</em>. Ideally <em>w = X<sup>-1</sup>y</em>, but X is rectangular (many rows, few columns) so it has no inverse. The trick: multiply by <em>X<sup>T</sup></em> to form the square <span class="term">Gram matrix</span> <em>X<sup>T</sup>X</em>, which <em>is</em> invertible, then solve.</p>
+      <div class="formula-block">
+        <div class="formula-label">Normal Equation</div>
+        <div class="formula-main">w = (X<sup>T</sup>X)<sup>-1</sup> X<sup>T</sup> y</div>
+        <div class="formula-legend">
+          Not the exact solution (none exists) — the <span>closest possible</span> one (least squares).<br />
+          The Gram matrix <span>X<sup>T</sup>X</span> is <span>(n+1) × (n+1)</span>, square, so its inverse usually exists.
+        </div>
+      </div>
+      <div class="code-block"><pre><code>def train_linear_regression(X, y):
+    ones = np.ones(X.shape[0])
+    X = np.column_stack([ones, X])      <span class="cm"># add bias column</span>
+
+    XTX = X.T.dot(X)                    <span class="cm"># Gram matrix</span>
+    XTX_inv = np.linalg.inv(XTX)
+    w_full = XTX_inv.dot(X.T).dot(y)    <span class="cm"># normal equation</span>
+
+    return w_full[0], w_full[1:]        <span class="cm"># bias, weights</span></code></pre></div>
+      <div class="callout">Adding the bias column of 1s happens <strong>inside</strong> the function, so callers never worry about it. For the derivation/proof, see <em>The Elements of Statistical Learning</em>.</div>
+    </div>
+
+    <div class="section-divider"><span>8 · The Baseline Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏗️</span> First Model From Numerical Features</h2>
+      <p>For a baseline, use only the numerical columns. Extract them, fill missing values with 0, and train.</p>
+      <div class="code-block"><pre><code>base = ["engine_hp", "engine_cylinders",
+        "highway_mpg", "city_mpg", "popularity"]
+
+X_train = df_train[base].fillna(0).values
+w0, w = train_linear_regression(X_train, y_train)
+
+y_pred = w0 + X_train.dot(w)</code></pre></div>
+      <p>Filling with 0 effectively makes the model <strong>ignore</strong> that feature for that row (the term <em>0 × w<sub>j</sub></em> drops out). It's not always sensible (a car with 0 horsepower or 0 cylinders is unrealistic), but in practice 0 often works fine and keeps things simple. Filling with the mean is an alternative.</p>
+      <p>Compare predictions against the actual target with overlapping histograms:</p>
+      <div class="code-block"><pre><code>sns.histplot(y_pred, color="red", alpha=0.5, bins=50)
+sns.histplot(y_train, color="blue", alpha=0.5, bins=50)</code></pre></div>
+      <div class="callout">The prediction distribution is shifted — even the peaks don't match, and the model often <strong>under-predicts</strong>. Eyeballing charts isn't enough; we need an objective metric. That's <span class="term">RMSE</span> (root mean squared error), coming next.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · Evaluating With RMSE</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📏</span> Root Mean Squared Error</h2>
+      <p>To quantify how good a regression model is, we use <span class="term">RMSE</span>. For each observation we take the difference between the prediction and the actual value, square it, average over all observations, and take the square root.</p>
+      <div class="formula-block">
+        <div class="formula-label">RMSE</div>
+        <div class="formula-main">RMSE = √( (1/m) · Σ<sub>i</sub> (g(x<sub>i</sub>) − y<sub>i</sub>)<sup>2</sup> )</div>
+        <div class="formula-legend">
+          <span>g(x<sub>i</sub>)</span> — the prediction for observation i.<br />
+          <span>y<sub>i</sub></span> — the actual value.<br />
+          <span>m</span> — the number of observations. Squaring penalizes big errors; the root brings the metric back to the target's scale.
+        </div>
+      </div>
+      <p>Worked example — predictions <code>[10, 9, 11, 10.5]</code> vs actuals <code>[9, 9, 10.5, 11.5]</code>: squared errors are <code>[1, 0, 0.25, 2.25]</code>, mean = 0.875, so RMSE = √0.875 ≈ <strong>0.93</strong>.</p>
+      <div class="code-block"><pre><code>def rmse(y, y_pred):
+    se = (y - y_pred) ** 2
+    mse = se.mean()
+    return np.sqrt(mse)</code></pre></div>
+      <div class="callout">NumPy's <code>.mean()</code> handles the sum-and-divide in one call, so the whole metric is three lines. Lower RMSE = better model.</div>
+    </div>
+
+    <div class="section-divider"><span>10 · Validating the Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✅</span> Score on the Validation Set</h2>
+      <p>The baseline mistake: we trained <em>and</em> scored on the training data. We should instead apply the model to the <strong>validation set</strong> and compute RMSE there. To avoid repeating the same prep code, wrap it in a <code>prepare_X</code> function that works for any dataframe.</p>
+      <div class="code-block"><pre><code>def prepare_X(df):
+    df_num = df[base]
+    df_num = df_num.fillna(0)
+    return df_num.values
+
+X_train = prepare_X(df_train)
+w0, w = train_linear_regression(X_train, y_train)
+
+X_val = prepare_X(df_val)
+y_pred = w0 + X_val.dot(w)
+rmse(y_val, y_pred)            <span class="cm"># validation RMSE</span></code></pre></div>
+      <div class="callout">The pattern splits cleanly into a <strong>training part</strong> (touch only train) and a <strong>validation part</strong> (prepare val the same way → predict → score). This reusable function makes experimenting much faster.</div>
+    </div>
+
+    <div class="section-divider"><span>11 · Feature Engineering</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> Creating the Age Feature</h2>
+      <p><span class="term">Feature engineering</span> is creating new features from existing ones. The <code>year</code> column is one of the most important price predictors — but the <strong>age</strong> of the car is more useful. The data was collected in 2017, so age = 2017 − year.</p>
+      <div class="code-block"><pre><code>def prepare_X(df):
+    df = df.copy()                     <span class="cm"># don't mutate the caller's df</span>
+    features = base.copy()
+
+    df["age"] = 2017 - df.year
+    features.append("age")
+
+    df_num = df[features].fillna(0)
+    return df_num.values</code></pre></div>
+      <div class="callout">Always <code>df.copy()</code> first — otherwise the function adds columns to the caller's dataframe (a side effect you don't want). Likewise copy <code>base</code> before appending, so the shared list isn't modified each call.</div>
+      <p>Adding age is a <strong>big win</strong>: validation RMSE drops from ~0.76 to ~0.51, and the predicted distribution now lines up far better with the actual prices.</p>
+    </div>
+
+    <div class="section-divider"><span>12 · Categorical Variables</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔤</span> One-Hot Encoding</h2>
+      <p><span class="term">Categorical variables</span> are categories — usually strings like make, model, fuel type, transmission. Note that <code>number_of_doors</code> <em>looks</em> numeric but is really categorical (2, 3, or 4 distinct door types).</p>
+      <p>We encode each category as a set of <strong>binary columns</strong> — one per value, set to 1 when the row matches, 0 otherwise. This is <span class="term">one-hot encoding</span>.</p>
+      <div class="code-block"><pre><code>for v in [2, 3, 4]:
+    df["num_doors_%s" % v] = (df.number_of_doors == v).astype(int)</code></pre></div>
+      <p>For high-cardinality columns like <code>make</code>, keep only the most common values via <code>value_counts</code>, and build a dictionary of the top categories to loop over inside <code>prepare_X</code>.</p>
+      <div class="code-block"><pre><code>list(df.make.value_counts().head().index)   <span class="cm"># top-5 makes</span>
+
+categorical = {
+    "make": list(df.make.value_counts().head().index),
+    "engine_fuel_type": [...],
+    "transmission_type": [...],
+    "driven_wheels": [...],
+    "market_category": [...],
+    "vehicle_size": [...],
+    "vehicle_style": [...],
+}
+
+for c, values in categorical.items():
+    for v in values:
+        df["%s_%s" % (c, v)] = (df[c] == v).astype(int)
+        features.append("%s_%s" % (c, v))</code></pre></div>
+      <p>Adding <code>number_of_doors</code> barely helps; <code>make</code> improves RMSE by ~1%. But after throwing in <strong>all</strong> categoricals, something breaks — RMSE jumps to ~41 and the weights become enormous. We'll see why next.</p>
+      <div class="callout">One-hot encoding turns one categorical column into many binary features. It's the standard approach — covered in more depth in the classification session.</div>
+    </div>
+
+    <div class="section-divider"><span>13 · Regularization</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Fixing Numerical Instability</h2>
+      <p>The explosion comes from the normal equation's inverse. If two feature columns are <strong>duplicates</strong> (or near-duplicates, e.g. one is a linear combination of others), the Gram matrix <em>X<sup>T</sup>X</em> is <span class="term">singular</span> and has no inverse.</p>
+      <p>Real data has noise, so the matrix is rarely <em>exactly</em> singular — NumPy still inverts it, but produces <strong>huge weights</strong> that wreck the model. The fix: add a small number to the <strong>diagonal</strong> of the Gram matrix before inverting. This keeps any column from being a duplicate of another and controls the weights.</p>
+      <div class="formula-block">
+        <div class="formula-label">Regularized Normal Equation</div>
+        <div class="formula-main">w = (X<sup>T</sup>X + r·I)<sup>-1</sup> X<sup>T</sup> y</div>
+        <div class="formula-legend">
+          <span>r</span> — the <strong>regularization parameter</strong>: how much we add to the diagonal.<br />
+          <span>I</span> — the identity matrix. Larger <span>r</span> → smaller, more controlled weights; <span>r = 0</span> → plain linear regression.
+        </div>
+      </div>
+      <div class="code-block"><pre><code>def train_linear_regression_reg(X, y, r=0.01):
+    ones = np.ones(X.shape[0])
+    X = np.column_stack([ones, X])
+
+    XTX = X.T.dot(X)
+    XTX = XTX + r * np.eye(XTX.shape[0])   <span class="cm"># add r to the diagonal</span>
+
+    XTX_inv = np.linalg.inv(XTX)
+    w_full = XTX_inv.dot(X.T).dot(y)
+    return w_full[0], w_full[1:]</code></pre></div>
+      <div class="callout"><span class="term">Regularization</span> means "controlling" the weights so they don't grow too large. With it, the full-feature model finally beats every earlier version — but too much <code>r</code> degrades performance, so it must be tuned.</div>
+    </div>
+
+    <div class="section-divider"><span>14 · Tuning the Regularization Parameter</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> Finding the Best r</h2>
+      <p>Use the validation set to pick <code>r</code>. Try a range of values, train with each, and compare validation RMSE (also watch the bias term — more regularization shrinks it).</p>
+      <div class="code-block"><pre><code>for r in [0, 0.001, 0.01, 0.1, 1, 10]:
+    w0, w = train_linear_regression_reg(X_train, y_train, r=r)
+    y_pred = w0 + X_val.dot(w)
+    print(r, w0, rmse(y_val, y_pred))</code></pre></div>
+      <div class="callout">At <code>r = 0</code> the bias and RMSE are huge; a little regularization fixes it. Around <code>r = 0.01</code> the model performs well and hasn't started to degrade — a good, safe choice.</div>
+    </div>
+
+    <div class="section-divider"><span>15 · The Final Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🏁</span> Train on Full Data &amp; Test</h2>
+      <p>For the final model, combine train + validation into one <strong>full-train</strong> set, train once with the chosen <code>r</code>, then confirm on the untouched <strong>test set</strong>.</p>
+      <div class="code-block"><pre><code>df_full_train = pd.concat([df_train, df_val]).reset_index(drop=True)
+y_full_train = np.concatenate([y_train, y_val])
+
+X_full_train = prepare_X(df_full_train)
+w0, w = train_linear_regression_reg(X_full_train, y_full_train, r=0.01)
+
+X_test = prepare_X(df_test)
+y_pred = w0 + X_test.dot(w)
+rmse(y_test, y_pred)          <span class="cm"># ≈ validation RMSE → generalizes well</span></code></pre></div>
+      <div class="callout">When test RMSE matches validation RMSE to ~3 decimals, the model <strong>generalizes well</strong> — the validation score wasn't just luck.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🚙</span> Predicting a Single Car</h2>
+      <p>In production a car arrives as a <strong>dictionary</strong> (e.g. from a web form). Wrap it in a one-row dataframe, run <code>prepare_X</code>, predict, and undo the log with <code>expm1</code>.</p>
+      <div class="code-block"><pre><code>car = {"make": "toyota", "year": 2015, ...}   <span class="cm"># request from user</span>
+
+df_small = pd.DataFrame([car])
+X_small = prepare_X(df_small)
+y_pred = w0 + X_small.dot(w)
+np.expm1(y_pred[0])           <span class="cm"># predicted price in dollars</span></code></pre></div>
+      <div class="callout">Take only the first element (one car → one prediction). The result is reasonably close to the true price — the model works end to end.</div>
+    </div>
+
+    <div class="section-divider"><span>16 · Session Summary</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📝</span> What We Built</h2>
+      <p>A complete regression project, implemented from scratch with NumPy and Pandas:</p>
+      <ul>
+        <li><strong>Data prep:</strong> cleaned and normalized column names and values.</li>
+        <li><strong>EDA:</strong> spotted the long-tail price distribution and fixed it with a log transform; found missing values.</li>
+        <li><strong>Validation framework:</strong> manual train/validation/test split.</li>
+        <li><strong>Linear regression:</strong> from a for-loop to a dot product to matrix form; weights = bias + feature weights.</li>
+        <li><strong>Training:</strong> the normal equation — "machine learning is not magic, just a formula".</li>
+        <li><strong>RMSE:</strong> an objective metric, scored on validation.</li>
+        <li><strong>Feature engineering:</strong> the age feature gave a big improvement.</li>
+        <li><strong>Categorical variables:</strong> one-hot encoding.</li>
+        <li><strong>Regularization:</strong> cured numerical instability and tuned <code>r</code>.</li>
+        <li><strong>Final model:</strong> trained on full data, tested, and used to price a single car.</li>
+      </ul>
+      <div class="callout">Next session: <strong>classification</strong> — where instead of implementing everything by hand, we'll use <strong>Scikit-Learn</strong>.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← Machine Learning Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

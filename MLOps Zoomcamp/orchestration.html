@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ML Pipelines &amp; Orchestration — MLOps Zoomcamp</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── formula / definition block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── code block ── */
+    .code-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.25rem; margin:0.8rem 0; overflow-x:auto; }
+    .code-block pre { margin:0; }
+    .code-block code { font-family:'Courier New',monospace; font-size:0.85rem; color:#c7d2fe; line-height:1.7; white-space:pre; }
+    .code-block .cm { color:#475569; }
+
+    /* ── pipeline / flow row ── */
+    .flow { display:flex; flex-wrap:wrap; align-items:center; gap:0.6rem; margin:0.8rem 0; }
+    .flow .node { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.6rem 0.9rem; font-size:0.85rem; color:#c7d2fe; }
+    .flow .node.accent { border-color:#6366f1; color:#a5b4fc; font-weight:700; }
+    .flow .node.dashed { border-style:dashed; color:#94a3b8; }
+    .flow .arrow { color:#475569; font-size:1.1rem; }
+
+    @media (max-width: 540px) {
+      .flow { flex-direction:column; align-items:stretch; }
+      .flow .arrow { transform:rotate(90deg); align-self:center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ MLOps Zoomcamp Index</a>
+
+    <header class="notes-header">
+      <p class="tag">MLOps Zoomcamp · Module 3</p>
+      <h1>ML Pipelines &amp; Orchestration</h1>
+      <p>Turning a messy Jupyter notebook into a reproducible training pipeline — from a Python script to workflow orchestration with Airflow (or alternatives).</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Why Pipelines?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📓</span> From Notebook Mess to Something Runnable</h2>
+      <p>In Modules 1 and 2 you built a ride-duration model inside a long Jupyter notebook — experiment tracking, Hyperopt tuning, XGBoost training, MLflow logging. It works, but the notebook is a mess: cells run in fragile order, blocks are hard to identify, and rerunning it means opening your laptop and clicking through cells one by one.</p>
+      <p>A <span class="term">training pipeline</span> is, in simple terms, a <strong>sequence of steps executed in order to train a model</strong>. The notebook is loosely a pipeline (execute everything → get a model in the registry), but it is not maintainable, reliably re-executable, or parameterized.</p>
+      <div class="callout">The goal of this module: take that notebook and turn it into something <strong>reproducible, runnable, and parameterized</strong> — and then layer a workflow orchestrator on top.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · Pipeline vs Orchestration</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> Two Related Terms</h2>
+      <ul>
+        <li><span class="term">Workflow orchestration</span> — a general data-engineering term for how you <strong>schedule and organize steps</strong> that must run in order.</li>
+        <li><span class="term">Machine learning pipeline</span> — the ML-specific case: an ordered sequence of steps whose output is a trained model.</li>
+      </ul>
+      <p>An ML pipeline is a kind of workflow; orchestration is the broader idea of running any multi-step job reliably.</p>
+    </div>
+
+    <div class="section-divider"><span>3 · The Pipeline Steps</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> What We Built in the Notebook — as Steps</h2>
+      <p>The NYC taxi duration pipeline decomposes into these stages (feature engineering can sit between transform and prepare):</p>
+      <div class="flow">
+        <div class="node accent">1 · Ingest</div>
+        <div class="arrow">→</div>
+        <div class="node accent">2 · Transform</div>
+        <div class="arrow">→</div>
+        <div class="node accent">3 · Prepare for ML</div>
+        <div class="arrow">→</div>
+        <div class="node accent">4 · Tune hyperparameters</div>
+        <div class="arrow">→</div>
+        <div class="node accent">5 · Train final model</div>
+        <div class="arrow">→</div>
+        <div class="node dashed">Model registry</div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Step</th><th>What it does</th><th>Notebook equivalent</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Ingest</strong></td><td>Download or read data (Parquet from NYC TLC URLs)</td><td><code>read_parquet</code> from remote URL</td></tr>
+          <tr><td><strong>Transform</strong></td><td>Parse datetimes, compute duration, filter outliers (1–60 min)</td><td><code>read_dataframe()</code> filtering logic</td></tr>
+          <tr><td><strong>Prepare for ML</strong></td><td>Feature engineering, <code>DictVectorizer</code>, build X and y</td><td>PU_DO pair, one-hot encoding</td></tr>
+          <tr><td><strong>Hyperparameter tuning</strong></td><td>Find best params (Hyperopt + XGBoost)</td><td>Already done in Module 2 — reuse best params</td></tr>
+          <tr><td><strong>Train final model</strong></td><td>Train with best params, log to MLflow</td><td><code>train_model()</code>, save run ID</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>4 · Plain Python Script</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🐍</span> The First Good Step</h2>
+      <p>The easiest upgrade from a notebook is a single Python script with clean functions called in order — already a maintainable pipeline you can test and rerun:</p>
+      <div class="code-block"><pre><code><span class="cm"># rough structure of duration_prediction.py</span>
+def read_dataframe(year, month): ...
+def create_X(df, dv=None): ...
+def train_model(X_train, y_train, X_val, y_val, dv): ...
+
+def run(year, month):
+    df_train = read_dataframe(year, month)
+    next_year, next_month = (year, month + 1) if month &lt; 12 else (year + 1, 1)
+    df_val = read_dataframe(next_year, next_month)
+    X_train, dv = create_X(df_train)
+    X_val, _ = create_X(df_val, dv)
+    y_train, y_val = df_train.duration.values, df_val.duration.values
+    return train_model(X_train, y_train, X_val, y_val, dv)</code></pre></div>
+      <p>Refinements from the course walkthrough:</p>
+      <ul>
+        <li>Convert the notebook with <code>nbconvert</code>: <code>jupyter nbconvert --to script duration_prediction.ipynb</code></li>
+        <li>Parameterize with <code>argparse</code> — <code>--year</code> and <code>--month</code> instead of hard-coded January/February</li>
+        <li>Build the Parquet URL from year/month: <code>green_tripdata_{year}-{month:02d}.parquet</code></li>
+        <li>Point MLflow at a running instance: <code>mlflow.set_tracking_uri("http://localhost:5000")</code></li>
+        <li>Reuse known-best XGBoost params (skip Hyperopt in the script); ~30 boost rounds is enough for the demo</li>
+        <li>Return and persist the <strong>run ID</strong> (e.g. JSON file) so you can promote the model to staging later</li>
+        <li>Create the <code>models/</code> folder programmatically with <code>Path("models").mkdir(exist_ok=True)</code></li>
+      </ul>
+      <div class="callout">Even without an orchestrator, <code>python duration_prediction.py --year 2021 --month 1</code> is already a training pipeline — reproducible, parameterized, and logged to MLflow.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Why You Still Need an Orchestrator</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> Limits of a Bare Script</h2>
+      <p>A script on your laptop breaks down in production:</p>
+      <ul>
+        <li><strong>Scheduling</strong> — who runs the cron job? What if you have many pipeline files?</li>
+        <li><strong>Centralization</strong> — code shouldn't live on one developer's machine; the team needs a shared place to deploy and update it.</li>
+        <li><strong>Scalability</strong> — one machine won't handle growing job volume.</li>
+        <li><strong>Failure &amp; retries</strong> — a 2-second network blip during download kills the whole run; hand-rolling retry logic makes the code complex.</li>
+        <li><strong>Dependency management</strong> — steps must run in order; if step 1 fails, step 2 must not start.</li>
+      </ul>
+      <p><span class="term">Workflow orchestrators</span> solve this: centralized server, team collaboration, scaling, monitoring/alerting, and built-in dependency + retry handling.</p>
+    </div>
+
+    <div class="section-divider"><span>6 · Orchestrator Landscape</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> General-Purpose vs ML-Specific</h2>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Tools</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>General-purpose</strong></td><td>Airflow, Prefect, Dagster, Kestra, Mage, Luigi</td><td>Good for data engineering <em>and</em> ML; flexible DAG/workflow definitions.</td></tr>
+          <tr><td><strong>ML-specific</strong></td><td>Kubeflow Pipelines, MLflow Projects</td><td>Less flexible, tightly focused on ML workflows.</td></tr>
+        </tbody>
+      </table>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Airflow (recommended here)</div>
+          <ul>
+            <li>Industry standard — huge community, docs, and hiring signal</li>
+            <li>Mature scheduling, backfill, and operational tooling</li>
+            <li>Integrates with cloud providers (MWAA, Cloud Composer)</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Airflow trade-offs</div>
+          <ul>
+            <li>Steeper learning curve — DAG boilerplate, scheduler/worker setup</li>
+            <li>Heavier locally than Prefect or Mage</li>
+            <li>Less Python-native than Prefect/Dagster for quick experiments</li>
+          </ul>
+        </div>
+      </div>
+      <p><strong>Prefect</strong> and <strong>Dagster</strong> are lighter and more Pythonic for new projects; <strong>Mage</strong> blends notebooks with pipelines. For this course the pattern is the same — pick one tool and wire the script's steps into it. Airflow is the default choice when you want maximum portability and ops maturity.</p>
+    </div>
+
+    <div class="section-divider"><span>7 · Using an Orchestrator</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Hands-On Path (No Dedicated Video — Build It Yourself)</h2>
+      <p>There is no walkthrough video for this unit. Take the <code>duration_prediction.py</code> script from the previous section and turn it into a production pipeline with your chosen orchestrator. ChatGPT or the course repo can help with boilerplate.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Step 1 · Choose the tool</h3>
+      <p>Pick an orchestrator. Examples:</p>
+      <ul>
+        <li><strong>Airflow</strong> — recommended; best if you care about industry standard and cloud deployment paths</li>
+        <li>Prefect, Dagster, Kestra, Mage, Luigi — valid alternatives with different ergonomics</li>
+      </ul>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Step 2 · Run the tool locally</h3>
+      <ol class="algo-steps">
+        <li>Install and configure the orchestrator on your machine (for Airflow: <code>pip install apache-airflow</code>, init DB, start webserver + scheduler).</li>
+        <li>Run the simplest <strong>"hello world"</strong> workflow to confirm the setup works before touching the ML code.</li>
+      </ol>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Step 3 · Orchestrate the workflow</h3>
+      <p>Split <code>duration_prediction.py</code> into orchestrator tasks that mirror the pipeline steps:</p>
+      <div class="flow">
+        <div class="node">ingest</div>
+        <div class="arrow">→</div>
+        <div class="node">transform</div>
+        <div class="arrow">→</div>
+        <div class="node">prepare_features</div>
+        <div class="arrow">→</div>
+        <div class="node">train_and_log</div>
+      </div>
+      <p>In Airflow, each step becomes a <code>PythonOperator</code> (or <code>@task</code> in TaskFlow) with explicit upstream/downstream dependencies so ingest must succeed before transform, and so on. The orchestrator handles retries if <code>read_dataframe</code> fails on a transient network error.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Step 4 · Parametrize &amp; schedule</h3>
+      <p>Schedule the workflow to run <strong>monthly</strong>. Derive data windows from the execution date:</p>
+      <div class="formula-block">
+        <div class="formula-label">Monthly data windows</div>
+        <div class="formula-main">train = 2 months ago &nbsp;·&nbsp; validation = 1 month ago</div>
+        <div class="formula-legend">
+          If the DAG runs on <span>2021-03-01</span>, train on <span>2021-01</span>, validate on <span>2021-02</span>.<br />
+          Pass <span>year</span> and <span>month</span> as DAG params or compute them from <span>{{ ds }}</span> / <span>logical_date</span> in Airflow.
+        </div>
+      </div>
+      <div class="code-block"><pre><code><span class="cm"># Airflow-style param derivation (conceptual)</span>
+from dateutil.relativedelta import relativedelta
+
+execution_date = context["logical_date"]
+train_date = execution_date - relativedelta(months=2)
+val_date   = execution_date - relativedelta(months=1)
+
+train_year, train_month = train_date.year, train_date.month
+val_year, val_month     = val_date.year, val_date.month</code></pre></div>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Step 5 · Backfilling</h3>
+      <p>Learn to <strong>backfill</strong> — run the workflow for past months you missed. In Airflow:</p>
+      <div class="code-block"><pre><code>airflow dags backfill taxi_training \
+  --start-date 2021-01-01 \
+  --end-date 2021-06-01</code></pre></div>
+      <p>This replays the DAG for each scheduled interval in the range, training on rolling two-month-old / one-month-old windows.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.9rem;margin-top:1.2rem;">Step 6 · Deployment (optional)</h3>
+      <p>Deploy the orchestrator to the cloud so the team shares one scheduler:</p>
+      <ul>
+        <li><strong>Airflow</strong> → AWS MWAA, Google Cloud Composer, or self-hosted on Kubernetes</li>
+        <li><strong>Prefect</strong> → Prefect Cloud or self-hosted server</li>
+        <li><strong>Dagster</strong> → Dagster Cloud or Docker on a VM</li>
+      </ul>
+      <div class="callout">After training, use the saved <strong>run ID</strong> from MLflow to promote the model to staging in the registry — the orchestrator trains; the registry + CI/CD handles deployment.</div>
+    </div>
+
+    <div class="section-divider"><span>8 · The Script — What Airflow Will Run</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📄</span> <code>duration_prediction.py</code> Anatomy</h2>
+      <p>The script below is the pipeline Airflow orchestrates. It already parameterizes train month via CLI; validation is always the <strong>next calendar month</strong> inside <code>run()</code>.</p>
+      <table>
+        <thead>
+          <tr><th>Function</th><th>Responsibility</th><th>Airflow task candidate</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>read_dataframe(year, month)</code></td><td>Read Parquet from NYC TLC URL, compute duration, filter 1–60 min, cast categoricals, build <code>PU_DO</code></td><td><code>load_train</code> / <code>load_val</code></td></tr>
+          <tr><td><code>create_X(df, dv=None)</code></td><td><code>DictVectorizer</code> fit on train, transform on val</td><td><code>prepare_features</code></td></tr>
+          <tr><td><code>train_model(...)</code></td><td>XGBoost train (30 rounds), log params/metrics/artifacts/model to MLflow</td><td><code>train_and_log</code></td></tr>
+          <tr><td><code>run(year, month)</code></td><td>Wires the above; returns MLflow <code>run_id</code></td><td>Single-task wrapper <em>or</em> split pipeline</td></tr>
+          <tr><td><code>__main__</code></td><td><code>argparse</code> + writes <code>run_id.txt</code></td><td><code>save_run_id</code> (optional extra task)</td></tr>
+        </tbody>
+      </table>
+      <p>Hard dependencies the DAG must respect:</p>
+      <ul>
+        <li>MLflow tracking server at <code>http://localhost:5000</code> must be up before training.</li>
+        <li><code>DictVectorizer</code> must be <strong>fit on train</strong> before transforming validation — order matters.</li>
+        <li>The script writes <code>models/preprocessor.b</code> locally before logging it to MLflow.</li>
+      </ul>
+      <div class="formula-block">
+        <div class="formula-label">Mapping DAG run date → script args</div>
+        <div class="formula-main">--year / --month = logical_date − 2 months</div>
+        <div class="formula-legend">
+          DAG fires on <span>2021-03-01</span> → call <span>run(year=2021, month=1)</span>.<br />
+          Script loads train = Jan, val = Feb (next month). That matches val = execution − 1 month.
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>9 · Local Airflow Setup</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Run Airflow Beside MLflow</h2>
+      <ol class="algo-steps">
+        <li>Start MLflow in one terminal: <code>mlflow ui --backend-store-uri sqlite:///mlflow.db</code> (or your existing setup on port 5000).</li>
+        <li>Install Airflow in the same env as the script: <code>pip install "apache-airflow==2.10.4" pandas pyarrow xgboost scikit-learn mlflow</code></li>
+        <li>Init and start Airflow (Airflow 2.x standalone is enough locally):<br /><code>airflow standalone</code> — note the admin password printed to the terminal.</li>
+        <li>Put <code>duration_prediction.py</code> on the Python path. Easiest: place the DAG file in the same folder and import from there, or set <code>PYTHONPATH</code> in the DAG.</li>
+        <li>Copy the DAG below into <code>$AIRFLOW_HOME/dags/taxi_training_dag.py</code> (standalone sets <code>AIRFLOW_HOME=~/airflow</code> by default).</li>
+      </ol>
+      <div class="callout">Airflow runs tasks from the scheduler's environment — not your notebook kernel. If imports fail, fix <code>PYTHONPATH</code> or install deps into the same conda env Airflow uses.</div>
+    </div>
+
+    <div class="section-divider"><span>10 · Approach A — Single-Task DAG</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🌬️</span> Wrap the Existing Script (Start Here)</h2>
+      <p>The fastest path: one task imports <code>run()</code> and derives train month from the DAG's logical date. Retries cover transient Parquet download failures without rewriting the script.</p>
+      <div class="code-block"><pre><code><span class="cm"># dags/taxi_training_dag.py</span>
+from datetime import datetime
+
+import pendulum
+from airflow.decorators import dag, task
+
+<span class="cm"># adjust import path if duration_prediction.py lives elsewhere</span>
+from duration_prediction import run as train_pipeline
+
+
+@dag(
+    dag_id="taxi_duration_training",
+    start_date=datetime(2021, 3, 1, tzinfo=pendulum.timezone("UTC")),
+    schedule="@monthly",
+    catchup=True,
+    tags=["mlops", "nyc-taxi"],
+    default_args={"retries": 2, "retry_delay": pendulum.duration(minutes=5)},
+)
+def taxi_duration_training():
+    @task
+    def train_and_log(**context):
+        logical = context["logical_date"]
+        train_dt = logical.subtract(months=2)
+        run_id = train_pipeline(year=train_dt.year, month=train_dt.month)
+        with open("run_id.txt", "w") as f:
+            f.write(run_id)
+        return run_id
+
+    train_and_log()
+
+
+taxi_duration_training()</code></pre></div>
+      <p>Equivalent one-liner from the shell (what the DAG wraps):</p>
+      <div class="code-block"><pre><code>python duration_prediction.py --year 2021 --month 1</code></pre></div>
+      <p>Trigger manually for a specific interval:</p>
+      <div class="code-block"><pre><code>airflow dags trigger taxi_duration_training --logical-date 2021-03-01</code></pre></div>
+    </div>
+
+    <div class="section-divider"><span>11 · Approach B — Multi-Task DAG</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> Split Steps for Granular Retries</h2>
+      <p>When you want Airflow to retry only the download or only training, split the pipeline. Don't push DataFrames through XCom — they're too large. Pass <strong>file paths</strong> under a run-scoped temp directory instead.</p>
+      <div class="flow">
+        <div class="node accent">load_train</div>
+        <div class="arrow">→</div>
+        <div class="node accent">load_val</div>
+        <div class="arrow">→</div>
+        <div class="node accent">prepare_features</div>
+        <div class="arrow">→</div>
+        <div class="node accent">train_and_log</div>
+        <div class="arrow">→</div>
+        <div class="node">save_run_id</div>
+      </div>
+      <div class="code-block"><pre><code>import pickle
+from pathlib import Path
+
+import pendulum
+from airflow.decorators import dag, task
+from datetime import datetime
+
+from duration_prediction import read_dataframe, create_X, train_model
+
+
+def _run_dir(context) -&gt; Path:
+    p = Path("/tmp/taxi_training") / context["run_id"]
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+@dag(
+    dag_id="taxi_duration_training_split",
+    start_date=datetime(2021, 3, 1, tzinfo=pendulum.timezone("UTC")),
+    schedule="@monthly",
+    catchup=True,
+    default_args={"retries": 2},
+)
+def taxi_duration_training_split():
+    @task
+    def load_train(**context):
+        logical = context["logical_date"].subtract(months=2)
+        df = read_dataframe(logical.year, logical.month)
+        path = _run_dir(context) / "train.parquet"
+        df.to_parquet(path)
+        return str(path)
+
+    @task
+    def load_val(**context):
+        logical = context["logical_date"].subtract(months=2)
+        y, m = logical.year, logical.month
+        next_y = y if m &lt; 12 else y + 1
+        next_m = m + 1 if m &lt; 12 else 1
+        df = read_dataframe(next_y, next_m)
+        path = _run_dir(context) / "val.parquet"
+        df.to_parquet(path)
+        return str(path)
+
+    @task
+    def prepare_features(train_path, val_path, **context):
+        import pandas as pd
+        df_train = pd.read_parquet(train_path)
+        df_val = pd.read_parquet(val_path)
+        X_train, dv = create_X(df_train)
+        X_val, _ = create_X(df_val, dv)
+        out = _run_dir(context) / "matrices.pkl"
+        with open(out, "wb") as f:
+            pickle.dump({
+                "X_train": X_train, "X_val": X_val,
+                "y_train": df_train.duration.values,
+                "y_val": df_val.duration.values,
+                "dv": dv,
+            }, f)
+        return str(out)
+
+    @task
+    def train_and_log(matrices_path):
+        with open(matrices_path, "rb") as f:
+            data = pickle.load(f)
+        return train_model(
+            data["X_train"], data["y_train"],
+            data["X_val"], data["y_val"],
+            data["dv"],
+        )
+
+    @task
+    def save_run_id(run_id: str):
+        with open("run_id.txt", "w") as f:
+            f.write(run_id)
+
+    train_path = load_train()
+    val_path = load_val()
+    matrices = prepare_features(train_path, val_path)
+    run_id = train_and_log(matrices)
+    save_run_id(run_id)
+
+
+taxi_duration_training_split()</code></pre></div>
+      <p>Dependency chain: <code>load_train</code> and <code>load_val</code> can run in parallel; both must finish before <code>prepare_features</code>; training waits on prepared matrices.</p>
+    </div>
+
+    <div class="section-divider"><span>12 · Scheduling &amp; Backfill</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📅</span> Monthly Runs for Past Months</h2>
+      <p>With <code>schedule="@monthly"</code> and <code>catchup=True</code>, Airflow creates one DAG run per month from <code>start_date</code> forward. Each run trains on data two months before that run's logical date.</p>
+      <table>
+        <thead>
+          <tr><th>Logical date (DAG run)</th><th><code>run(year, month)</code></th><th>Train data</th><th>Val data (script: month+1)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>2021-03-01</td><td>2021, 1</td><td>Jan 2021</td><td>Feb 2021</td></tr>
+          <tr><td>2021-04-01</td><td>2021, 2</td><td>Feb 2021</td><td>Mar 2021</td></tr>
+          <tr><td>2021-05-01</td><td>2021, 3</td><td>Mar 2021</td><td>Apr 2021</td></tr>
+        </tbody>
+      </table>
+      <p>Backfill a range of months in one command:</p>
+      <div class="code-block"><pre><code>airflow dags backfill taxi_duration_training \
+  --start-date 2021-03-01 \
+  --end-date 2021-06-01</code></pre></div>
+      <p>After each successful run, open MLflow UI → <strong>nyc-taxi-experiment</strong> → find the new run → use <code>run_id.txt</code> (or the task return value) to register or promote the model in the registry.</p>
+      <div class="callout"><strong>Prerequisites checklist:</strong> MLflow on :5000 · green trip Parquet available for train/val months · <code>models/</code> writable · same Python deps in the Airflow worker env.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+      <a href="index.html" style="color:#475569;text-decoration:none;">← MLOps Zoomcamp Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
