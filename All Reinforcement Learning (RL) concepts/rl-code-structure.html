@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RL Code Structure — Reinforcement Learning</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── code block ── */
+    .code-block { background: #0d1117; border: 1px solid #2d3148; border-radius: 10px; padding: 1.2rem 1.4rem; margin: 0.8rem 0; overflow-x: auto; }
+    .code-block .code-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.75rem; }
+    .code-block pre { margin: 0; font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.75; color: #e2e8f0; white-space: pre; }
+    .code-block pre .c { color: #475569; }
+    .code-block pre .k { color: #c084fc; }
+    .code-block pre .f { color: #60a5fa; }
+    .code-block pre .s { color: #4ade80; }
+    .code-block pre .n { color: #f59e0b; }
+    .code-block pre .cl { color: #fbbf24; }
+
+    /* ── verb pills (decide · act · remember · improve) ── */
+    .verb-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7rem; margin: 0.5rem 0; }
+    .verb-item { background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 0.9rem 0.8rem; text-align: center; }
+    .verb-item .verb-name { font-size: 0.95rem; font-weight: 800; color: #a5b4fc; text-transform: capitalize; }
+    .verb-item .verb-call { font-family: 'Courier New', monospace; font-size: 0.72rem; color: #64748b; margin-top: 0.35rem; }
+
+    @media (max-width: 540px) {
+      .verb-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ RL Concepts Index</a>
+
+    <header class="notes-header">
+      <p class="tag">Foundations · Implementation</p>
+      <h1>How RL Code Is Structured</h1>
+      <p>The shared backbone behind every RL algorithm — from the universal agent–environment loop down to tabular Q-Learning, DQN, and policy gradients, and how it all maps onto real project files.</p>
+    </header>
+
+    <div class="card">
+      <p>Reinforcement Learning code almost always follows the same backbone: an <span class="term">agent</span> interacts with an <span class="term">environment</span> in a loop, collects experience, and uses that experience to improve a policy. Below is the structure, from the generic skeleton down to specific algorithms.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>1 · The Universal RL Loop</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> The Core Every Algorithm Shares</h2>
+
+      <p>Every RL solution, regardless of algorithm, has this core at its center:</p>
+
+      <div class="code-block">
+        <div class="code-label">Generic RL Skeleton</div>
+        <pre><span class="c">initialize environment</span>
+<span class="c">initialize agent (policy / value function with random parameters)</span>
+
+<span class="k">for</span> each episode:
+    state = environment.<span class="f">reset</span>()
+    done = <span class="k">False</span>
+
+    <span class="k">while</span> <span class="k">not</span> done:
+        action = agent.<span class="f">select_action</span>(state)        <span class="c"># decide</span>
+        next_state, reward, done = environment.<span class="f">step</span>(action)  <span class="c"># act</span>
+        agent.<span class="f">store</span>(state, action, reward, next_state, done) <span class="c"># remember</span>
+        agent.<span class="f">learn</span>()                              <span class="c"># improve</span>
+        state = next_state</pre>
+      </div>
+
+      <p>The four verbs are the heart of it. Different algorithms just fill in <code>select_action</code> and <code>learn</code> differently.</p>
+
+      <div class="verb-grid">
+        <div class="verb-item"><div class="verb-name">Decide</div><div class="verb-call">select_action()</div></div>
+        <div class="verb-item"><div class="verb-name">Act</div><div class="verb-call">env.step()</div></div>
+        <div class="verb-item"><div class="verb-name">Remember</div><div class="verb-call">store()</div></div>
+        <div class="verb-item"><div class="verb-name">Improve</div><div class="verb-call">learn()</div></div>
+      </div>
+
+      <div class="callout">Master this loop once and every algorithm becomes a variation on the same theme — you only ever swap out <strong>how the agent decides</strong> and <strong>how it learns</strong>.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>2 · Tabular Q-Learning</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> The Classic Starting Point</h2>
+
+      <p>Used when states and actions are small and discrete. No neural network needed — the agent's entire "brain" is a lookup table.</p>
+
+      <div class="code-block">
+        <div class="code-label">Tabular Q-Learning</div>
+        <pre><span class="c">initialize Q[states][actions] = 0</span>
+<span class="c">set hyperparameters: alpha (learning rate), gamma (discount), epsilon (exploration)</span>
+
+<span class="k">for</span> each episode:
+    state = env.<span class="f">reset</span>()
+    <span class="k">while</span> <span class="k">not</span> done:
+        <span class="c"># epsilon-greedy action selection</span>
+        <span class="k">if</span> <span class="f">random</span>() &lt; epsilon:
+            action = <span class="f">random_action</span>()
+        <span class="k">else</span>:
+            action = <span class="f">argmax</span>(Q[state])
+
+        next_state, reward, done = env.<span class="f">step</span>(action)
+
+        <span class="c"># Q-update (Bellman equation)</span>
+        best_next = <span class="f">max</span>(Q[next_state])
+        Q[state][action] += alpha * (reward + gamma * best_next - Q[state][action])
+
+        state = next_state</pre>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>3 · Deep Q-Network (DQN)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧠</span> When States Are Large or Continuous</h2>
+
+      <p>Replaces the Q-table with a neural network, plus two key tricks: a <span class="term">replay buffer</span> and a <span class="term">target network</span>.</p>
+
+      <div class="code-block">
+        <div class="code-label">Deep Q-Network</div>
+        <pre><span class="c">initialize Q_network with random weights θ</span>
+<span class="c">initialize target_network with weights θ⁻ = θ</span>
+<span class="c">initialize replay_buffer (fixed capacity)</span>
+
+<span class="k">for</span> each episode:
+    state = env.<span class="f">reset</span>()
+    <span class="k">while</span> <span class="k">not</span> done:
+        action = <span class="f">epsilon_greedy</span>(Q_network, state)
+        next_state, reward, done = env.<span class="f">step</span>(action)
+        replay_buffer.<span class="f">add</span>(state, action, reward, next_state, done)
+        state = next_state
+
+        <span class="c"># learn from a random batch (breaks correlation between samples)</span>
+        <span class="k">if</span> replay_buffer.size &gt; batch_size:
+            batch = replay_buffer.<span class="f">sample</span>(batch_size)
+
+            <span class="c"># target uses the SEPARATE target network for stability</span>
+            target = reward + gamma * <span class="f">max</span>(<span class="f">target_network</span>(next_state)) * (<span class="n">1</span> - done)
+            prediction = <span class="f">Q_network</span>(state)[action]
+            loss = (target - prediction)²
+
+            <span class="f">gradient_descent_step</span>(loss, θ)
+
+    <span class="c"># periodically sync target network</span>
+    every N steps: θ⁻ = θ</pre>
+      </div>
+
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Replay Buffer</div>
+          <ul>
+            <li>Stores past transitions and samples random batches</li>
+            <li>Breaks temporal correlation between consecutive samples</li>
+            <li>Lets each experience be reused many times</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Target Network</div>
+          <ul>
+            <li>A frozen copy of the Q-network used to compute targets</li>
+            <li>Prevents the "moving target" instability</li>
+            <li>Synced to the online network every N steps</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>4 · Policy Gradient / REINFORCE</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> Learn the Policy Directly</h2>
+
+      <p>Instead of estimating values, this directly optimizes a policy network. The structure shifts to <strong>collect a full episode, then update</strong>.</p>
+
+      <div class="code-block">
+        <div class="code-label">REINFORCE</div>
+        <pre><span class="c">initialize policy_network πθ</span>
+
+<span class="k">for</span> each episode:
+    trajectory = []
+    state = env.<span class="f">reset</span>()
+
+    <span class="c"># roll out a full episode</span>
+    <span class="k">while</span> <span class="k">not</span> done:
+        action_probs = <span class="f">policy_network</span>(state)
+        action = <span class="f">sample</span>(action_probs)
+        next_state, reward, done = env.<span class="f">step</span>(action)
+        trajectory.<span class="f">append</span>((state, action, reward))
+        state = next_state
+
+    <span class="c"># compute discounted returns, then update</span>
+    <span class="k">for</span> t <span class="k">in</span> trajectory:
+        G_t = <span class="f">discounted_return_from</span>(t)             <span class="c"># sum of future rewards</span>
+        loss = -<span class="f">log</span>(π(action_t | state_t)) * G_t    <span class="c"># push up good actions</span>
+        <span class="f">gradient_descent_step</span>(loss, θ)</pre>
+      </div>
+
+      <div class="callout">The key contrast: value-based methods (Q-Learning, DQN) update <strong>after every step</strong>, while REINFORCE waits for a <strong>complete episode</strong> before it can compute returns and update.</div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="section-divider"><span>5 · Mapping Onto a Real Project</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗂️</span> How the Pieces Become Files</h2>
+
+      <p>A typical RL codebase organizes the above into files like:</p>
+
+      <div class="code-block">
+        <div class="code-label">Project Layout</div>
+        <pre>environment.py    <span class="c"># reset(), step(action) -> (next_state, reward, done)</span>
+agent.py          <span class="c"># select_action(), learn(), the policy/value model</span>
+replay_buffer.py  <span class="c"># store and sample experience (for off-policy methods)</span>
+networks.py       <span class="c"># neural net definitions (for deep RL)</span>
+train.py          <span class="c"># the main loop that ties it together</span>
+config.py         <span class="c"># hyperparameters: alpha, gamma, epsilon, batch_size...</span></pre>
+      </div>
+
+      <p>If you're using a framework, the environment side is usually <strong>Gymnasium</strong> — the <code>reset</code>/<code>step</code> interface is the de-facto standard. The agent side comes from libraries that implement DQN, PPO, SAC, and more, so you mostly write the environment and tune hyperparameters.</p>
+
+      <table>
+        <thead>
+          <tr><th>Library</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Gymnasium</td><td>Environment interface — <code>reset()</code> / <code>step()</code> standard</td></tr>
+          <tr><td>Stable-Baselines3</td><td>Batteries-included agent implementations (DQN, PPO, SAC…)</td></tr>
+          <tr><td>CleanRL</td><td>Single-file, readable reference implementations</td></tr>
+          <tr><td>RLlib</td><td>Scalable, distributed RL for large workloads</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">Whichever path you take, the four verbs — <strong>decide, act, remember, improve</strong> — stay in place. Frameworks just hand you battle-tested versions of <code>select_action</code> and <code>learn</code>.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp; <a href="index.html" style="color:#475569;text-decoration:none;">← Course Index</a></p>
+    </footer>
+
+  </div>
+</body>
+</html>

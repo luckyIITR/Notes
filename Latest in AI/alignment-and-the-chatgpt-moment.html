@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alignment & the ChatGPT Moment — Latest in AI</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Formula block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Numbered algorithm steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Acronym glossary ── */
+    .acronym-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem; margin-top:0.5rem; }
+    .acronym-item { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.9rem 1rem; }
+    .acronym-item .acronym-key { font-size:0.95rem; font-weight:800; color:#a5b4fc; font-family:'Courier New',monospace; margin-bottom:0.35rem; }
+    .acronym-item .acronym-def { font-size:0.86rem; color:#94a3b8; line-height:1.6; }
+
+    /* ── Stage pipeline cards ── */
+    .stage { background:#151823; border:1px solid #2d3148; border-left:3px solid #6366f1; border-radius:8px; padding:1rem 1.2rem; margin:0.7rem 0; }
+    .stage .stage-head { font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.4rem; }
+    .stage .stage-title { font-size:1rem; font-weight:700; color:#e2e8f0; margin-bottom:0.5rem; }
+    .stage .stage-body { font-size:0.9rem; color:#94a3b8; line-height:1.7; }
+
+    @media (max-width: 540px) {
+      .acronym-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Latest in AI</a>
+
+    <header class="notes-header">
+      <p class="tag">Alignment · 2021–2022</p>
+      <h1>Alignment & the ChatGPT Moment</h1>
+      <p>The single most consequential development of the era wasn't a bigger model — it was learning to make models do what you ask.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · The Core Problem: Pretraining ≠ Helpfulness</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> What a Base Model Actually Optimizes</h2>
+      <p>A large language model is pretrained on a simple objective: given a sequence of tokens, predict the next one. Formally it maximizes the likelihood of internet text. This produces a model that is extraordinarily good at <strong>continuing</strong> text — but "continue this text" and "be a helpful assistant" are not the same goal. This gap is called the <span class="term">alignment problem</span>.</p>
+      <div class="formula-block">
+        <div class="formula-label">Pretraining objective (next-token prediction)</div>
+        <div class="formula-main">max<sub>θ</sub> &nbsp; &Sigma;<sub>t</sub> &nbsp; log P<sub>θ</sub>(x<sub>t</sub> | x<sub>&lt;t</sub>)</div>
+        <div class="formula-legend">
+          <span>x<sub>t</sub></span> = token at position t &nbsp;·&nbsp;
+          <span>x<sub>&lt;t</sub></span> = all preceding tokens &nbsp;·&nbsp;
+          <span>θ</span> = model parameters
+        </div>
+      </div>
+      <p>Because the training distribution is "all of the internet," a base model will happily imitate the worst of it: it may answer a question with another question (because forums do), drift off-topic, refuse nothing, hallucinate confidently, or complete a harmful request because the text pattern suggests it should. It has no notion of an <em>instruction</em> it is supposed to satisfy.</p>
+      <ul>
+        <li><strong>Capability vs. controllability:</strong> scaling adds raw capability (knowledge, reasoning) but does <em>not</em> automatically add controllability.</li>
+        <li><strong>The mismatch is structural:</strong> the loss rewards mimicking text, not being useful, truthful, or safe.</li>
+        <li><strong>Prompting alone is brittle:</strong> you can coax a base model with few-shot examples, but behavior is inconsistent and easily derailed.</li>
+      </ul>
+      <div class="callout">The biggest leap of 2021–2022 wasn't a larger model — it was <strong>learning to make models do what you ask</strong>. Alignment, not scale, is what turned LLMs into usable assistants.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · The Three Alignment Signals: Helpful, Honest, Harmless</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> What "Aligned" Means in Practice</h2>
+      <p>Alignment is usually decomposed into the <strong>"HHH"</strong> goals, which give the reward/preference process something concrete to target:</p>
+      <ul>
+        <li><strong>Helpful</strong> — actually attempts to do what the user asked, follows instructions, asks for clarification when needed.</li>
+        <li><strong>Honest</strong> — gives accurate information, expresses uncertainty, doesn't fabricate.</li>
+        <li><strong>Harmless</strong> — refuses or safely handles dangerous, abusive, or disallowed requests.</li>
+      </ul>
+      <p>These goals frequently <em>conflict</em> (the most helpful answer to a dangerous question is harmful), so alignment is fundamentally about teaching the model to <strong>trade off</strong> competing objectives the way a thoughtful human would. That tradeoff is exactly what preference data encodes.</p>
+    </div>
+
+    <div class="section-divider"><span>3 · InstructGPT — The Result That Started It</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> A 1.3B Model Beat 175B GPT-3</h2>
+      <p>OpenAI's <span class="term">InstructGPT</span> (2022) is the landmark demonstration. Human raters <em>preferred</em> the outputs of a <strong>1.3B</strong>-parameter aligned model over the raw <strong>175B</strong>-parameter GPT-3 — a model roughly 100× larger. The aligned model was more truthful, less toxic, and far better at following instructions, despite being a fraction of the size.</p>
+      <p>The takeaway reshaped priorities across the field: a relatively small amount of well-targeted human feedback can be worth more than two orders of magnitude of raw scale, when the goal is usefulness rather than benchmark perplexity.</p>
+      <div class="callout">Alignment can substitute for scale: <strong>~100× fewer parameters</strong>, yet preferred by humans, purely from better training signal.</div>
+    </div>
+
+    <div class="section-divider"><span>4 · RLHF — The Three-Stage Recipe in Depth</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Reinforcement Learning from Human Feedback</h2>
+      <p><span class="term">RLHF</span> is the pipeline that produced InstructGPT and is the backbone of essentially every chat model since. It has three stages that build on each other. The key idea: human preferences are easy to <em>express</em> ("A is better than B") but hard to <em>write down as a loss function</em> — so we <strong>learn</strong> the loss function from comparisons, then optimize against it.</p>
+
+      <div class="stage">
+        <div class="stage-head">Stage 1</div>
+        <div class="stage-title">Supervised Fine-Tuning (SFT)</div>
+        <div class="stage-body">
+          Human labelers write high-quality demonstration responses to a set of prompts. The base model is fine-tuned on these (prompt → ideal answer) pairs with ordinary next-token loss. This "teaches the format": the model learns it is an assistant that answers instructions, not a text continuer. SFT alone gets you most of the way to a usable chatbot — but it can only imitate the demonstrations it was shown, and writing demonstrations for every situation doesn't scale.
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-head">Stage 2</div>
+        <div class="stage-title">Reward Modeling (RM)</div>
+        <div class="stage-body">
+          For each prompt, sample several responses from the SFT model and have humans <strong>rank</strong> them from best to worst. Ranking is much cheaper and more reliable than writing perfect answers. A separate <span class="term">reward model</span> — usually the SFT model with the output head replaced by a single scalar — is trained to assign a higher score to the response humans preferred. The reward model becomes a <em>learned, automatable proxy</em> for human judgment that can score millions of new responses without a human in the loop.
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-head">Stage 3</div>
+        <div class="stage-title">Policy Optimization with PPO</div>
+        <div class="stage-body">
+          Now treat the language model as a policy in an RL problem: the prompt is the state, generating a response is the action, and the reward model supplies the reward. <strong>PPO</strong> (Proximal Policy Optimization) updates the policy to produce higher-reward responses — while a <em>KL penalty</em> keeps it from drifting too far from the SFT model, preventing it from "gaming" the reward model with degenerate text.
+        </div>
+      </div>
+
+      <h2 style="margin-top:1.5rem;"><span class="icon">🏗️</span> Why It's Built This Way</h2>
+      <ul>
+        <li><strong>SFT first</strong> gives PPO a sane starting point — RL from scratch on language is hopeless; the search space is astronomical.</li>
+        <li><strong>The reward model exists</strong> because you can't backprop through "a human liked this." It converts sparse, expensive human judgment into a dense, cheap, differentiable-to-sample-against signal.</li>
+        <li><strong>RL (not just more SFT)</strong> lets the model learn from <em>relative</em> quality across its own samples and explore responses better than any single demonstration, optimizing for what humans prefer rather than merely copying.</li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>5 · The Math Behind RLHF</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">∑</span> Reward Model & Policy Objectives</h2>
+      <p>The reward model is trained on pairs where a human chose response <em>y<sub>w</sub></em> ("winner") over <em>y<sub>l</sub></em> ("loser") for prompt <em>x</em>. It uses the <span class="term">Bradley–Terry</span> model — the probability that one item beats another is a logistic function of their score difference:</p>
+      <div class="formula-block">
+        <div class="formula-label">Reward model loss (pairwise preference)</div>
+        <div class="formula-main">L<sub>RM</sub> = − log σ( r<sub>φ</sub>(x, y<sub>w</sub>) − r<sub>φ</sub>(x, y<sub>l</sub>) )</div>
+        <div class="formula-legend">
+          <span>r<sub>φ</sub></span> = reward model (scalar score) &nbsp;·&nbsp;
+          <span>σ</span> = sigmoid &nbsp;·&nbsp;
+          <span>y<sub>w</sub></span> = preferred (winning) response &nbsp;·&nbsp;
+          <span>y<sub>l</sub></span> = rejected (losing) response
+        </div>
+      </div>
+      <p>The policy is then optimized to maximize reward, with a <strong>KL-divergence penalty</strong> anchoring it to the SFT reference policy. The penalty is the safety valve that stops <span class="term">reward hacking</span> — exploiting quirks of the reward model with text that scores high but is actually bad.</p>
+      <div class="formula-block">
+        <div class="formula-label">RLHF policy objective (maximized via PPO)</div>
+        <div class="formula-main">max<sub>π<sub>θ</sub></sub> &nbsp; E[ r<sub>φ</sub>(x, y) ] &nbsp; − &nbsp; β · KL( π<sub>θ</sub>(y|x) ‖ π<sub>ref</sub>(y|x) )</div>
+        <div class="formula-legend">
+          <span>π<sub>θ</sub></span> = policy being trained &nbsp;·&nbsp;
+          <span>π<sub>ref</sub></span> = frozen SFT reference model &nbsp;·&nbsp;
+          <span>β</span> = KL penalty strength &nbsp;·&nbsp;
+          <span>KL</span> = how far the policy drifts from the reference
+        </div>
+      </div>
+      <ul>
+        <li><strong>Small β:</strong> the policy chases reward aggressively → risk of reward hacking and loss of fluency/diversity.</li>
+        <li><strong>Large β:</strong> the policy stays close to SFT → safe but barely improves.</li>
+        <li>Tuning β is one of the fiddly parts of RLHF in practice.</li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>6 · Failure Modes & Why RLHF Is Hard</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> Where the Pipeline Breaks</h2>
+      <ul>
+        <li><strong>Reward hacking:</strong> the policy finds inputs the reward model mis-scores (e.g. overly long, sycophantic, or confidently-worded answers) and exploits them.</li>
+        <li><strong>Sycophancy:</strong> models learn that agreeing with the user earns higher ratings, so they tell people what they want to hear.</li>
+        <li><strong>Reward model overoptimization:</strong> push the policy too hard and true quality drops even as the proxy reward rises (Goodhart's law).</li>
+        <li><strong>PPO instability:</strong> RL on language is sensitive to hyperparameters, seeds, and implementation details — notoriously hard to reproduce.</li>
+        <li><strong>Cost & bottleneck:</strong> human preference labeling is slow, expensive, and inconsistent between labelers.</li>
+      </ul>
+      <p>Most of the methods that followed (Constitutional AI, DPO) are direct attempts to fix one or more of these pain points.</p>
+    </div>
+
+    <div class="section-divider"><span>7 · The ChatGPT Moment</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💥</span> Packaging, Not a Research Breakthrough</h2>
+      <p><span class="term">ChatGPT</span> (Nov 2022) was built on the same InstructGPT/RLHF lineage — technically it was a refinement, not a new paradigm. Its impact came from <strong>packaging</strong>: a free, fast, conversational web interface that anyone could try, with memory of the conversation turn-to-turn.</p>
+      <p>Why it mattered so much even though the science was incremental:</p>
+      <ul>
+        <li><strong>Distribution:</strong> it put a genuinely useful LLM in front of hundreds of millions of non-technical users for the first time.</li>
+        <li><strong>Feedback flywheel:</strong> massive real-world usage generated data and revealed failure modes at a scale no lab could simulate.</li>
+        <li><strong>Field-wide shockwave:</strong> it reset funding, competitive urgency, and research pace across the entire industry — the "ChatGPT moment."</li>
+      </ul>
+      <div class="callout">A lesson worth internalizing: <strong>product packaging can move a field as much as a research result</strong>. ChatGPT's interface, not a new loss function, is what changed the trajectory.</div>
+    </div>
+
+    <div class="section-divider"><span>8 · Constitutional AI & RLAIF</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📜</span> Replacing Human Feedback With AI Feedback</h2>
+      <p>Anthropic's <span class="term">Constitutional AI</span> attacks the <strong>human-labeling bottleneck</strong>. Instead of paying humans to label which response is safer, the model is given a written set of principles — a <em>"constitution"</em> — and asked to critique and revise its own outputs against those principles. The AI generates much of its own feedback. The general technique of using model-generated feedback in place of human labels is <span class="term">RLAIF</span> (Reinforcement Learning from AI Feedback).</p>
+      <p>It runs in two phases:</p>
+      <ol class="algo-steps">
+        <li><strong>Supervised (critique &amp; revise):</strong> the model produces a response, then critiques it against a constitutional principle and rewrites it to comply. The revised answers form an SFT dataset — no human labels needed.</li>
+        <li><strong>RL from AI Feedback (RLAIF):</strong> instead of human preference rankings, the model itself compares pairs of responses and picks the one that better follows the constitution. These AI preferences train the reward model, then standard RL (PPO) optimizes the policy.</li>
+      </ol>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">What RLAIF buys you</div>
+          <ul>
+            <li>Drastically less human labeling — scales cheaply</li>
+            <li>Principles are explicit and editable (transparent, auditable)</li>
+            <li>More consistent than tired/varied human labelers</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">What it risks</div>
+          <ul>
+            <li>The AI judge inherits the model's own biases and blind spots</li>
+            <li>Quality is capped by how good the judge model is</li>
+            <li>Badly written principles produce badly aligned behavior</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">RLAIF turns alignment partly into a <strong>writing problem</strong>: encode your values as principles, and let the model apply them at scale.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · DPO — Skipping the Reward Model</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚡</span> Direct Preference Optimization</h2>
+      <p><span class="term">DPO</span> (Direct Preference Optimization) is a simpler, <strong>RL-free</strong> alternative that became hugely popular for fine-tuning. The key insight: you don't actually need a separate reward model and a PPO loop. With some algebra, the RLHF objective (reward maximization + KL constraint) has a <em>closed-form optimal policy</em>, and you can rearrange it so that the policy itself <em>implicitly</em> defines the reward. That lets you train directly on preference pairs with a single classification-style loss.</p>
+      <div class="formula-block">
+        <div class="formula-label">DPO loss (trained directly on preference pairs)</div>
+        <div class="formula-main">L<sub>DPO</sub> = − log σ( β log [π<sub>θ</sub>(y<sub>w</sub>|x) / π<sub>ref</sub>(y<sub>w</sub>|x)] − β log [π<sub>θ</sub>(y<sub>l</sub>|x) / π<sub>ref</sub>(y<sub>l</sub>|x)] )</div>
+        <div class="formula-legend">
+          <span>π<sub>θ</sub></span> = policy being trained &nbsp;·&nbsp;
+          <span>π<sub>ref</sub></span> = frozen SFT reference &nbsp;·&nbsp;
+          <span>y<sub>w</sub>/y<sub>l</sub></span> = preferred / rejected response &nbsp;·&nbsp;
+          <span>β</span> = controls deviation from the reference
+        </div>
+      </div>
+      <p>In words: <strong>push up</strong> the probability of the preferred response and <strong>push down</strong> the rejected one, measured relative to the frozen reference model. The reward model never exists explicitly — the policy <em>is</em> the implicit reward. No sampling, no PPO, no RL instability.</p>
+    </div>
+
+    <div class="section-divider"><span>10 · DPO vs RLHF — When to Use Which</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> The Practical Tradeoff</h2>
+      <table>
+        <thead>
+          <tr><th>Aspect</th><th>RLHF (PPO)</th><th>DPO</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Separate reward model</td><td>Required</td><td>None</td></tr>
+          <tr><td>RL loop / sampling</td><td>Yes (PPO)</td><td>No — supervised-style</td></tr>
+          <tr><td>Stability</td><td>Finicky, seed-sensitive</td><td>Stable, easy to reproduce</td></tr>
+          <tr><td>Compute & complexity</td><td>High (multiple models)</td><td>Low</td></tr>
+          <tr><td>Online exploration</td><td>Yes — samples new responses</td><td>No — fixed preference dataset</td></tr>
+          <tr><td>Best at</td><td>Squeezing out peak quality, online improvement</td><td>Fast, cheap, reliable alignment</td></tr>
+        </tbody>
+      </table>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">DPO Strengths</div>
+          <ul>
+            <li>No reward model and no PPO — far simpler</li>
+            <li>Stable and reproducible</li>
+            <li>Cheaper compute, fewer moving parts</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">RLHF Strengths</div>
+          <ul>
+            <li>Online exploration can reach higher ceilings</li>
+            <li>Reward model reusable across many runs</li>
+            <li>More control over the optimization signal</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">Rule of thumb: <strong>reach for DPO first</strong> for most fine-tuning — it's simpler and usually competitive. Use full RLHF/PPO when you need the last few points of quality or online improvement and can afford the complexity.</div>
+    </div>
+
+    <div class="section-divider"><span>11 · Acronyms to Know Cold</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔤</span> The Alignment Vocabulary</h2>
+      <div class="acronym-grid">
+        <div class="acronym-item">
+          <div class="acronym-key">SFT</div>
+          <div class="acronym-def">Supervised Fine-Tuning — fine-tune on human-written demonstrations of desired behavior. Stage 1 of RLHF; teaches the model the assistant format.</div>
+        </div>
+        <div class="acronym-item">
+          <div class="acronym-key">RM</div>
+          <div class="acronym-def">Reward Model — a model trained on human preference rankings to score responses; the learned proxy for human judgment in RLHF.</div>
+        </div>
+        <div class="acronym-item">
+          <div class="acronym-key">RLHF</div>
+          <div class="acronym-def">Reinforcement Learning from Human Feedback — SFT → reward model from human rankings → PPO. The standard alignment pipeline.</div>
+        </div>
+        <div class="acronym-item">
+          <div class="acronym-key">PPO</div>
+          <div class="acronym-def">Proximal Policy Optimization — the RL algorithm used to optimize the policy against the reward model with a KL constraint.</div>
+        </div>
+        <div class="acronym-item">
+          <div class="acronym-key">RLAIF</div>
+          <div class="acronym-def">Reinforcement Learning from AI Feedback — replaces human preference labels with AI-generated feedback guided by written principles (Constitutional AI).</div>
+        </div>
+        <div class="acronym-item">
+          <div class="acronym-key">DPO</div>
+          <div class="acronym-def">Direct Preference Optimization — a simpler, RL-free alternative that skips the separate reward model and trains directly on preference pairs.</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← Latest in AI</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
