@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modeling Challenges and Strategies — Machine Learning in Production</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Numbered Algorithm / Process Steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Iteration Loop Pipeline ── */
+    .pipeline {
+      display: flex; flex-wrap: wrap; align-items: stretch;
+      gap: 0.6rem; margin: 0.8rem 0;
+    }
+    .pipe-box {
+      flex: 1 1 0; min-width: 130px;
+      background: #151823; border: 1px solid #2d3148; border-radius: 10px;
+      padding: 0.9rem; text-align: center;
+    }
+    .pipe-box .pipe-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #6366f1; margin-bottom: 0.4rem;
+    }
+    .pipe-box p { margin: 0; font-size: 0.82rem; color: #94a3b8; }
+    .pipe-arrow { display: flex; align-items: center; color: #475569; font-size: 1.3rem; }
+
+    /* ── Milestone Stack ── */
+    .milestones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 0.8rem 0; }
+    .milestone {
+      background: #151823; border: 1px solid #2d3148; border-radius: 10px; padding: 1rem 0.9rem;
+    }
+    .milestone .m-num { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: #6366f1; margin-bottom: 0.4rem; }
+    .milestone h3 { font-size: 0.92rem; color: #e2e8f0; margin: 0 0 0.45rem 0; }
+    .milestone p { margin: 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.55; }
+
+    /* ── Formula Block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Confusion Matrix ── */
+    .confusion { display:grid; grid-template-columns:auto 1fr 1fr; gap:0.45rem; margin:1rem 0; max-width:520px; }
+    .cm-cell { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.8rem 0.7rem; text-align:center; }
+    .cm-cell.corner { background:transparent; border:none; }
+    .cm-cell.axis { background:transparent; border:none; display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#6366f1; }
+    .cm-cell .cm-name { font-size:0.72rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:#94a3b8; margin-bottom:0.3rem; }
+    .cm-cell .cm-num { font-size:1.3rem; font-weight:800; color:#e2e8f0; }
+    .cm-cell.tp { border-color:#4ade80; } .cm-cell.tp .cm-num { color:#4ade80; }
+    .cm-cell.tn { border-color:#4ade80; } .cm-cell.tn .cm-num { color:#4ade80; }
+    .cm-cell.fp { border-color:#f87171; } .cm-cell.fp .cm-num { color:#f87171; }
+    .cm-cell.fn { border-color:#f87171; } .cm-cell.fn .cm-num { color:#f87171; }
+    .cm-axis-label { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#6366f1; margin:0.4rem 0; }
+
+    @media (max-width: 540px) {
+      .milestones { grid-template-columns: 1fr; }
+      .pipe-arrow { transform: rotate(90deg); justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Machine Learning in Production</a>
+
+    <header class="notes-header">
+      <p class="tag">Course · Modeling</p>
+      <h1>Modeling Challenges and Strategies</h1>
+      <p>The key challenges of building a production-ready model — and a data-centric playbook for selecting, baselining, and improving it efficiently.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Modeling in the Lifecycle</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Model-Centric vs Data-Centric AI</h2>
+      <p>This part of the lifecycle focuses on the <span class="term">modeling</span> step: how to select and train a model, how to perform error analysis, and how to use that analysis to drive improvements. Senior machine learning engineers tend to give remarkably consistent advice here — consistent enough that it can almost be captured as an <em>if-then-else</em> sequence of decisions.</p>
+      <p>A recurring theme is <span class="term">model-centric</span> versus <span class="term">data-centric</span> AI development. Historically, the field emphasized choosing the right model — for example, the right neural network architecture. For practical projects, it is often more useful to take a data-centric approach: focus not only on the architecture, but on feeding the algorithm <strong>high-quality data</strong>.</p>
+      <div class="callout">Data-centric development does <strong>not</strong> mean blindly collecting more data — that is slow and expensive. It means using tools to improve the data in the most efficient possible way.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · Why Model Development Is Hard</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧩</span> AI Systems Are Code + Data</h2>
+      <p>A useful framework: every machine learning system comprises both <strong>code</strong> (the algorithm or model) and <strong>data</strong>. Decades of research grew up around downloading a fixed dataset and finding a model that does well on it. But in many real applications you have the flexibility to <strong>change the data</strong> if you do not like it.</p>
+      <p>For many projects the model is essentially a solved problem — something off GitHub will do well enough — so time is better spent improving the data, which is far more customized to your specific problem. Hyperparameters (learning rate, regularization, and a few others) matter too, but their space is relatively limited, so most attention goes to the <strong>code</strong> and the <strong>data</strong>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔄</span> A Highly Iterative Loop</h2>
+      <p>Model development is highly iterative. You start with a model, hyperparameters, and data; you train; you carry out error analysis; and you use the results to decide how to change the model, the hyperparameters, or the data.</p>
+      <div class="pipeline">
+        <div class="pipe-box">
+          <div class="pipe-label">Model + Hyperparams + Data</div>
+          <p>Start with a reasonable choice for each.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Train Model</div>
+          <p>Fit the algorithm on the data.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Error Analysis</div>
+          <p>Diagnose where and why it falls short.</p>
+        </div>
+        <div class="pipe-arrow">↺</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Improve</div>
+          <p>Update data, model, or hyperparameters — repeat.</p>
+        </div>
+      </div>
+      <p>Because machine learning is so empirical, getting through this loop <strong>many times, quickly</strong> is key to improving performance — as is making good choices each time about what to change. Once you reach a good model, a final, richer error analysis and an <strong>audit</strong> confirm the system works before pushing it to production.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🪜</span> Three Milestones Every Project Should Aim For</h2>
+      <p>Most projects should aspire to clear three milestones, in order:</p>
+      <div class="milestones">
+        <div class="milestone">
+          <div class="m-num">Milestone 1</div>
+          <h3>Do well on the training set</h3>
+          <p>If you cannot even fit the training data, you almost certainly will not do well on the dev or test set.</p>
+        </div>
+        <div class="milestone">
+          <div class="m-num">Milestone 2</div>
+          <h3>Do well on dev / test set</h3>
+          <p>Generalize to the holdout cross-validation set and the test set — the classic target of ML development.</p>
+        </div>
+        <div class="milestone">
+          <div class="m-num">Milestone 3</div>
+          <h3>Do well on the business metrics</h3>
+          <p>Meet the project's actual goals — not just average test accuracy, which is often <strong>not sufficient</strong>.</p>
+        </div>
+      </div>
+      <div class="callout">A high test set accuracy that fails the business metrics is a common source of friction between ML teams (who optimize the test set) and business teams (who care about real-world goals).</div>
+    </div>
+
+    <div class="section-divider"><span>3 · When Test Set Accuracy Isn't Enough</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⭐</span> Disproportionately Important Examples</h2>
+      <p>A system can have low average test set error yet still be unacceptable if it fails on a set of <span class="term">disproportionately important examples</span>. In web search, queries fall into different types:</p>
+      <ul>
+        <li><strong>Informational / transactional</strong> — "apple pie recipe", "wireless data plan". Users will forgive ranking the best result second or third, since many good results exist.</li>
+        <li><strong>Navigational</strong> — "Stanford", "Reddit", "YouTube". The user has a very clear intent; anything other than returning the right site as the #1 result quickly loses their trust.</li>
+      </ul>
+      <p>Average test set accuracy weights all examples equally, but navigational queries are disproportionately important. Simply <strong>re-weighting</strong> those examples can help in some applications, but in practice it does not always solve the whole problem.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Performance on Key Slices &amp; Fairness</h2>
+      <p>Closely related is performance on <span class="term">key slices</span> of the dataset. Consider a loan-approval model: it must not unfairly discriminate against applicants by ethnicity, gender, location, language, or other <strong>protected attributes</strong>. Many countries legally mandate this. High average accuracy is irrelevant if the system exhibits an unacceptable level of bias.</p>
+      <p>The same idea appears beyond fairness to individuals. An e-commerce site should treat all major user, retailer, and product categories fairly:</p>
+      <ul>
+        <li>Giving irrelevant recommendations to all users of one ethnicity is unacceptable.</li>
+        <li>Always pushing products from large retailers while ignoring smaller brands can drive away small retailers and harm long-term business health.</li>
+        <li>Never recommending a whole category (e.g. electronics) would reasonably upset the retailers who sell it.</li>
+      </ul>
+      <p>Later in the course you learn to run error analysis on key slices to spot and address problems like these.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🩺</span> Skewed Distributions &amp; Rare Classes</h2>
+      <p>With <span class="term">skewed data distributions</span>, average accuracy can be deeply misleading. In medical diagnosis where 99% of patients are negative, a program that simply prints <strong>"0"</strong> achieves 99% accuracy — no learning required — yet is useless. (This really happened: a giant neural network was found to do exactly what <code>print "0"</code> does.)</p>
+      <p>Related is <strong>accuracy on rare classes</strong>. On chest X-ray diagnosis, a common condition like <em>effusion</em> (~10,000 images) reached high performance, while a rare condition like <em>hernia</em> (~100 images) performed much worse. A system could ignore hernia almost entirely with only a modest hit to average accuracy — but medically, missing an obvious hernia is unacceptable.</p>
+      <div class="callout">Andrew's advice when "but I did well on the test set!" meets "but it doesn't work for my application": <strong>don't get defensive</strong>. Doing well on the test set is worth celebrating, but the real job is to build a system that solves the actual business or application needs.</div>
+    </div>
+
+    <div class="section-divider"><span>4 · Establishing a Baseline</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📏</span> Why a Baseline Comes First</h2>
+      <p>One of the most useful first steps is to establish a <span class="term">baseline</span> level of performance. Only once a baseline exists do you have the tools to efficiently improve on it. Take a speech recognition system with four categories of audio:</p>
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Current accuracy</th><th>Human level (HLP)</th><th>Potential gain</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Clear speech</td><td>94%</td><td>95%</td><td>~1%</td></tr>
+          <tr><td>Car noise</td><td>89%</td><td>93%</td><td>~4%</td></tr>
+          <tr><td>People noise</td><td>87%</td><td>89%</td><td>~2%</td></tr>
+          <tr><td>Low bandwidth</td><td>70%</td><td>70%</td><td>~0%</td></tr>
+        </tbody>
+      </table>
+      <p>Without a baseline you might rush to fix low-bandwidth audio, since 70% looks worst. But <span class="term">human level performance (HLP)</span> reveals the low-bandwidth audio may be so garbled that even humans cannot transcribe it — leaving little headroom. The bigger opportunity is <strong>car noise</strong>, where there is a ~4% gap to close.</p>
+      <div class="callout">A baseline indicates what <strong>might be possible</strong>. For unstructured data, HLP also approximates the <strong>irreducible (Bayes) error</strong> — the best anyone could hope to achieve — which helps prioritize where to work.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🗂️</span> Unstructured vs Structured Data</h2>
+      <p>Best practices for baselines differ by data type:</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Unstructured data</div>
+          <ul>
+            <li>Images, audio, natural language — things humans evolved to interpret well.</li>
+            <li>Humans are very good here, so <strong>HLP is a strong baseline</strong>.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Structured data</div>
+          <ul>
+            <li>Giant databases / spreadsheets — transactions, inventory, prices.</li>
+            <li>Humans are not good at reading these, so <strong>HLP is a weaker baseline</strong>.</li>
+          </ul>
+        </div>
+      </div>
+      <p>Beyond HLP, other ways to establish a baseline include:</p>
+      <ul>
+        <li><strong>Literature search / open source</strong> — see what state-of-the-art or published results report on similar data.</li>
+        <li><strong>Quick-and-dirty implementation</strong> — a rough open-source build that hints at what is possible.</li>
+        <li><strong>Older system</strong> — if you already have one running, its performance is a baseline to improve on.</li>
+      </ul>
+      <div class="callout">If a business team demands a guaranteed accuracy (80%, 90%, 99%) before any baseline exists, push back and ask for time to establish a rough baseline first — it sets the team up for long-term success.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Tips for Getting Started</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚦</span> Get Going Quickly, Then Iterate</h2>
+      <p>To start the first lap of the iteration loop efficiently:</p>
+      <ol class="algo-steps">
+        <li><strong>Do a quick literature search.</strong> Skim courses, blogs, and open-source projects for half a day. For a production system (not research), don't obsess over the latest, greatest algorithm — pick something reasonable that lets you start fast.</li>
+        <li><strong>Favor reasonable algorithm + good data.</strong> A reasonable algorithm with good data often beats a great algorithm with mediocre data. A good open-source implementation also helps you establish a baseline more efficiently.</li>
+        <li><strong>Treat deployment constraints judiciously.</strong> If the baseline is set and the project is confirmed worth deploying, factor in compute and other constraints. If you are still just establishing a baseline to see what's possible, it can be okay to ignore them for now.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔍</span> Run Quick Sanity Checks First</h2>
+      <p>Before launching a long training run on all your data, run cheap sanity checks to find bugs fast:</p>
+      <ul>
+        <li><strong>Overfit a tiny dataset.</strong> Try to fit a very small training set — even a single example, especially when the output is complex. A speech system trained on one clip that outputs only "space, space, space…" is clearly broken; no point training overnight.</li>
+        <li><strong>Try one example for complex outputs.</strong> For image segmentation, see if the model can overfit a single image before scaling to thousands.</li>
+        <li><strong>Train on a small subset.</strong> Even with a million images, first train on 10–100 images. If the algorithm can't do well on 100, it won't do well on 10,000 — and you learn this in seconds or minutes.</li>
+      </ul>
+      <div class="callout">Each sanity check costs seconds or minutes but can save hours or days — letting you find bugs quickly and iterate faster toward good performance.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Error Analysis</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔬</span> The Heart of the Development Process</h2>
+      <p>The first time you train a learning algorithm, you can almost guarantee it won't work — not the first time out. <span class="term">Error analysis</span> is the heart of the development process: done well, it tells you the <strong>most efficient use of your time</strong> for improving performance.</p>
+      <p>The classic technique is wonderfully low-tech: open a spreadsheet (Google Sheets, Excel, Numbers) and listen to ~100 mislabeled examples from your dev set. For each example, tag it with attributes you hypothesize might explain the errors. In speech recognition, for instance, "stir fried lettuce recipe" might be transcribed as "stir fry lettuce recipe."</p>
+      <table>
+        <thead>
+          <tr><th>Example (ground truth → prediction)</th><th>Car noise</th><th>People noise</th><th>Low bandwidth</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>stir fried lettuce → stir fry lettuce</td><td>✓</td><td></td><td></td></tr>
+          <tr><td>sweetened coffee → Swedish coffee</td><td></td><td>✓</td><td></td></tr>
+          <tr><td>sail away song → sell away song</td><td></td><td>✓</td><td></td></tr>
+          <tr><td>let's catch up → let's ketchup</td><td>✓</td><td>✓</td><td>✓</td></tr>
+        </tbody>
+      </table>
+      <p>Tags are <strong>not mutually exclusive</strong>, and you invent new ones as you go — noticing that several clips share a low-bandwidth connection, for example, prompts a new column you go back and re-check. This surfaces the categories that are the biggest sources of error, and therefore most worthy of attention.</p>
+      <div class="callout">Error analysis has traditionally been a manual process in a notebook or spreadsheet, but emerging <strong>MLOps tools</strong> (e.g. LandingLens for computer vision) now make tagging and slicing far easier than a spreadsheet.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🏷️</span> An Iterative Tagging Process</h2>
+      <p>Like training and deployment, error analysis is itself <strong>iterative</strong>: tag a set of examples with an initial set of tags, reflect, propose new tags, then tag more examples. Tags can take many forms:</p>
+      <ul>
+        <li><strong>Class labels</strong> — does this phone have a scratch? a dent?</li>
+        <li><strong>Image / signal properties</strong> — is the photo blurry? a dark vs light background? unwanted reflection? car noise vs people noise?</li>
+        <li><strong>Metadata</strong> — phone model, factory, manufacturing line, or for recommendations: user demographics, product features, product categories.</li>
+      </ul>
+      <p>The goal is to find a few categories where you could <strong>productively improve</strong> the algorithm — like speech with car noise, or "are we bad at recommending products to younger women?"</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📊</span> Useful Numbers to Compute Per Tag</h2>
+      <p>As you work through the tags, four questions help you decide what matters:</p>
+      <ul>
+        <li><strong>What fraction of errors have that tag?</strong> If 12% of your 100 clips have car noise, fixing all car-noise issues caps the gain at ~12%.</li>
+        <li><strong>Of all data with that tag, what fraction is misclassified?</strong> If 18% of car-noise data is mistranscribed, that reveals how <em>hard</em> those examples are (requires tagging correct examples too, not just errors).</li>
+        <li><strong>What fraction of all data has that tag?</strong> Tells you how important the category is relative to the whole dataset.</li>
+        <li><strong>How much room for improvement is there?</strong> Often measured by HLP on data with that tag.</li>
+      </ul>
+    </div>
+
+    <div class="section-divider"><span>7 · Prioritizing What to Work On</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> Weighting Gap by Category Size</h2>
+      <p>The gap to HLP alone can mislead. Multiply each category's <strong>potential gain by the fraction of data</strong> it represents to estimate its impact on overall accuracy:</p>
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Acc / HLP (gap)</th><th>% of data</th><th>Overall raise if closed</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Clean speech</td><td>94% / 95% (1%)</td><td>60%</td><td><strong>0.60%</strong></td></tr>
+          <tr><td>Car noise</td><td>89% / 93% (4%)</td><td>4%</td><td>0.16%</td></tr>
+          <tr><td>People noise</td><td>87% / 89% (2%)</td><td>30%</td><td><strong>0.60%</strong></td></tr>
+          <tr><td>Low bandwidth</td><td>70% / 70% (0%)</td><td>6%</td><td>~0%</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">Car noise has the biggest gap, but it's only 4% of the data. Because <strong>people noise</strong> and <strong>clean speech</strong> each cover far more data, they offer larger total improvement — a richer analysis flips the priority.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧭</span> Four Factors for Deciding</h2>
+      <p>There is <strong>no mathematical formula</strong> for what to work on, but weigh these factors together:</p>
+      <ul>
+        <li><strong>Room for improvement</strong> — gap to HLP or some baseline.</li>
+        <li><strong>Frequency</strong> — how often the category appears.</li>
+        <li><strong>Ease of improvement</strong> — do you have ideas (e.g. data augmentation) for this category?</li>
+        <li><strong>Importance</strong> — e.g. car-noise accuracy matters extra for hands-free, in-car map search.</li>
+      </ul>
+      <p>Once you pick a category, a fruitful approach is to <strong>add data or improve its quality</strong> for that handful of categories — by collecting more targeted data or via data augmentation. This focus makes data collection far more efficient than gathering more data generically, which is slow and expensive.</p>
+    </div>
+
+    <div class="section-divider"><span>8 · Skewed Datasets &amp; the Confusion Matrix</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> When Raw Accuracy Lies</h2>
+      <p>Datasets where the ratio of positive to negative examples is far from 50/50 are <span class="term">skewed datasets</span>. They appear everywhere: manufacturing (99.7% non-defective), medical diagnosis (99% disease-free), and wake-word detection (one dataset was 96.7% negative, 3.3% positive). On such data, <code>print "0"</code> scores extremely high accuracy while being useless.</p>
+      <p>Instead, build a <span class="term">confusion matrix</span>: one axis is the actual label, the other is the prediction, and each cell counts the examples that fall into it.</p>
+      <div class="cm-axis-label">Actual label →</div>
+      <div class="confusion">
+        <div class="cm-cell corner"></div>
+        <div class="cm-cell axis">Actual y = 0</div>
+        <div class="cm-cell axis">Actual y = 1</div>
+        <div class="cm-cell axis">Pred y = 0</div>
+        <div class="cm-cell tn"><div class="cm-name">True Neg</div><div class="cm-num">905</div></div>
+        <div class="cm-cell fn"><div class="cm-name">False Neg</div><div class="cm-num">18</div></div>
+        <div class="cm-cell axis">Pred y = 1</div>
+        <div class="cm-cell fp"><div class="cm-name">False Pos</div><div class="cm-num">9</div></div>
+        <div class="cm-cell tp"><div class="cm-name">True Pos</div><div class="cm-num">68</div></div>
+      </div>
+      <p>Out of 1,000 examples there are 914 negative and 86 positive — about 8.6% positive, a clearly skewed set where raw accuracy hides the real behavior.</p>
+    </div>
+
+    <div class="section-divider"><span>9 · Precision, Recall &amp; F<sub>1</sub></span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Precision and Recall</h2>
+      <p><span class="term">Precision</span> asks: of everything the algorithm called positive, what fraction was right? <span class="term">Recall</span> asks: of everything that was actually positive, what fraction did it catch?</p>
+      <div class="formula-block">
+        <div class="formula-label">Precision &amp; Recall</div>
+        <div class="formula-main">
+          Precision = TP / (TP + FP) = 68 / (68 + 9) = 88.3%<br />
+          Recall = TP / (TP + FN) = 68 / (68 + 18) = 79.1%
+        </div>
+        <div class="formula-legend">
+          <span>TP</span> true positives &nbsp;·&nbsp; <span>FP</span> false positives &nbsp;·&nbsp; <span>FN</span> false negatives
+        </div>
+      </div>
+      <p>These metrics expose the <code>print "0"</code> trick: an all-negative predictor produces <strong>0 true positives</strong>, so recall = 0/(0+86) = <strong>0%</strong> (and precision is the undefined 0/0). Recall instantly flags that it detects no useful positives. A high precision with near-zero recall is usually not useful.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Combining Them: the F<sub>1</sub> Score</h2>
+      <p>One model may win on precision while another wins on recall. The <span class="term">F<sub>1</sub> score</span> combines them, deliberately emphasizing the <strong>worse</strong> of the two — it's the <strong>harmonic mean</strong>, an average that leans toward the lower number.</p>
+      <div class="formula-block">
+        <div class="formula-label">F<sub>1</sub> Score</div>
+        <div class="formula-main">F<sub>1</sub> = 2 · (P · R) / (P + R)</div>
+        <div class="formula-legend">
+          <span>P</span> precision &nbsp;·&nbsp; <span>R</span> recall &nbsp;·&nbsp; punishes a model that is weak on either one
+        </div>
+      </div>
+      <p>A model with balanced P and R might score F<sub>1</sub> = 83.4%, while a model with very poor recall gets a low F<sub>1</sub> — making it clear the first model is superior. F<sub>1</sub> is just <em>one</em> common way to combine the two; your application may warrant a different weighting.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔢</span> Multi-Class Rare Defects</h2>
+      <p>Precision/recall extend naturally to <strong>multi-class</strong> problems with several rare classes. For smartphone defect detection — scratches, dents, pit marks, discoloration — compute precision and recall for each defect individually:</p>
+      <table>
+        <thead>
+          <tr><th>Defect</th><th>Precision</th><th>Recall</th><th>F<sub>1</sub></th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Scratch</td><td>82.1%</td><td>99.2%</td><td>89.8%</td></tr>
+          <tr><td>Dent</td><td>—</td><td>high</td><td>—</td></tr>
+          <tr><td>Pit mark</td><td>—</td><td>high</td><td>—</td></tr>
+          <tr><td>Discoloration</td><td>—</td><td>high</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <p>Many factories favor <strong>high recall</strong> — they'd rather flag a good phone for human re-inspection than let a defective one ship. Because all four defects are rare, accuracy would be misleadingly high; <strong>F<sub>1</sub> per class</strong> gives a single metric per defect to benchmark against HLP and to prioritize the most fruitful defect to work on.</p>
+    </div>
+
+    <div class="section-divider"><span>10 · Performance Auditing</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛡️</span> One Last Check Before Production</h2>
+      <p>Even when the algorithm does well on accuracy or F<sub>1</sub>, it's worth a final <span class="term">performance audit</span> before deployment — it can save you from significant post-deployment problems. The framework:</p>
+      <ol class="algo-steps">
+        <li><strong>Brainstorm ways the system might go wrong</strong> — performance across ethnicities/genders, problematic false positives or negatives, accuracy on rare and important classes.</li>
+        <li><strong>Establish metrics against those issues</strong> — typically evaluated on <span class="term">slices</span> of the data (e.g. one gender, one ethnicity, or all scratch-defect examples) rather than the whole dev set. Tools like <strong>TensorFlow Model Analysis (TFMA)</strong> can auto-compute sliced metrics for each model.</li>
+        <li><strong>Get buy-in</strong> from the business / product owner that these are the right problems and metrics — and fix any issue you find <em>before</em> shipping.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🗣️</span> Example &amp; Standards</h2>
+      <p>For a speech system you might audit accuracy by <strong>gender</strong>, <strong>ethnicity</strong>, <strong>perceived accent</strong>, and <strong>device</strong> (different microphones), plus the <strong>prevalence of rude mis-transcriptions</strong>. A real case: DeepLearning.AI's GANs lectures were mistranscribed as "gun" and "gang," making subtitles look full of gun violence — so swear-word/offensive mis-transcriptions get special attention, as they're perceived far more negatively than neutral errors.</p>
+      <div class="callout">Standards for fairness and acceptable bias vary by industry and are <strong>still evolving</strong>. Search your industry's norms, and for high-stakes applications have a <strong>team or external advisors</strong> brainstorm what could go wrong — get ahead of problems proactively rather than being surprised after deployment.</div>
+    </div>
+
+    <div class="section-divider"><span>11 · A Data-Centric Approach</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔁</span> Hold the Data Fixed vs Hold the Code Fixed</h2>
+      <p>Once error analysis points you at a category to improve — say speech with car noise — the next question is <em>how</em> to improve it. This is where the contrast between the two development philosophies becomes concrete:</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Model-centric view</div>
+          <ul>
+            <li><strong>Hold the data fixed</strong>, iteratively improve the code / model.</li>
+            <li>Drove most academic research: download a benchmark dataset (a fixed quantity) and work hard to do as well as possible on it.</li>
+            <li>Still an important role to play in inventing better models.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Data-centric view</div>
+          <ul>
+            <li><strong>Hold the code fixed</strong>, iteratively improve the data.</li>
+            <li>Treats data quality as paramount; uses tools like error analysis and data augmentation to improve it systematically.</li>
+            <li>Often more useful in practice — if the data is good enough, many models will do just fine.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">If you've spent most of your ML experience thinking model-first, try adding the data-centric question to your toolkit: instead of only asking "how can I improve the model?", ask <strong>"how can I make my dataset even better?"</strong> One of the most important answers is <span class="term">data augmentation</span>.</div>
+    </div>
+
+    <div class="section-divider"><span>12 · The Rubber Sheet Analogy</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> Predicting the Effect of More Data</h2>
+      <p>A helpful mental picture for deciding whether to collect or augment data. Imagine the horizontal axis as the <strong>space of possible inputs</strong> — for speech, the different noise types laid out so that similar noises sit near each other:</p>
+      <ul>
+        <li><strong>Mechanical noises</strong> cluster together — car, plane, train sound alike; machine noise (washing machine, loud AC) is a bit further away.</li>
+        <li><strong>People / ambient noises</strong> cluster separately — cafe, library, food-court noise are similar to one another.</li>
+      </ul>
+      <p>The vertical axis is performance (e.g. accuracy). Your model traces one curve across this space, and human level performance traces a higher curve; the <strong>gap between them is the opportunity for improvement</strong>. Think of the model's curve as a flexible rubber sheet.</p>
+      <div class="callout">When you add data for one category (e.g. lots more cafe-noise audio), you <strong>grab that point of the rubber sheet and pull it up</strong>. Nearby points (similar noises) get pulled up a lot; far-away points may rise a little. For unstructured data, pulling one part up almost never makes a distant part dip far down.</div>
+      <p>After you pull up one region, the <strong>biggest gap shifts elsewhere</strong>. Error analysis then tells you the location of the new biggest gap — the next piece worth pulling up. Iterating this "pull up one piece at a time" is an efficient way to march the whole curve toward human level performance.</p>
+    </div>
+
+    <div class="section-divider"><span>13 · Data Augmentation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎧</span> Creating Realistic New Examples</h2>
+      <p><span class="term">Data augmentation</span> is an efficient way to get more data, especially for <strong>unstructured</strong> problems (images, audio, text). For speech you can literally sum two waveforms — a clean clip of "AI is the new electricity" plus background cafe noise (or background music) — to synthesize an example that sounds like it was recorded in a noisy cafe. But you must choose <em>what</em> noise to add and <em>how loud</em> it should be relative to the speech.</p>
+      <p>The guiding goal: create realistic examples the algorithm does <strong>poorly</strong> on, while a human (or some baseline) can still do <strong>well</strong> on them. Examples that are too easy give the algorithm nothing to learn; examples so noisy that no one can understand them aren't helpful either.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">✅</span> A Checklist Instead of Retraining</h2>
+      <p>A naive loop — generate augmented data, retrain, check the dev set, tweak parameters, retrain again — is slow, because every parameter change costs a full training run. Instead, sanity-check generated data <strong>before</strong> training with three quick questions:</p>
+      <ol class="algo-steps">
+        <li><strong>Does it sound / look realistic?</strong> The data should resemble the real audio or images you ultimately want to perform well on.</li>
+        <li><strong>Is the x→y mapping clear?</strong> Can a human still recognize what was said (or see the defect)? If yes, the label is valid.</li>
+        <li><strong>Is the algorithm currently doing poorly on it?</strong> If so, there is genuine signal left to learn from.</li>
+      </ol>
+      <p>Data meeting all three gives a high chance that adding it to the training set will successfully "pull up the rubber sheet" — without spending hours or days verifying by training.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📱</span> Image Example: Scratched Phones</h2>
+      <p>With a small set of scratched-phone images you can augment by:</p>
+      <ul>
+        <li><strong>Horizontal flip</strong> — buttons move to the other side, but it stays a realistic, useful example.</li>
+        <li><strong>Contrast / brightening</strong> — makes the scratch more visible while remaining realistic.</li>
+        <li><strong>Excessive darkening</strong> — fails the checklist: if even a human can't tell whether a scratch is present, the x→y mapping is no longer clear.</li>
+      </ul>
+      <p>Favor schemes that produce many "passes the checklist" examples and few failures. More sophisticated options exist — using <strong>Photoshop</strong> to draw a realistic scratch onto a clean phone, or even <strong>GANs</strong> to synthesize scratches — but GANs are often overkill: simpler, faster techniques frequently work just as well.</p>
+    </div>
+
+    <div class="section-divider"><span>14 · The Data Iteration Loop</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> Iterating on Data, Not Just the Model</h2>
+      <p><span class="term">Model iteration</span> means repeatedly training a model, doing error analysis, and deciding how to improve the model. A data-centric approach swaps the focus: in the <span class="term">data iteration loop</span> you take the data and model, train, do error analysis, and then focus on <strong>how to add data or improve its quality</strong>.</p>
+      <div class="pipeline">
+        <div class="pipe-box">
+          <div class="pipe-label">Train Model</div>
+          <p>On the current dataset.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Error Analysis</div>
+          <p>Find the category with the biggest gap.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Improve the Data</div>
+          <p>Augment / collect data for that tag.</p>
+        </div>
+        <div class="pipe-arrow">↺</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Repeat</div>
+          <p>Plus a robust hyperparameter search.</p>
+        </div>
+      </div>
+      <p>Paired with a robust hyperparameter search, this loop often yields <strong>faster improvements</strong> than model iteration. If error analysis shows the algorithm struggles on cafe-noise speech, generating more cafe-noise data is an efficient fix.</p>
+    </div>
+
+    <div class="section-divider"><span>15 · Can Adding Data Hurt?</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧮</span> Usually No — With Caveats</h2>
+      <p>Augmentation changes your input distribution P(x): maybe cafe noise jumps from 20% to 50% of the data, so the training set no longer matches the dev/test distribution. For <strong>unstructured</strong> problems, accurately labeled extra data <strong>rarely hurts</strong> accuracy — provided two conditions hold:</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">When it's safe</div>
+          <ul>
+            <li><strong>Large, low-bias model</strong> — a high-capacity network has enough resources to do well on cafe-noise <em>and</em> non-cafe-noise data at once.</li>
+            <li><strong>Clear x→y mapping</strong> — given only x, a human can predict y accurately.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">When it can hurt</div>
+          <ul>
+            <li><strong>Small model</strong> — limited capacity may get over-spent modeling the over-represented category, hurting the rest.</li>
+            <li><strong>Ambiguous x→y mapping</strong> — when the true label is genuinely unclear from x.</li>
+          </ul>
+        </div>
+      </div>
+      <p>The rare failure case comes from Google Street View house-number recognition. The digit <strong>1</strong> and the letter <strong>I</strong> can be visually identical, but house numbers almost never contain an "I". If you over-add ambiguous "I" examples, you skew the dataset so the model stops exploiting the prior that "1" is far more common — and it guesses worse on truly ambiguous images. This contradicts the "clear mapping" condition and is a genuine corner case.</p>
+      <div class="callout">This is a rare, almost corner-case scenario. So long as the model is big enough to learn from diverse sources, you can use augmentation comfortably — even when it makes the training distribution differ from dev/test.</div>
+    </div>
+
+    <div class="section-divider"><span>16 · Adding Features for Structured Data</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🍽️</span> When You Can't Make New Examples</h2>
+      <p>For <strong>structured data</strong>, creating brand-new training examples is usually hard — a restaurant-recommendation app has a fixed pool of users and restaurants, so you can't synthesize new people. The more fruitful move is to <strong>add useful features</strong> to the examples you already have.</p>
+      <p>In a real case, error analysis showed the system kept recommending meat-only restaurants to clearly vegetarian users. Rather than augmenting users, the fix was to add features:</p>
+      <ul>
+        <li><strong>On the user side</strong> — a (soft) feature for how likely the person is vegetarian, e.g. the percentage of past orders that were vegetarian.</li>
+        <li><strong>On the restaurant side</strong> — whether the restaurant has good vegetarian options based on its menu.</li>
+      </ul>
+      <p>Features like these can be hand-coded, generated by a learning algorithm (e.g. classifying menu items as vegetarian), or labeled by people. The same idea fixes "users who only ever order tea/coffee" or "users who only order pizza" — enrich their features so the model recommends better. <strong>Features are themselves a form of data</strong>, so modifying features driven by error analysis is a legitimate data iteration loop.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧲</span> Collaborative vs Content-Based Filtering</h2>
+      <p>Adding features supports the industry shift from collaborative to content-based recommendations:</p>
+      <table>
+        <thead>
+          <tr><th>Approach</th><th>How it recommends</th><th>Weakness</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Collaborative filtering</td><td>Finds users similar to you, recommends what people like you liked.</td><td>Needs many people to rate a product first.</td></tr>
+          <tr><td>Content-based filtering</td><td>Looks at <em>you</em> and at the restaurant's description / menu to judge fit.</td><td>Requires good features for each item.</td></tr>
+        </tbody>
+      </table>
+      <p>Content-based filtering tackles the <span class="term">cold-start problem</span>: it can recommend a brand-new restaurant almost no one has rated, because it reads the description rather than relying on others' ratings. The key enabler is capturing <strong>good features</strong> for the things you want to recommend.</p>
+      <div class="callout">Deep learning largely removed hand-designed features for <strong>unstructured</strong> data (images, audio, text). But for <strong>structured</strong> data — and any time the dataset isn't massive — designing features driven by error analysis is still a very important driver of performance.</div>
+    </div>
+
+    <div class="section-divider"><span>17 · Experiment Tracking</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📒</span> What to Track</h2>
+      <p>Running dozens or hundreds of experiments, it's easy to forget what you've already tried. Robust <span class="term">experiment tracking</span> makes you more efficient at deciding what to change next. For each trained model, track:</p>
+      <ul>
+        <li><strong>Algorithm &amp; code version</strong> — so you can replicate a run from weeks ago whose details you've forgotten.</li>
+        <li><strong>Dataset used</strong> — exactly which data fed the model.</li>
+        <li><strong>Hyperparameters</strong> — all the settings.</li>
+        <li><strong>Results</strong> — at least high-level metrics (accuracy, F<sub>1</sub>), and ideally a saved copy of the trained model.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🛠️</span> Tools &amp; What to Look For</h2>
+      <p>Tracking tools scale with team size:</p>
+      <ul>
+        <li><strong>Text files</strong> — fine for a solo developer's small experiments; doesn't scale.</li>
+        <li><strong>Shared spreadsheets</strong> — columns per tracked item; scale surprisingly far for teams.</li>
+        <li><strong>Formal systems</strong> — Weights &amp; Biases, Comet, MLflow, SageMaker Studio, LandingLens; the space is still evolving rapidly.</li>
+      </ul>
+      <p>When choosing a tool, look for: enough information to <strong>replicate results</strong> (watch out — data pulled off the internet can change and break replicability); features to <strong>quickly understand a run</strong> via summary metrics and analysis; and nice-to-haves like resource monitoring (CPU / GPU / memory), model visualization, and deeper error analysis.</p>
+      <div class="callout">The single biggest takeaway: <strong>have some system</strong> — even just a text file or spreadsheet — and record as much as is convenient. It pays off the moment you need to remember how an old model was produced.</div>
+    </div>
+
+    <div class="section-divider"><span>18 · From Big Data to Good Data</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💎</span> Good Data Beats Big Data</h2>
+      <p>Modern AI grew up at consumer-internet giants with a billion users' worth of data. Big data helps enormously when you have it — but most industries simply don't have a billion data points, which makes the focus on <strong>good data</strong> even more important. Ensuring consistently high-quality data across <em>all</em> phases of the ML project lifecycle is key to a high-performing, reliable deployment.</p>
+      <p>What makes data "good":</p>
+      <ul>
+        <li><strong>Covers the important cases</strong> — good coverage of inputs x; if you lack cafe-noise speech, augmentation can fill that gap (modeling phase).</li>
+        <li><strong>Defined consistently</strong> — labels y are unambiguous (covered in depth in the data-definition material).</li>
+        <li><strong>Timely feedback from production</strong> — monitoring for concept drift and data drift (deployment phase).</li>
+        <li><strong>Reasonable size</strong> — enough data for the problem at hand.</li>
+      </ul>
+      <div class="callout">Across the lifecycle the goal is the same: feed your learning algorithm <strong>good data</strong> in every phase — timely feedback from deployment, good coverage from modeling, and consistent labels from data definition.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← Course Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

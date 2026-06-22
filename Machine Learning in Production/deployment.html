@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deployment — Machine Learning in Production</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Drift comparison grid ── */
+    .drift-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin: 0.8rem 0;
+    }
+    .drift-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+    }
+    .drift-item .drift-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em;
+      text-transform: uppercase; color: #6366f1; margin-bottom: 0.4rem;
+    }
+    .drift-item h3 { font-size: 0.95rem; color: #e2e8f0; margin: 0 0 0.5rem 0; }
+    .drift-item p { margin: 0; font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+
+    /* ── Checklist cards ── */
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+      margin: 0.8rem 0;
+    }
+    .check-item {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+    .check-item .check-q {
+      font-size: 0.88rem; font-weight: 700; color: #c7d2fe; margin-bottom: 0.3rem;
+    }
+    .check-item p { margin: 0; font-size: 0.82rem; color: #94a3b8; line-height: 1.55; }
+
+    /* ── Pipeline Architecture Boxes ── */
+    .pipeline {
+      display: flex; flex-wrap: wrap; align-items: stretch;
+      gap: 0.6rem; margin: 0.8rem 0;
+    }
+    .pipe-box {
+      flex: 1 1 0; min-width: 140px;
+      background: #151823; border: 1px solid #2d3148; border-radius: 10px;
+      padding: 0.9rem; text-align: center;
+    }
+    .pipe-box .pipe-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #6366f1; margin-bottom: 0.4rem;
+    }
+    .pipe-box p { margin: 0; font-size: 0.82rem; color: #94a3b8; }
+    .pipe-arrow { display: flex; align-items: center; color: #475569; font-size: 1.3rem; }
+
+    /* ── Automation spectrum ── */
+    .spectrum {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.5rem;
+      margin: 0.8rem 0 0.5rem 0;
+    }
+    .spectrum-step {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 0.85rem 0.7rem;
+      text-align: center;
+    }
+    .spectrum-step .spectrum-num {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #6366f1; margin-bottom: 0.35rem;
+    }
+    .spectrum-step h3 { font-size: 0.82rem; color: #e2e8f0; margin: 0 0 0.4rem 0; }
+    .spectrum-step p { margin: 0; font-size: 0.75rem; color: #94a3b8; line-height: 1.5; }
+    .spectrum-step.hitl { border-color: #6366f1; }
+    .spectrum-scale {
+      display: flex; justify-content: space-between;
+      font-size: 0.72rem; color: #64748b; margin-top: 0.2rem;
+    }
+
+    /* ── Numbered Algorithm / Process Steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    @media (max-width: 540px) {
+      .drift-grid, .check-grid { grid-template-columns: 1fr; }
+      .spectrum { grid-template-columns: 1fr; }
+      .pipe-arrow { transform: rotate(90deg); justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Machine Learning in Production</a>
+
+    <header class="notes-header">
+      <p class="tag">Course · Deployment</p>
+      <h1>Deployment</h1>
+      <p>What makes deploying a model hard, the patterns for rolling it out safely, and how to monitor and maintain it once live traffic is turned on.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Why Deployment Is Hard</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> Two Categories of Challenge</h2>
+      <p>Deploying a model is one of the most exciting moments of any project — but plenty can go wrong. The challenges split into two broad categories:</p>
+      <div class="drift-grid">
+        <div class="drift-item">
+          <div class="drift-label">Category 1</div>
+          <h3>Machine Learning / Statistical Issues</h3>
+          <p>Will the model keep performing once the world changes? This is where <span class="term">concept drift</span> and <span class="term">data drift</span> live.</p>
+        </div>
+        <div class="drift-item">
+          <div class="drift-label">Category 2</div>
+          <h3>Software Engineering Issues</h3>
+          <p>How do you actually build the prediction service — real-time vs batch, cloud vs edge, latency, throughput, logging, security?</p>
+        </div>
+      </div>
+      <div class="callout">Deploying a system requires <strong>two broad sets of tasks</strong>: writing the software to run the model in production, and monitoring &amp; maintaining the system over time — especially in the face of concept drift and data drift.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · Concept Drift &amp; Data Drift</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📉</span> When the Data Changes After Deployment</h2>
+      <p>Loosely, drift means: <em>what if your data changes after the system has already been deployed?</em> A vision model trained to detect scratches under one set of factory lighting conditions degrades when the lighting changes. A speech system trained on purchased data plus opt-in historical user data — validated on the last few months of audio — can still degrade once a new phone with a different microphone appears, or as language slowly evolves.</p>
+      <p>Change can be <strong>gradual</strong> (English vocabulary shifts slowly) or <strong>sudden</strong> (a shock to the system). When COVID-19 hit, purchase patterns changed overnight — people who rarely shopped online suddenly did — and many credit-card anti-fraud systems broke, forcing teams to scramble for new data and retrain.</p>
+      <div class="drift-grid">
+        <div class="drift-item">
+          <div class="drift-label">Data Drift</div>
+          <h3>The input distribution X changes</h3>
+          <p>A new politician or celebrity suddenly gets mentioned far more often; people start building larger or smaller houses, so the distribution of house sizes shifts. The mapping from X to Y is unchanged.</p>
+        </div>
+        <div class="drift-item">
+          <div class="drift-label">Concept Drift</div>
+          <h3>The desired mapping X → Y changes</h3>
+          <p>The same surprising purchases that meant fraud before COVID-19 are no cause for alarm after. Or: due to inflation, the <em>same</em> size house now commands a higher price.</p>
+        </div>
+      </div>
+      <div class="callout">When you deploy, one of the most important tasks is to <strong>detect and manage</strong> both concept drift (the definition of Y given X changes) and data drift (the distribution of X changes, even if the mapping does not).</div>
+    </div>
+
+    <div class="section-divider"><span>3 · The Software Engineering Checklist</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🛠️</span> Design Choices for a Prediction Service</h2>
+      <p>A prediction service takes queries <em>x</em> and outputs predictions <em>y</em>. There are many ways to implement it — work through this checklist to make the right choices for your application.</p>
+      <div class="check-grid">
+        <div class="check-item">
+          <div class="check-q">Real-time or batch?</div>
+          <p>Speech recognition needs a response in well under a second. A hospital health-records analysis can run as an overnight batch process.</p>
+        </div>
+        <div class="check-item">
+          <div class="check-q">Cloud or edge?</div>
+          <p>Cloud gives more compute for accuracy; edge keeps working when the network is down (cars, factories, offline mobile, in-browser).</p>
+        </div>
+        <div class="check-item">
+          <div class="check-q">Compute resources</div>
+          <p>A model trained on a powerful GPU may need compressing if you cannot afford equally powerful GPUs (or enough CPU/memory) for serving.</p>
+        </div>
+        <div class="check-item">
+          <div class="check-q">Latency &amp; throughput (QPS)</div>
+          <p>A 500&nbsp;ms budget might allow only 300&nbsp;ms for recognition. Throughput is the queries per second you must handle given your compute.</p>
+        </div>
+        <div class="check-item">
+          <div class="check-q">Logging</div>
+          <p>Log as much data as possible for analysis, review, and as future training data to retrain the algorithm.</p>
+        </div>
+        <div class="check-item">
+          <div class="check-q">Security &amp; privacy</div>
+          <p>Required levels vary enormously. Patient records demand high security; design the appropriate level based on data sensitivity and regulation.</p>
+        </div>
+      </div>
+      <div class="callout">The practices for the <strong>very first deployment</strong> differ from those for <strong>updating or maintaining</strong> a system already in production — but the first deployment means you are only about halfway there.</div>
+    </div>
+
+    <div class="section-divider"><span>4 · Common Deployment Patterns</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🐤</span> Rolling Out Without Hoping for the Best</h2>
+      <p>The best way to deploy is rarely to switch the model on and hope. Use cases fall into three buckets — offering a <strong>new product/capability</strong>, <strong>automating or assisting</strong> a task a person already does, and <strong>replacing</strong> a previous ML system with a better one. Across all of them, two recurring themes appear:</p>
+      <ul>
+        <li><strong>Gradual ramp up with monitoring</strong> — send a little traffic to an unproven algorithm, watch it, then increase the percentage as confidence grows.</li>
+        <li><strong>Rollback</strong> — if the algorithm misbehaves, revert to the previous system (if one existed).</li>
+      </ul>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Shadow Mode</h3>
+      <p>The learning algorithm runs <strong>in parallel</strong> with the existing decision-maker (a human inspector or an older system), but its output is <strong>not used</strong> for any real decision yet. A human inspecting phones for scratches still makes the call; the algorithm's predictions are logged alongside the human's. By sampling and comparing, you gather data to verify accuracy before letting it make any real decision.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Canary Deployment</h3>
+      <p>When ready to let the algorithm make real decisions, roll it out to a <strong>small fraction</strong> of traffic (maybe 5% or less). Mistakes then affect only a small slice, giving you room to monitor and ramp up gradually as confidence grows. The name echoes the "canary in a coal mine" — an early warning before large consequences.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Blue / Green Deployment</h3>
+      <p>A router sends images to a prediction service. The <span class="term">blue</span> version is the old software; the <span class="term">green</span> version is the new one. To switch, you reconfigure the router to send traffic from blue to green. Its advantage is <strong>easy rollback</strong>: point the router back at blue (kept running) the moment something goes wrong. Traffic can switch 100% at once, or be moved over gradually.</p>
+      <div class="pipeline">
+        <div class="pipe-box">
+          <div class="pipe-label">Camera Software</div>
+          <p>Collects phone images in the factory.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Router</div>
+          <p>Routes images to the blue or the green version.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Blue (old)</div>
+          <p>Previous prediction service — kept alive for rollback.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Green (new)</div>
+          <p>Newly implemented prediction service.</p>
+        </div>
+      </div>
+      <div class="callout">Each of these patterns takes substantial software to execute. <strong>MLOps tools</strong> can help implement them — or you can build it yourself.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · The Degree of Automation</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎚️</span> Deployment Is Not Zero-or-One</h2>
+      <p>Rather than treating deployment as deploy / don't-deploy, design for the <strong>appropriate degree of automation</strong>. Visual inspection of phones spans a full spectrum from human-only to AI-only:</p>
+      <div class="spectrum">
+        <div class="spectrum-step">
+          <div class="spectrum-num">Least</div>
+          <h3>Human Only</h3>
+          <p>No automation — people make every decision.</p>
+        </div>
+        <div class="spectrum-step">
+          <div class="spectrum-num">Shadow</div>
+          <h3>Shadow Mode</h3>
+          <p>Algorithm predicts but its output is not used.</p>
+        </div>
+        <div class="spectrum-step hitl">
+          <div class="spectrum-num">HITL</div>
+          <h3>AI Assistance</h3>
+          <p>Human decides; AI highlights regions to look at. UI design is critical.</p>
+        </div>
+        <div class="spectrum-step hitl">
+          <div class="spectrum-num">HITL</div>
+          <h3>Partial Automation</h3>
+          <p>AI decides when confident; unsure cases go to a human.</p>
+        </div>
+        <div class="spectrum-step">
+          <div class="spectrum-num">Most</div>
+          <h3>Full Automation</h3>
+          <p>The algorithm makes every decision.</p>
+        </div>
+      </div>
+      <div class="spectrum-scale"><span>← only human decisions</span><span>only AI decisions →</span></div>
+      <p>Projects often start on the left and gradually move right — but you do <strong>not</strong> have to reach full automation. <span class="term">Partial automation</span> is a great design point when the algorithm is not good enough for full automation: confident predictions are taken automatically, and the small subset of uncertain cases go to a human, whose judgment is also valuable feedback to improve the algorithm.</p>
+      <p>AI assistance and partial automation are both <span class="term">human-in-the-loop</span> deployments. Consumer internet (web search, online speech) usually needs full automation — you cannot have a person in the loop on every query. But outside consumer software, such as factory inspection, a human-in-the-loop design is often the best choice.</p>
+    </div>
+
+    <div class="section-divider"><span>6 · Monitoring a Deployed System</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📊</span> Dashboards, Metrics &amp; Alarms</h2>
+      <p>The most common way to monitor a system is a <span class="term">dashboard</span> tracking how it does over time. To decide <em>what</em> to track, sit down with your team and brainstorm everything that could go wrong — then, for each, pick a statistic or metric that would detect it. Start with a relatively large set of metrics and prune the unhelpful ones over time.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Software Metrics</h3>
+      <p>Memory, compute, latency, throughput, server load — they monitor the health of the software implementation. Many MLOps tools track these out of the box.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Input Metrics — has X changed?</h3>
+      <ul>
+        <li>Average input length (seconds of audio) and average input volume.</li>
+        <li>Number or percentage of missing values (very common for structured data).</li>
+        <li>Average image brightness, if lighting conditions might change.</li>
+      </ul>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Output Metrics — has Y (or what follows) changed?</h3>
+      <ul>
+        <li>How often the system returns null / the empty string (thinks nothing was said).</li>
+        <li>How often a user does two near-identical searches in a row (likely a misrecognition).</li>
+        <li>How often a user switches from speech to typing (a sign of frustration / degrading performance).</li>
+        <li>Coarse health signals like click-through rate (CTR).</li>
+      </ul>
+      <p>Input and output metrics are application-specific, so MLOps tools usually need configuring to track them.</p>
+      <div class="callout">Just like modeling, <strong>deployment is iterative</strong>. The first deployment plus dashboards is only the start — real traffic enables performance analysis, which drives updates and better monitoring. It typically takes a few tries to converge on the right set of metrics.</div>
+      <p>Once metrics are chosen, set <strong>thresholds for alarms</strong> — e.g. notify the team if server load exceeds 0.91, or if the fraction of non-null outputs or missing values crosses a threshold. Adapt metrics and thresholds over time so they flag the most relevant concerns.</p>
+      <p>When something goes wrong: a software issue (server load too high) means changing the implementation; an accuracy issue means updating the model. Models can be <strong>retrained manually</strong> (an engineer retrains, runs error analysis, then pushes) or <strong>automatically</strong>. Manual retraining is far more common today — developers are reluctant to fully automate pushing new models — though automatic retraining does happen, especially in consumer internet.</p>
+    </div>
+
+    <div class="section-divider"><span>7 · Monitoring Machine Learning Pipelines</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔗</span> When It Is More Than One Model</h2>
+      <p>Many AI systems are not a single model but a <span class="term">pipeline</span> of steps. Mobile speech recognition typically routes audio through a <span class="term">VAD (Voice Activity Detection)</span> module that detects whether anyone is speaking — clipping the audio to just the speech and streaming only that to the cloud (saving bandwidth) — before the speech recognizer generates a transcript.</p>
+      <div class="pipeline">
+        <div class="pipe-box">
+          <div class="pipe-label">Audio</div>
+          <p>Raw audio stream from the microphone.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">VAD Module</div>
+          <p>Detects speech and clips the audio.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Speech Recognizer</div>
+          <p>Generates the text transcript.</p>
+        </div>
+      </div>
+      <p>With two learning algorithms working together, <strong>changes to the first can degrade the second</strong>. A new phone's microphone could make the VAD clip audio differently — leaving more or less silence — which changes the recognizer's input and hurts its performance.</p>
+      <p>The same cascade appears with <strong>user profiles → recommender systems</strong>. Clickstream data builds a user profile (e.g. "does this user own a car?" → yes / no / unknown), which feeds a recommender. If the clickstream changes and the percentage of <em>unknown</em> tags rises, the recommender's input shifts and recommendation quality can drop.</p>
+      <div class="callout">Brainstorm metrics for <strong>each component</strong> of the pipeline as well as the whole — software, input, and output metrics — so you can spot drift (concept, data, or both) at <strong>multiple stages</strong> and act before quality degrades.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⏱️</span> How Quickly Does Data Change?</h2>
+      <p>The rate of change is highly problem-dependent. Face recognition shifts slowly (hairstyles, fashion, camera resolution), while a factory switching to a new batch of material can change appearances in minutes. Two broad generalities (with exceptions):</p>
+      <div class="drift-grid">
+        <div class="drift-item">
+          <div class="drift-label">Consumer / User Data</div>
+          <h3>Usually changes slowly</h3>
+          <p>It is rare for millions of users to all change behavior at once. Exceptions exist — COVID-19, a holiday, or a new movie spiking web-search trends.</p>
+        </div>
+        <div class="drift-item">
+          <div class="drift-label">Enterprise / B2B Data</div>
+          <h3>Can shift quickly</h3>
+          <p>A factory adopting a new coating, or a CEO changing how the business operates, can shift an entire dataset almost overnight.</p>
+        </div>
+      </div>
+      <div class="callout">The first deployment is only <strong>halfway to the finish line</strong>. The second half — feeding data back, monitoring, and updating the model in the face of concept and data drift — begins right after you go live.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← Course Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Definition and Baseline — Machine Learning in Production</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Numbered Process Steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Formula Block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Quadrant Grid (2×2 problem types) ── */
+    .quadrant { display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem; margin:1rem 0; }
+    .quad-box { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 0.95rem; }
+    .quad-box .quad-label { font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.4rem; }
+    .quad-box h3 { font-size:0.9rem; color:#e2e8f0; margin:0 0 0.45rem 0; }
+    .quad-box p { margin:0; font-size:0.82rem; color:#94a3b8; line-height:1.55; }
+
+    /* ── Convention / Label cards ── */
+    .label-options { display:grid; grid-template-columns:repeat(3,1fr); gap:0.6rem; margin:0.9rem 0; }
+    .label-opt { background:#151823; border:1px solid #2d3148; border-radius:8px; padding:0.8rem; text-align:center; }
+    .label-opt .lo-tag { font-size:0.68rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#6366f1; margin-bottom:0.45rem; }
+    .label-opt p { margin:0; font-size:0.84rem; color:#cbd5e1; font-family:'Courier New',monospace; line-height:1.5; }
+
+    @media (max-width: 540px) {
+      .quadrant { grid-template-columns: 1fr; }
+      .label-options { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Machine Learning in Production</a>
+
+    <header class="notes-header">
+      <p class="tag">Course · Data</p>
+      <h1>Data Definition and Baseline</h1>
+      <p>How to define what your data should be — what is x, what is y — establish a baseline, and then obtain, label, pipeline, and split clean, consistent data for the modeling phase.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Why Defining Data Is Hard</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🦎</span> The Iguana Example</h2>
+      <p>The third and final stage of the machine learning lifecycle is the <strong>data</strong> stage: how do you get data that sets up your training and modeling for success? But first — why is defining what data to use even hard?</p>
+      <p>Imagine collecting hundreds of forest photos and asking labelers to draw <span class="term">bounding boxes</span> around iguanas. Three equally diligent, hardworking labelers can produce three very different conventions:</p>
+      <div class="label-options">
+        <div class="label-opt"><div class="lo-tag">Labeler 1</div><p>tight box per iguana</p></div>
+        <div class="label-opt"><div class="lo-tag">Labeler 2</div><p>box extended along the long tail</p></div>
+        <div class="label-opt"><div class="lo-tag">Labeler 3</div><p>one big box over both</p></div>
+      </div>
+      <p>Any single convention could train a perfectly good iguana detector. What is <strong>not</strong> fine is mixing them — one third of the data labeled each way. Then the labels are <strong>inconsistent</strong>, and that is confusing to the learning algorithm.</p>
+      <div class="callout">The problem is rarely that one convention is "wrong." The problem is <strong>inconsistency</strong> — even slightly ambiguous instructions produce a mix of conventions that hurts the algorithm.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📱</span> Phone Defect Detection</h2>
+      <p>The same effect shows up in real computer-vision problems. Asked to box "significant defects" on a phone, one labeler boxes only the big scratch, a second boxes both the scratch and a small pit mark, and a third draws one large box across the region. Probably the second labeler did the best job — but this is a textbook example of <strong>inconsistent labeling</strong> from slightly ambiguous instructions. If you can consistently label data with one convention, your learning algorithm will do better.</p>
+    </div>
+
+    <div class="section-divider"><span>2 · More Label Ambiguity</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎙️</span> Speech Recognition</h2>
+      <p>Consider an audio clip of someone on a busy roadside: <em>"…nearest gas station…"</em> followed by a car driving past. There are combinatorially many ways to transcribe this:</p>
+      <ul>
+        <li><strong>"Um"</strong> with one <em>m</em> or two — <code>um</code> vs <code>umm</code>.</li>
+        <li>A <strong>comma</strong> vs an <strong>ellipsis</strong> (<code>...</code>) to mark the pause.</li>
+        <li>Whether to write <strong>"unintelligible"</strong> for the noise after the last words.</li>
+      </ul>
+      <p>Being able to standardize on one convention will help the speech recognition algorithm learn.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🔗</span> User ID Merge &amp; Structured Data</h2>
+      <p>A common task in large companies is <span class="term">user ID merge</span> — deciding whether two data records (say, from a jobs-listing site and an acquired résumé-chat app) belong to the same person. One approach is supervised learning that takes two records as input and outputs 1 or 0. Ground-truth labels can come from users who explicitly link accounts, or from human labelers using judgment on filtered pairs. Because the truth is genuinely ambiguous, different people label inconsistently — so getting them to label a little more consistently still helps.</p>
+      <div class="callout">Only perform user ID merge in ways that respect the user's data, their privacy, and the permissions they have granted. <strong>User privacy is really important.</strong></div>
+      <p>Other structured-data tasks are similarly ambiguous: is this a <strong>bot or spam</strong> account? Is this transaction <strong>fraudulent</strong>? Is this user <strong>looking for a new job</strong> right now? When the ground truth is ambiguous, giving labeling instructions that produce more consistent, less noisy labels improves the algorithm.</p>
+    </div>
+
+    <div class="section-divider"><span>3 · Defining X and Y</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🖼️</span> What Is the Input x?</h2>
+      <p>When defining data, the first question is: <strong>what is the input x?</strong> For phone-defect photos, is the lighting good enough? The camera contrast? The resolution? If images are so dark that even a person can't see what's going on, the right move may not be to label them — it may be to go to the factory and <strong>improve the lighting</strong> so labelers can actually see the scratches.</p>
+      <p>For structured data, the features you <em>include</em> can have a huge impact. For user ID merge, a rough GPS location (with permission) can be a very useful cue for deciding whether two accounts belong to the same person.</p>
+      <div class="callout">If even a person can't look at the input and tell what's going on, improving the quality of the sensor or input x is an important first step to getting reasonable performance.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🏷️</span> What Is the Target Label y?</h2>
+      <p>Beyond defining x, you must figure out the target label y. The recurring key question: <strong>how can we ensure labelers give consistent labels?</strong> The ambiguity can come from the labels themselves (the iguana boxes, the "um" spellings) or from an input x that isn't informative enough (an image too dark to read). The next sections put these issues into a systematic framework.</p>
+    </div>
+
+    <div class="section-divider"><span>4 · Major Types of ML Problems</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔲</span> A Two-by-Two Framework</h2>
+      <p>Best practices for organizing data differ sharply across problem types. A useful framework places problems on a two-by-two grid along two axes:</p>
+      <ul>
+        <li><strong>Unstructured vs structured data</strong> — humans are great at processing unstructured data (images, audio, text) but not at structured database records.</li>
+        <li><strong>Small vs large dataset</strong> — using a (slightly arbitrary) threshold of ~<strong>10,000 examples</strong>, roughly the size beyond which it becomes painful to examine every example yourself.</li>
+      </ul>
+      <div class="quadrant">
+        <div class="quad-box"><div class="quad-label">Unstructured · Small</div><h3>Visual inspection, 100 phones</h3><p>Image data, small set. Data augmentation and human labeling both help.</p></div>
+        <div class="quad-box"><div class="quad-label">Unstructured · Large</div><h3>Speech recognition, 50M clips</h3><p>Lots of data. Augmentation (e.g. background noise) still helps.</p></div>
+        <div class="quad-box"><div class="quad-label">Structured · Small</div><h3>Housing prices, 52 homes</h3><p>Real-valued features, few examples. Hard to synthesize new houses.</p></div>
+        <div class="quad-box"><div class="quad-label">Structured · Large</div><h3>Recommendations, 1M users</h3><p>Hard to synthesize new users; human labeling is harder too.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧭</span> How the Quadrant Changes Practice</h2>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Unstructured data</div>
+          <ul>
+            <li>Humans can label it, so you can often get more by labeling unlabeled x.</li>
+            <li><strong>Data augmentation</strong> (synthesizing images, audio, even text) is effective.</li>
+            <li>May have a large pool of unlabeled examples (factory photos, self-driving footage).</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Structured data</div>
+          <ul>
+            <li>Harder to obtain more data — only so many users or houses exist.</li>
+            <li>Augmentation is difficult; you can't synthesize people who don't exist.</li>
+            <li>Human labeling is harder and often more ambiguous.</li>
+          </ul>
+        </div>
+      </div>
+      <p>On the size axis: with <strong>small datasets</strong>, clean labels are critical and a small team can manually inspect and fix every example. With <strong>large datasets</strong>, the emphasis shifts to <strong>data processes</strong> — how you collect data and the labeling instructions you write for a large crowdsourced team, since you can't easily relabel everything afterward.</p>
+      <div class="callout">A practical tip: advice from someone who has worked in the <strong>same quadrant</strong> as your problem is usually more useful than advice from a different quadrant. One-size-fits-all rules like "always get 1000 labeled examples" rarely hold — ML is too diverse.</div>
+    </div>
+
+    <div class="section-divider"><span>5 · Why Small Data Needs Clean Labels</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚁</span> The Helicopter Rotor Example</h2>
+      <p>Suppose you map voltage applied to a helicopter rotor to its speed in RPM, from just five examples with noisy labels. It's nearly impossible to confidently fit a function — straight line? curve? rising then flat? With a <strong>ton</strong> of equally noisy data, the algorithm can average out the noise and fit confidently. But the interesting case is having only five examples with <strong>clean, consistent labels</strong> — then you can confidently fit a good function from very little data.</p>
+      <div class="callout">Computer-vision systems have been trained on just <strong>30 images</strong> and worked fine. The key is almost always making sure the labels are clean and consistent.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📏</span> Agree on a Threshold</h2>
+      <p>For phone-defect inspection, everyone agrees a giant scratch is a defect and a tiny ding is not — but there's a <strong>region of ambiguity</strong> (say, scratch length between 0.2 and 0.4 mm) where inspectors disagree. One option is to collect far more scratch images and hope the network figures it out — a lot of work. More fruitful: get the inspectors to <strong>sit down and agree</strong> that, say, <code>0.3 mm</code> is the threshold above which a scratch becomes a defect. The labels become consistent, and the algorithm achieves higher accuracy even on a small dataset.</p>
+      <p>Note: the input to the algorithm is still the <em>images</em>, not the scratch length — but agreeing on the length threshold makes the image labels consistent.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📉</span> Big Data Has Small-Data Challenges Too</h2>
+      <p>Large datasets with a <strong>long tail of rare events</strong> face small-data challenges:</p>
+      <ul>
+        <li><strong>Web search</strong> — huge query logs, but many individual queries are rare, so clickstream data per rare query is small.</li>
+        <li><strong>Self-driving cars</strong> — millions of driving hours, but very few examples of a child running across the highway or a truck parked across it.</li>
+        <li><strong>Product recommenders</strong> — millions of items, but each long-tail item has little interaction data.</li>
+      </ul>
+      <p>Ensuring <strong>label consistency</strong> for these rare events still helps a lot. Label consistency is critical for small datasets and important even for big ones — it's just easier to achieve on smaller datasets.</p>
+    </div>
+
+    <div class="section-divider"><span>6 · Improving Label Consistency</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> A General Process</h2>
+      <p>If you're worried about inconsistent labels, follow an iterative process:</p>
+      <ol class="algo-steps">
+        <li><strong>Have multiple labelers label the same examples.</strong> You can also have one labeler re-label after a break (a "wash-out" period) to check self-consistency.</li>
+        <li><strong>Discuss disagreements.</strong> The ML engineer, the subject-matter expert (e.g. a manufacturing expert), and/or dedicated labelers agree on a more consistent definition of y.</li>
+        <li><strong>Document the agreement</strong> as updated labeling instructions for labeling new data or relabeling old data.</li>
+        <li><strong>Consider changing the input x</strong> if labelers say x lacks enough information — e.g. increase the lighting on dark phone images.</li>
+        <li><strong>Repeat.</strong> Label more data, check for disagreements, and iterate.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧰</span> Common Techniques</h2>
+      <ul>
+        <li><strong>Standardize the label definition</strong> — pick one convention for the audio clip (or any ambiguous case) so the data becomes consistent.</li>
+        <li><strong>Merge classes</strong> — if "deep scratch" vs "shallow scratch" is unclear and the distinction isn't truly needed, merge them into a single <em>scratch</em> class to remove inconsistency.</li>
+        <li><strong>Create a new class for uncertainty</strong> — instead of forcing defect / not-defect, add a <strong>borderline</strong> class. In speech, add an <strong>"unintelligible"</strong> tag for genuinely unclear audio rather than forcing a guess.</li>
+      </ul>
+      <p>For <strong>small datasets</strong>, the small labeling team can sit together and drive to agreement on specific examples. For <strong>big datasets</strong>, define a consistent standard with a small group, then distribute the instructions to the larger labeling team.</p>
+      <div class="callout">Having multiple labelers vote (<span class="term">consensus labeling</span>) can work, but it's <strong>overused</strong>. Prefer fixing the label definitions first to make each labeler less noisy, rather than collecting noisy labels and voting to average out the noise — use voting as a last resort.</div>
+    </div>
+
+    <div class="section-divider"><span>7 · Human Level Performance (HLP)</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📐</span> HLP as a Baseline</h2>
+      <p>For inherently ambiguous outputs, <span class="term">human level performance (HLP)</span> establishes a useful reference baseline. Its most important use is estimating <strong>Bayes error</strong> (irreducible error), especially on unstructured data, to drive analysis, prioritization, and to set realistic expectations.</p>
+      <p>Suppose a business owner demands 99% accuracy. Take a dataset with ground-truth labels and have a human inspector label the same data blinded to ground truth. If they agree on four of six examples, HLP is 66.7% — which lets you reply: even your own inspector is only 66.7% accurate, so 99% is unrealistic.</p>
+      <div class="callout">A rarely asked question: <strong>what exactly is this ground-truth label?</strong> When it was itself written by a human, HLP may just measure how well two people happen to agree — not what's truly possible.</div>
+      <p>Other uses of HLP: a respectable <strong>academic benchmark</strong> (beating HLP helps get papers published), and setting a <strong>realistic target</strong> when a product owner's demand is unreasonable.</p>
+    </div>
+
+    <div class="section-divider"><span>8 · The Problem with Beating HLP</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> An Unfair Advantage</h2>
+      <p>Using "we beat HLP" to prove an ML system is superior to humans <strong>rarely works as a practical argument</strong> — businesses need more than high average test accuracy. Worse, the metric can give the algorithm an <strong>unfair advantage</strong> when labeling instructions are inconsistent.</p>
+      <p>Say for "nearest gas station," 70% of labelers use one (perfectly fine) convention and 30% use another. The chance two random labelers agree is:</p>
+      <div class="formula-block">
+        <div class="formula-label">Chance two labelers agree</div>
+        <div class="formula-main">0.7<sup>2</sup> + 0.3<sup>2</sup> = 0.49 + 0.09 = 0.58</div>
+        <div class="formula-legend">
+          <span>0.7</span> fraction using convention A &nbsp;·&nbsp; <span>0.3</span> fraction using convention B
+        </div>
+      </div>
+      <p>So measured HLP is 58%. But a learning algorithm can learn the statistics and <strong>always pick the more common convention</strong>, agreeing with ground truth 70% of the time — appearing 12% "better" than HLP. That 12% gain is meaningless: it's just consistently choosing one of two equally good options.</p>
+      <div class="callout">This fake advantage can <strong>mask real errors</strong>: a system that looks 12% better on this query type may actually produce worse transcripts on other, more important audio — so beating HLP can hide that the algorithm is genuinely worse than people.</div>
+    </div>
+
+    <div class="section-divider"><span>9 · Raising HLP Instead of Beating It</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🩺</span> Externally vs Human-Defined Ground Truth</h2>
+      <p>HLP behaves very differently depending on where the ground truth comes from:</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Externally defined truth</div>
+          <ul>
+            <li>e.g. an X-ray diagnosis confirmed by a <strong>biopsy</strong> or medical test.</li>
+            <li>HLP genuinely estimates Bayes error — how well a doctor (or algorithm) predicts a real outcome.</li>
+            <li>Fewer problems; this use is very meaningful.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Human-defined truth</div>
+          <ul>
+            <li>e.g. a doctor labeling an X-ray, or one inspector vs another.</li>
+            <li>HLP just measures how well one human predicts another human's label.</li>
+            <li>Low HLP often signals an <strong>ambiguous labeling convention</strong>.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⬆️</span> Raise HLP by Fixing Labels</h2>
+      <p>Return to the inspector at 66.7%. If you compare scratch lengths and get both labelers to agree on the <code>0.3 mm</code> threshold, several "disagreements" turn out to be simple convention mismatches that get corrected — raising HLP from 66.7% toward 100% on those examples.</p>
+      <p>Raising HLP to 100% makes it nearly impossible for the algorithm to "beat HLP" — which sounds terrible. But the real benefit is much <strong>cleaner, more consistent data</strong>, which ultimately lets the learning algorithm perform better.</p>
+      <div class="callout">When the label y comes from a human, an HLP well below 100% often just means the labeling instructions are ambiguous. Improving label consistency <strong>raises HLP</strong> and — more importantly — gives cleaner data that <strong>raises your algorithm's real-world performance</strong>.</div>
+      <p>Takeaway: HLP is useful and important. Measure it to gauge what's possible and to drive error analysis. But if HLP is much lower than 100%, ask whether the gap is due to inconsistent labeling instructions — if so, fixing them benefits both HLP and your model.</p>
+    </div>
+
+    <div class="section-divider"><span>10 · How Much Time to Spend Collecting Data</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⏱️</span> Get Into the Iteration Loop Fast</h2>
+      <p>Machine learning is a <strong>highly iterative process</strong>: pick a model and hyperparameters, train on a dataset, run error analysis, and loop many times. If a first round of training plus error analysis takes only a couple of days each, then spending <strong>30 days collecting data first</strong> delays the entire iteration loop by a whole month.</p>
+      <p>A better mindset is to ask: <em>"What if I gave myself only two days to collect data?"</em> Maybe two days is too short — but far too many teams take too long building an initial dataset before training their first model. The opposite mistake is rare.</p>
+      <div class="callout">After you train an initial model and run error analysis, there is <strong>plenty of time</strong> to go back and collect more data. Enter the loop quickly, then let error analysis tell you whether more data is even worth collecting.</div>
+      <p>A useful trick: tell the team <em>"we will spend at most seven days collecting data — what can we do?"</em> Posing the question this way pushes people toward creative, scrappy ways to get a lot of data quickly (while still 100% respecting user privacy and any regulatory constraints).</p>
+      <p><strong>Exception:</strong> if you have worked on the problem before and know from experience that you need at least a certain training-set size, it can be fine to invest more up front. For a brand-new problem where the needed amount is unclear (and the literature rarely settles it), quickly collect a small amount, train, and use error analysis to decide whether more data is worthwhile.</p>
+    </div>
+
+    <div class="section-divider"><span>11 · Inventory of Data Sources</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> Brainstorm Sources and Trade-offs</h2>
+      <p>Before collecting, take inventory of the possible data sources and their costs. For speech recognition, a brainstorm might look like this:</p>
+      <table>
+        <thead>
+          <tr><th>Source</th><th>Cost</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Owned data (100 hrs transcribed)</td><td>$0</td><td>Instant</td></tr>
+          <tr><td>Crowdsourced reading (pay people to read text)</td><td>Low per hour</td><td>~2 weeks engineering</td></tr>
+          <tr><td>Pay to transcribe unlabeled audio</td><td>~$6,000 / 100 hrs</td><td>Work to organize</td></tr>
+          <tr><td>Purchase from a commercial vendor</td><td>Varies</td><td>Often quick (PO process)</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">The column most often forgotten is <strong>time cost</strong> — how long it takes to actually execute and get the data. Owned data is instant; crowdsourced reading may need software integration; purchasing may just be a purchase-order process.</div>
+      <p>Many teams skip this inventory and just pick a random idea (e.g. crowdsourcing). Writing out all the sources and weighing the trade-offs — cost, time, <strong>data quality</strong>, and <strong>privacy/regulatory constraints</strong> — leads to better decisions. If you are pressed for time, the analysis might point you to use data you already own plus some purchased data, skipping the slower middle options.</p>
+    </div>
+
+    <div class="section-divider"><span>12 · Getting Data Labeled</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">✍️</span> In-House vs Outsource vs Crowdsource</h2>
+      <p>The three most common ways to get labels:</p>
+      <div class="label-options">
+        <div class="label-opt"><div class="lo-tag">In-house</div><p>your own team labels the data</p></div>
+        <div class="label-opt"><div class="lo-tag">Outsource</div><p>a specialized labeling company</p></div>
+        <div class="label-opt"><div class="lo-tag">Crowdsource</div><p>a large crowd labels collectively</p></div>
+      </div>
+      <p>Having ML engineers label data is expensive, but doing it <strong>for just a few days</strong> to get a project going is usually fine — and it builds the engineer's intuition about the data. Beyond that point, shift to a more scalable labeling process.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧑‍⚕️</span> Who Is Qualified to Label?</h2>
+      <p>Different applications need different labelers:</p>
+      <ul>
+        <li><strong>Speech recognition</strong> — almost any reasonably fluent speaker can transcribe audio, giving a very large pool of potential labelers.</li>
+        <li><strong>Factory inspection / medical imaging</strong> — needs a <span class="term">subject-matter expert (SME)</span>; a person off the street can't reliably read an X-ray or spot a phone defect.</li>
+        <li><strong>Product recommendations</strong> — often no human can give good labels, so you rely on the user's own <strong>purchase behavior</strong> as the label.</li>
+      </ul>
+      <div class="callout">Identifying which category your application falls into — and finding the right type of person to label — is an important step to ensuring high-quality labels.</div>
+    </div>
+
+    <div class="section-divider"><span>13 · Scaling Up the Dataset</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📈</span> The 10x Rule</h2>
+      <p>Say you have 1,000 examples and decide you need more. A useful guideline: <strong>don't increase your data by more than 10x at a time.</strong> Go from 1,000 to maybe 3,000 or at most 10,000, then train again and run error analysis before deciding whether to grow further.</p>
+      <p>Once you increase data by 10x, so many things change that it becomes very hard to predict the effect. Growing by 10%, 50%, or 2x is also perfectly fine — 10x is only an <strong>upper bound</strong> on how much to invest in one step.</p>
+      <div class="callout">This guideline helps teams avoid over-investing in tons of data, only to discover that collecting that much wasn't the most useful thing they could have done.</div>
+    </div>
+
+    <div class="section-divider"><span>14 · Data Pipelines</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔧</span> Multi-Step Data Processing</h2>
+      <p>A <span class="term">data pipeline</span> (or <em>data cascade</em>) is when data goes through multiple processing steps before reaching the final output. Example: predict whether a user is looking for a job. The raw user data first goes through <strong>preprocessing / data cleaning</strong> — spam cleanup (removing spam accounts) and user ID merge — before it's fed to the learning algorithm.</p>
+      <p>These cleaning steps might be plain <strong>scripts</strong> (explicit rules for what counts as spam or when to merge two IDs) or themselves be ML models, which makes the pipeline even harder to manage.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">♻️</span> Replicability: POC vs Production</h2>
+      <p>The big risk with pipelines is <strong>replicability</strong>. During development, preprocessing is often messy — hacked-up scripts spread across different team members' laptops. In production, new data must flow through the <em>same</em> preprocessing so the input distribution to the model matches. How much effort to invest in making this replicable depends on the project phase:</p>
+      <div class="reward-grid">
+        <div class="reward-item good">
+          <div class="label">Proof of Concept (POC)</div>
+          <ul>
+            <li>Goal: decide if the application is workable and worth building.</li>
+            <li>Focus on getting the prototype to work — manual preprocessing is OK.</li>
+            <li>Take <strong>extensive notes and comments</strong> so you can replicate it later.</li>
+            <li>Don't get bogged down in heavy replicability process yet.</li>
+          </ul>
+        </div>
+        <div class="reward-item bad">
+          <div class="label">Production</div>
+          <ul>
+            <li>Replicating every preprocessing step now becomes critical.</li>
+            <li>Use more sophisticated, heavyweight tooling.</li>
+            <li>e.g. <strong>TensorFlow Transform</strong>, <strong>Apache Beam</strong>, <strong>Airflow</strong>.</li>
+            <li>Make the entire data pipeline reliably replicable.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>15 · Data Provenance and Lineage</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧬</span> Tracking Where Data Comes From</h2>
+      <p>Real pipelines get far more complex — e.g. train an anti-spam model on a spam dataset, apply it to produce de-spammed user data, train an ID-merge model, apply it to get cleaned user data, then finally train the job-seeking predictor. Arrows of computation chain model after model.</p>
+      <p>Now suppose months later you discover the purchased <strong>IP-address blacklist had mistakes</strong> — some addresses were wrongly blacklisted because many users on a corporate or university campus legitimately shared them. Updating the spam dataset changes the spam model, which changes everything downstream. Fixing this in a system spread across many engineers' laptops is very hard. Two concepts help:</p>
+      <ul>
+        <li><span class="term">Data provenance</span> — where the data came from (e.g. who you purchased the blacklist from).</li>
+        <li><span class="term">Data lineage</span> — the sequence of processing steps that produced the end of the pipeline.</li>
+      </ul>
+      <div class="callout">At minimum, <strong>extensive documentation</strong> lets you reconstruct provenance and lineage. For production-grade systems, tools like TensorFlow Transform help — but honestly, tooling for provenance and lineage is still <strong>immature</strong> across the ML community.</div>
+    </div>
+
+    <div class="section-divider"><span>16 · Metadata</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗂️</span> Data About Your Data</h2>
+      <p><span class="term">Metadata</span> is data about data. In manufacturing visual inspection, the data is the phone images and labels — the metadata is everything around them:</p>
+      <ul>
+        <li>Time the picture was taken; which factory and <strong>line number</strong>.</li>
+        <li>Camera settings — exposure time, aperture.</li>
+        <li>The phone's serial number; the ID of the inspector who labeled it.</li>
+      </ul>
+      <p>This pays off during error analysis. If you discover that <strong>line 17 in factory 2</strong> produces far more errors, you can go investigate what's unusual about it — but only if you stored that metadata in the first place.</p>
+      <div class="callout">Just like you rarely regret commenting your code, you will rarely regret <strong>storing metadata</strong>. And just like comments, it's much harder to recapture metadata after the fact than to record it in a timely way.</div>
+      <p>For speech recognition, track things like the smartphone brand the audio came from, which labeler transcribed it, or the <strong>version number</strong> of the voice-activity-detection model used. If one VAD version causes much larger errors, recorded metadata dramatically increases the odds you'll spot it. Metadata helps with both <strong>error analysis</strong> and <strong>data provenance</strong>.</p>
+    </div>
+
+    <div class="section-divider"><span>17 · Balanced Train / Dev / Test Splits</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Why Random Splits Hurt Small Data</h2>
+      <p>We usually split a dataset <em>randomly</em> into train / dev / test. But with a <strong>small dataset</strong>, a balanced split can significantly improve development. Take 100 visual-inspection images with 30 defective (positive) and 70 good, split 60% / 20% / 20%.</p>
+      <p>A random split could easily land 21 positives in train, 2 in dev, and 7 in test:</p>
+      <table>
+        <thead>
+          <tr><th>Split</th><th>Random (positives)</th><th>% positive</th><th>Balanced</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Train (60)</td><td>21</td><td>35%</td><td>18 → 30%</td></tr>
+          <tr><td>Dev (20)</td><td>2</td><td>10%</td><td>6 → 30%</td></tr>
+          <tr><td>Test (20)</td><td>7</td><td>35%</td><td>6 → 30%</td></tr>
+        </tbody>
+      </table>
+      <p>The dev set at only 10% positive is non-representative of the true 30%, making it an unreliable measure of performance. A <span class="term">balanced split</span> forces each of train, dev, and test to hold exactly 30% positives, matching the true distribution.</p>
+      <div class="callout">With a <strong>large dataset</strong>, a random split is almost always representative, so this isn't a concern. But for <strong>small datasets</strong>, an explicit balanced split makes your dev and test sets far more reliable measures of your algorithm's performance.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← Course Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

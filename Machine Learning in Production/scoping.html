@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scoping — Machine Learning in Production</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Numbered Process Steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Formula Block ── */
+    .formula-block { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1.2rem 1.5rem; margin:0.8rem 0; }
+    .formula-block .formula-label { font-size:0.7rem; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:#6366f1; margin-bottom:0.5rem; }
+    .formula-block .formula-main { font-size:1rem; color:#c7d2fe; font-family:'Courier New',monospace; text-align:center; line-height:2.2; }
+    .formula-block .formula-legend { margin-top:0.75rem; font-size:0.8rem; color:#64748b; line-height:2; }
+    .formula-block .formula-legend span { color:#a5b4fc; font-family:'Courier New',monospace; }
+
+    /* ── Quadrant Grid (2×2 feasibility matrix) ── */
+    .quadrant { display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem; margin:1rem 0; }
+    .quad-box { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 0.95rem; }
+    .quad-box .quad-label { font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#6366f1; margin-bottom:0.4rem; }
+    .quad-box h3 { font-size:0.9rem; color:#e2e8f0; margin:0 0 0.45rem 0; }
+    .quad-box p { margin:0; font-size:0.82rem; color:#94a3b8; line-height:1.55; }
+
+    /* ── Problem → Solution mapping cards ── */
+    .map-row { background:#151823; border:1px solid #2d3148; border-radius:10px; padding:1rem 1.05rem; margin:0.7rem 0; }
+    .map-row .map-problem { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#6366f1; margin-bottom:0.55rem; }
+    .map-row ul { margin:0; }
+
+    @media (max-width: 540px) {
+      .quadrant { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Machine Learning in Production</a>
+
+    <header class="notes-header">
+      <p class="tag">Course · Scoping</p>
+      <h1>Scoping</h1>
+      <p>How to pick the right machine learning project to work on — separating problems from solutions, running diligence on feasibility and value, and planning milestones and resources.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · Why Scoping Matters</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🧭</span> Picking the Right Project</h2>
+      <p>Picking the right project to work on is one of the rarest and most valuable skills in AI today. It's tempting to jump straight into the first project you get excited about — sometimes that works out — but if you or your team will spend weeks, months, or longer on something, it is well worth thinking through a few options and selecting the most promising one <strong>before</strong> putting in all that effort.</p>
+      <p>Consider an e-commerce retailer looking to increase sales. A quick brainstorm could produce dozens of ideas: a better product recommendation system, better search, fixing missing or incomplete catalog data, inventory management (how many shirts to buy, where to ship them), or price optimization.</p>
+      <div class="callout">Of all the ideas you could work on, some are <strong>2×, 5×, or 10× more valuable</strong> than others. Being able to pick the most valuable project significantly increases the impact of your work.</div>
+      <p>Machine learning is a general-purpose tool — there is a lot you could do with it. The questions scoping answers are: <strong>what project(s) should we work on</strong>, <strong>what are the metrics for success</strong>, and <strong>what resources</strong> (data, time, people) are needed to execute.</p>
+    </div>
+
+    <div class="section-divider"><span>2 · The Scoping Process</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> A Process for Choosing Projects</h2>
+      <p>When speaking with a company for the first time about their AI projects, this is the end-to-end process to follow:</p>
+      <ol class="algo-steps">
+        <li><strong>Identify a business problem</strong> (not an AI problem) — brainstorm with a business or product owner.</li>
+        <li><strong>Brainstorm AI solutions</strong> for those problems — and accept that not every problem has one.</li>
+        <li><strong>Assess feasibility and value</strong> of the candidate solutions through diligence.</li>
+        <li><strong>Determine milestones</strong> for the chosen project.</li>
+        <li><strong>Budget for resources</strong> needed to execute.</li>
+      </ol>
+      <div class="callout">Engage in <strong>divergent thinking</strong> first — brainstorm many possibilities — followed by <strong>convergent thinking</strong>, narrowing down to one or a small handful of the most promising projects.</div>
+    </div>
+
+    <div class="section-divider"><span>3 · Separate Problem from Solution</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎯</span> Identify the Business Problem First</h2>
+      <p>The first step is to get together with a business or product owner — often <em>not</em> an AI person — and brainstorm their business or application problems. At this stage you are trying to identify a <span class="term">business problem</span>, not an AI problem. A useful framing: <em>"I don't want to hear about your AI problems, I want to hear about your business problems"</em> — and then it's your job to see if there's an AI solution. Sometimes there isn't, and that's fine.</p>
+      <p>Asked <em>"what are the top three things you wish were working better?"</em>, an e-commerce retailer might say:</p>
+      <ul>
+        <li><strong>Increase conversions</strong> — more website visitors converting to a sale.</li>
+        <li><strong>Reduce inventory</strong> — less stuff sitting around in the warehouse.</li>
+        <li><strong>Increase margin</strong> — more profit per item sold.</li>
+      </ul>
+      <div class="callout">Separating the <strong>identification of the problem</strong> from the <strong>identification of the solution</strong> leads to better solutions — a principle you'll also find in the writings on <strong>design thinking</strong>.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">💡</span> One Problem, Many Solutions</h2>
+      <p>Only after the business problems are clear do you brainstorm possible AI solutions. It's common for one problem to lead to multiple solution ideas:</p>
+      <div class="map-row">
+        <div class="map-problem">Problem · Increase conversion</div>
+        <ul>
+          <li>Improve website search result quality.</li>
+          <li>Better product recommendations from purchase history.</li>
+          <li>Redesign how products are displayed on a page.</li>
+          <li>Surface the most relevant product reviews.</li>
+        </ul>
+      </div>
+      <div class="map-row">
+        <div class="map-problem">Problem · Reduce inventory</div>
+        <ul>
+          <li>Demand prediction to better estimate how many people buy.</li>
+          <li>A marketing campaign to drive sales of overstocked products.</li>
+        </ul>
+      </div>
+      <div class="map-row">
+        <div class="map-problem">Problem · Increase margin</div>
+        <ul>
+          <li>Optimize <strong>merchandising</strong> — decide what is worth selling.</li>
+          <li>Recommend <strong>bundles</strong> (e.g. a camera with a protective case).</li>
+        </ul>
+      </div>
+      <p><strong>Problem identification</strong> is thinking through <em>what</em> you want to achieve; <strong>solution identification</strong> is thinking through <em>how</em> to achieve it.</p>
+    </div>
+
+    <div class="section-divider"><span>4 · Diligence: Technical Feasibility</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔍</span> Can This Even Be Built?</h2>
+      <p>Before starting, you assess a project for <span class="term">technical feasibility</span> and <span class="term">value</span> — a phase sometimes called <strong>diligence</strong> (a term borrowed from the legal field, meaning double-checking that something you hope is true really is true). Start with feasibility.</p>
+      <p>One quick gauge is an <strong>external benchmark</strong> — the research literature, publications, or the fact that another company or even a competitor has already built a similar search, recommendation, or inventory system. If someone else has done something similar, that's a sign your project may be feasible.</p>
+      <p>To complement or replace an external benchmark, use a two-by-two matrix over <strong>unstructured vs structured data</strong> and <strong>new vs existing</strong> systems. <em>New</em> means delivering a brand-new capability; <em>existing</em> means scoping an improvement to a system already doing the task.</p>
+      <div class="quadrant">
+        <div class="quad-box"><div class="quad-label">Unstructured · New</div><h3>Brand-new capability</h3><p>Use <strong>Human Level Performance (HLP)</strong> to gauge whether the task is doable.</p></div>
+        <div class="quad-box"><div class="quad-label">Unstructured · Existing</div><h3>Improve a system</h3><p>Use <strong>HLP</strong> as a reference, plus the <strong>history of the project</strong>.</p></div>
+        <div class="quad-box"><div class="quad-label">Structured · New</div><h3>Brand-new capability</h3><p>Ask: are <strong>predictive features</strong> available for the target y?</p></div>
+        <div class="quad-box"><div class="quad-label">Structured · Existing</div><h3>Improve a system</h3><p>Can you identify <strong>new predictive features</strong>? Use project history too.</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🚦</span> HLP on Unstructured Data</h2>
+      <p>Because people are very good at unstructured-data tasks, <span class="term">human level performance (HLP)</span> benchmarks what might be doable. The key criterion: <strong>can a human, given the exact same data as the learning algorithm, perform the task?</strong></p>
+      <p>Say a self-driving car must classify a traffic light as red, yellow, or green. Show a person an image from the car's camera and ask which lamp is illuminated. Sometimes it's clearly green; sometimes the image is so dark <em>nobody</em> can tell which lamp is lit. A human sitting in the car might have known — the human eye has superior contrast to most cameras — but the useful test is whether a person seeing <strong>only the camera image</strong> can do the task.</p>
+      <div class="callout">Making sure the human sees <strong>only the same data</strong> as the algorithm is critical. Many teams worked for a long time on a computer-vision system because a human <em>physically</em> inspecting the phone could find the defect — only to realize a human looking <em>only at the image</em> couldn't. The efficient fix is a better camera or lighting, not a better algorithm.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📊</span> Predictive Features on Structured Data</h2>
+      <p>For structured-data problems, the key feasibility question is: <strong>do we have input features x that seem predictive of the target y?</strong></p>
+      <table>
+        <thead>
+          <tr><th>Inputs x → Target y</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Past purchases → future purchases</td><td>Worth a try — past purchases are predictive.</td></tr>
+          <tr><td>Weather → shopping mall foot traffic</td><td>Worth a try — fewer people leave home when it rains.</td></tr>
+          <tr><td>DNA → heart disease</td><td>Iffy — genotype-to-phenotype is a very noisy mapping.</td></tr>
+          <tr><td>Social media chatter → future fashion demand</td><td>Iffy — predicting trends 6 months out is very hard.</td></tr>
+          <tr><td>A stock's history → its future price</td><td>Not doable with only price features, per the evidence.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">A common way AI projects go poorly: the data simply isn't predictive, and the algorithm ends up doing barely better than random guessing. Checking for predictive features is an important diligence step.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📉</span> History of the Project</h2>
+      <p>For an <em>existing</em> project, the <strong>previous rate of progress is a surprisingly good predictor of the future rate of progress</strong>. Take speech recognition, using HLP as an estimate of <span class="term">Bayes error</span> (the irreducible error). Suppose error started at 10% in Q1 and fell each quarter after.</p>
+      <div class="formula-block">
+        <div class="formula-label">Simple model of progress</div>
+        <div class="formula-main">gap to HLP shrinks ~30% each quarter</div>
+        <div class="formula-legend">
+          <span>gap</span> = current error − HLP &nbsp;·&nbsp; error decays exponentially toward HLP
+        </div>
+      </div>
+      <p>If each quarter the team closes roughly 30% of the gap between current performance and HLP, the error curve decays exponentially toward HLP. Extrapolating this rate gives a reasonable sense of what's feasible for an existing project with a track record.</p>
+    </div>
+
+    <div class="section-divider"><span>5 · Diligence: Value of a Project</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">💰</span> ML Metrics vs Business Metrics</h2>
+      <p>Estimating a project's value isn't easy. In most businesses there are metrics that <strong>ML engineers</strong> optimize and metrics that <strong>product/business owners</strong> care about — and there's usually a gap between them. Take a speech recognition system for voice search:</p>
+      <ul>
+        <li><strong>Word-level accuracy</strong> — what fraction of words are transcribed correctly (close to what the algorithm optimizes).</li>
+        <li><strong>Query-level accuracy</strong> — how often <em>every</em> word in a query is right.</li>
+        <li><strong>Search result quality</strong> — does the user get a good answer?</li>
+        <li><strong>User engagement</strong> — do users come back more often?</li>
+        <li><strong>Revenue</strong> — the metric the business ultimately cares about.</li>
+      </ul>
+      <p>The engineering team usually wants to work on the left end; the business leader wants promises on the right. The further right you go, the harder it is for an ML team to guarantee an outcome.</p>
+      <div class="callout">For a project to move forward, get the technical and business teams to <strong>agree on metrics both are comfortable with</strong> — the ML team stretching a little right, the business team stretching a little left. Compromise requires both sides to step slightly outside their comfort zone.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧮</span> Fermi Estimates</h2>
+      <p>Even very rough <strong>back-of-the-envelope calculations</strong> (also called <em>Fermi estimates</em>) help bridge ML metrics and business metrics. If word-level accuracy improves 1%, what does that do to query-level accuracy (maybe +0.7%), search result quality, user engagement, and revenue? A crude estimate is enough to connect the engineering work to business value.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">⚖️</span> Ethical Considerations</h2>
+      <p>Estimating value also means giving thought to ethics:</p>
+      <ul>
+        <li>Is this project creating <strong>net positive societal value</strong>? If not, don't do it.</li>
+        <li>Is it reasonably <strong>fair and free from bias</strong>?</li>
+        <li>Have ethical or values-based concerns been <strong>openly aired and debated</strong>?</li>
+      </ul>
+      <p>Values and ethics are highly domain-dependent — very different for loans, healthcare, or product recommendations. Look up ethical frameworks developed for your industry, and raise any concerns for debate within your team.</p>
+      <div class="callout">Some projects have a completely sound economic case but still shouldn't be built. It is worth <strong>killing a project</strong> that you don't believe genuinely helps people — focus your efforts on work that helps move humanity forward.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Milestones and Resourcing</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📋</span> Writing the Key Specifications</h2>
+      <p>Once the problem, solution, feasibility, and value all look promising, the last steps are <span class="term">milestones</span> and <span class="term">resourcing</span> — writing out the project's key specifications:</p>
+      <ul>
+        <li><strong>ML metrics</strong> — accuracy, precision/recall, and sometimes fairness metrics.</li>
+        <li><strong>Software metrics</strong> — latency, throughput, queries per second, given available compute.</li>
+        <li><strong>Business metrics</strong> — e.g. estimated incremental revenue, if you can estimate it.</li>
+        <li><strong>Resources</strong> — how much data, from which teams, personnel, cross-functional help, software integrations, and support needed from other teams.</li>
+        <li><strong>Timeline</strong> — when you hope to hit certain milestones or deliverables.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧪</span> When You Can't Specify Yet: Build a POC</h2>
+      <p>If you're having a hard time writing some of these specifications, consider a <strong>benchmarking exercise</strong> against similar projects others have done, or build a <span class="term">proof of concept (POC)</span> first to get a better sense of what accuracy, precision, latency, or throughput is feasible. Use what the POC reveals to more confidently scope the milestones and resources for a larger-scale execution.</p>
+      <div class="callout">This framework — scoping → data → modeling → deployment — closes the full cycle of a machine learning project, and helps you pick valuable, meaningful work before committing weeks or months to it.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← Course Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

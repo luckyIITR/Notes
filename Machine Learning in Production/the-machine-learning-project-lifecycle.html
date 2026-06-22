@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Machine Learning Project Lifecycle — Machine Learning in Production</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* ── back-link (required on every notes page) ── */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: #475569; text-decoration: none;
+      margin-bottom: 2rem; transition: color 0.2s;
+    }
+    .back-link:hover { color: #6366f1; }
+
+    /* ── Numbered Algorithm / Process Steps ── */
+    .algo-steps { list-style:none; padding:0; counter-reset:step-counter; }
+    .algo-steps li { counter-increment:step-counter; position:relative; padding:0.75rem 0.9rem 0.75rem 3rem; margin-bottom:0.5rem; background:#151823; border:1px solid #2d3148; border-radius:8px; color:#cbd5e1; font-size:0.92rem; line-height:1.65; }
+    .algo-steps li::before { content:counter(step-counter); position:absolute; left:0.9rem; top:0.85rem; background:#6366f1; color:#fff; font-size:0.72rem; font-weight:800; width:1.4rem; height:1.4rem; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+    /* ── Lifecycle Pipeline ── */
+    .lifecycle {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin: 0.8rem 0;
+    }
+    .lifecycle-stage {
+      background: #151823;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 1rem 0.9rem;
+      position: relative;
+    }
+    .lifecycle-stage .stage-num {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.11em;
+      text-transform: uppercase; color: #6366f1; margin-bottom: 0.35rem;
+    }
+    .lifecycle-stage h3 {
+      font-size: 0.95rem; color: #e2e8f0; margin: 0 0 0.5rem 0;
+    }
+    .lifecycle-stage ul { margin: 0; }
+    .lifecycle-stage li { font-size: 0.82rem; color: #94a3b8; }
+
+    /* ── Pipeline Architecture Boxes ── */
+    .pipeline {
+      display: flex; flex-wrap: wrap; align-items: stretch;
+      gap: 0.6rem; margin: 0.8rem 0;
+    }
+    .pipe-box {
+      flex: 1 1 0; min-width: 140px;
+      background: #151823; border: 1px solid #2d3148; border-radius: 10px;
+      padding: 0.9rem; text-align: center;
+    }
+    .pipe-box .pipe-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #6366f1; margin-bottom: 0.4rem;
+    }
+    .pipe-box p { margin: 0; font-size: 0.82rem; color: #94a3b8; }
+    .pipe-arrow { display: flex; align-items: center; color: #475569; font-size: 1.3rem; }
+
+    @media (max-width: 540px) {
+      .lifecycle { grid-template-columns: 1fr; }
+      .pipe-arrow { transform: rotate(90deg); justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="index.html" class="back-link">‹ Machine Learning in Production</a>
+
+    <header class="notes-header">
+      <p class="tag">Course · Deployment</p>
+      <h1>The Machine Learning Project Lifecycle</h1>
+      <p>Why a trained model is only the beginning, and how the full lifecycle — scoping, data, modeling, deployment — frames every production ML project.</p>
+    </header>
+
+    <div class="section-divider"><span>1 · From Model to Production</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🚀</span> A Great Model Is Not the Finish Line</h2>
+      <p>Knowing how to train a machine learning model is valuable, but a model only creates the <strong>maximum possible value</strong> once it is put into production to power real applications. This is also a common interview theme: <em>how would you deploy and monitor a machine learning algorithm in production?</em></p>
+      <p>The goal here is to extend your skills — like training deep learning models — toward <span class="term">deployment</span>: powering applications and products with the full <span class="term">machine learning project lifecycle</span>, from scoping a project, to defining data, to training a model, to choosing and implementing the best deployment pattern.</p>
+      <div class="callout">Developing a great model is an important milestone — but the real question this course answers is <strong>what comes after</strong>: how to actually deploy and maintain it.</div>
+    </div>
+
+    <div class="section-divider"><span>2 · A Concrete Example: Visual Defect Inspection</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">📱</span> Inspecting Phones on a Manufacturing Line</h2>
+      <p>Imagine using computer vision to inspect phones rolling off a manufacturing line for defects. A good phone has no scratches; if there is a scratch or crack, the algorithm should detect it and draw a bounding box around it as part of quality control. This is called <span class="term">automated visual defect inspection</span>.</p>
+      <p>With a dataset of scratched phones you can train a neural network to detect defects. But putting that into production requires far more than the model. A typical deployment uses an <span class="term">edge device</span> — a device living inside the factory — running <strong>inspection software</strong>:</p>
+      <div class="pipeline">
+        <div class="pipe-box">
+          <div class="pipe-label">Camera</div>
+          <p>Takes a picture of each phone as it rolls off the line.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Inspection Software</div>
+          <p>Controls the camera and makes an <strong>API call</strong> with the image.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Prediction Server</div>
+          <p>Receives the image, decides defective or not, returns the prediction.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Control Decision</div>
+          <p>Keep the phone on the line, or push it aside as defective.</p>
+        </div>
+      </div>
+      <p>After training a learning algorithm to map input <em>x</em> (phone images) to output <em>y</em> (defective or not), you still must place the model in a prediction server, set up API interfaces, and write all the surrounding software. The prediction server can live in the <strong>Cloud</strong> or at the <strong>edge</strong>. Manufacturing leans heavily on edge deployments — a factory cannot halt every time Internet access goes down — while Cloud prediction servers are common for many other applications.</p>
+    </div>
+
+    <div class="section-divider"><span>3 · What Could Go Wrong</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">⚠️</span> Doing Well on the Test Set Is Not Enough</h2>
+      <p>Doing well on a holdout test set is worth celebrating — but reaching that milestone does not mean you are done. A frequent problem is that the production data differs from the training data. For example, if the factory's lighting conditions change, deployed images come back much darker than the training images, and performance degrades.</p>
+      <p>This is an example of <span class="term">concept drift</span> or <span class="term">data drift</span>. Spotting and handling these practical issues is part of the machine learning engineer's job — adjusting to the data distribution <strong>as it is</strong>, rather than as we wish it were.</p>
+      <div class="callout">A successful proof of concept in a Jupyter Notebook is a real success — but the gap from there to a reliable production deployment can still be <strong>another six months of work</strong>.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🧩</span> It Takes Much More Than ML Code</h2>
+      <p>There has been amazing progress on the machine learning model itself — the neural network or algorithm that learns a mapping from input to output. But in a production system, the model code is only a small fraction of the whole: often just <strong>5–10% (or less)</strong> of the code in a machine learning project.</p>
+      <p>This is a major reason for the <span class="term">POC-to-production gap</span> — the sheer amount of additional software needed beyond the model. Adapted from a paper by D. Sculley and others, the supporting components include:</p>
+      <ul>
+        <li>Data collection</li>
+        <li>Data verification</li>
+        <li>Feature extraction</li>
+        <li>Configuration and resource management</li>
+        <li>Serving infrastructure</li>
+        <li>Monitoring and analysis of returning data</li>
+      </ul>
+      <p>Rather than tackling all these pieces at once, the most useful organizing framework is to systematically plan the <strong>lifecycle</strong> of the project.</p>
+    </div>
+
+    <div class="section-divider"><span>4 · The Machine Learning Project Lifecycle</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🔄</span> The Four Major Steps</h2>
+      <p>Thinking through the lifecycle is an effective way to plan every step you need to work on — and to <strong>minimize surprises</strong>. The major steps are:</p>
+      <div class="lifecycle">
+        <div class="lifecycle-stage">
+          <div class="stage-num">Step 1</div>
+          <h3>Scoping</h3>
+          <ul>
+            <li>Define the project</li>
+            <li>Decide what to apply ML to</li>
+            <li>Define X and Y</li>
+          </ul>
+        </div>
+        <div class="lifecycle-stage">
+          <div class="stage-num">Step 2</div>
+          <h3>Data</h3>
+          <ul>
+            <li>Define data &amp; baseline</li>
+            <li>Label and organize data</li>
+          </ul>
+        </div>
+        <div class="lifecycle-stage">
+          <div class="stage-num">Step 3</div>
+          <h3>Modeling</h3>
+          <ul>
+            <li>Select and train model</li>
+            <li>Perform error analysis</li>
+          </ul>
+        </div>
+        <div class="lifecycle-stage">
+          <div class="stage-num">Step 4</div>
+          <h3>Deployment</h3>
+          <ul>
+            <li>Deploy in production</li>
+            <li>Monitor &amp; maintain</li>
+          </ul>
+        </div>
+      </div>
+      <p>Machine learning is <strong>highly iterative</strong>. During error analysis you may go back to update the model, or back to the data phase to collect more data. Before deploying, a final check or audit confirms the system is reliable enough for the application.</p>
+      <div class="callout">When you deploy a system for the first time, you are only about <strong>halfway to the finish line</strong> — the second half of the lessons come only once live traffic is turned on.</div>
+      <p>After initial deployment, maintenance often means returning to error analysis, retraining the model, and feeding live data back into your dataset to update the data and retrain — until an improved model is ready for deployment. This framework applies broadly: computer vision, audio, structured data, and beyond.</p>
+    </div>
+
+    <div class="section-divider"><span>5 · Walkthrough: Speech Recognition</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🎙️</span> The Lifecycle on a Real Application</h2>
+      <p>Deep learning has made speech recognition far more accurate, powering smart speakers and voice search. Walking through a speech system shows every lifecycle step in context.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Scoping</h3>
+      <p>Decide to work on speech recognition (e.g. for voice search) and estimate key metrics — these are highly problem-dependent. For speech, important metrics include:</p>
+      <ul>
+        <li><strong>Accuracy</strong> — how accurate is the transcription?</li>
+        <li><strong>Latency</strong> — how long to transcribe speech?</li>
+        <li><strong>Throughput</strong> — how many queries per second can we handle?</li>
+      </ul>
+      <p>If possible, also estimate the resources needed (time, compute, budget) and the timeline.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Data</h3>
+      <p>A key challenge is <span class="term">data label consistency</span>. Given the audio <em>"Um, today's weather"</em>, transcriptionists might reasonably write it several ways — including or dropping the <em>"Um"</em>, or labeling background sounds as noise. Any single convention is fine; the problem arises when transcriptionists disagree — say a third use each style. Inconsistent labels confuse the learning algorithm, because it cannot guess which convention a given clip used. Standardizing on one convention can significantly improve performance.</p>
+      <p>Other data-definition questions include how much silence to keep before and after each clip, and how to perform volume normalization (including clips that are loud and soft within the same recording).</p>
+      <div class="callout">Unlike fixed benchmark datasets, a production system lets you <strong>edit the training set or even the test set</strong> when needed to improve data quality — done systematically, not ad hoc.</div>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Modeling</h3>
+      <p>Three inputs produce a trained model: <strong>code</strong> (the algorithm / model architecture), <strong>hyperparameters</strong>, and <strong>data</strong>.</p>
+      <ul>
+        <li><strong>Research / academic style:</strong> hold the data fixed, vary the code and hyperparameters.</li>
+        <li><strong>Product team style:</strong> often more effective to hold the code fixed (e.g. an open-source implementation) and optimize the data and hyperparameters.</li>
+      </ul>
+      <p>Error analysis tells you where the model falls short. When it points to <strong>systematic, targeted</strong> ways to improve the data, that is far more efficient than blindly collecting more and more data, which is helpful but expensive.</p>
+
+      <h3 style="color:#a5b4fc;font-size:0.92rem;margin-top:1rem;">Deployment</h3>
+      <p>A common pattern runs software locally on a mobile phone (the edge device):</p>
+      <div class="pipeline">
+        <div class="pipe-box">
+          <div class="pipe-label">Microphone</div>
+          <p>Records what the user is saying.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">VAD Module</div>
+          <p>Voice Activity Detection selects only the audio that contains speech.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Prediction Server</div>
+          <p>In the Cloud — returns the transcript and search results.</p>
+        </div>
+        <div class="pipe-arrow">›</div>
+        <div class="pipe-box">
+          <div class="pipe-label">Frontend</div>
+          <p>Displays the transcript and results on the phone.</p>
+        </div>
+      </div>
+      <p><span class="term">Voice Activity Detection (VAD)</span> is usually a relatively simple algorithm that lets the phone send only speech audio to the server.</p>
+      <div class="callout">A real example of <strong>data drift</strong>: a speech system trained mostly on adult voices degraded as more young users — teenagers and younger — adopted it, because their voices sound different. The fix required collecting more data. Good <strong>monitoring</strong> spots such drift early, and timely fixes keep the deployment valuable.</div>
+    </div>
+
+    <div class="section-divider"><span>6 · Course Roadmap &amp; MLOps</span><hr /></div>
+    <div class="card">
+      <h2><span class="icon">🗺️</span> Working Backwards From Deployment</h2>
+      <p>Although the lifecycle runs left-to-right, it is more efficient to learn it by starting at the <strong>end goal</strong> — deployment — and working backward to modeling, data, and scoping.</p>
+      <ol class="algo-steps">
+        <li><strong>Week 1 — Deployment:</strong> the most important ideas in taking a model to production.</li>
+        <li><strong>Week 2 — Modeling:</strong> a systematic, data-centric approach to efficiently improving model performance.</li>
+        <li><strong>Week 3 — Data:</strong> defining data, establishing a baseline, and labeling and organizing data systematically (plus an optional section on scoping).</li>
+        <li><strong>Final project (optional):</strong> the full lifecycle left-to-right, scoping through deployment.</li>
+      </ol>
+      <p><span class="term">MLOps</span> (machine learning operations) is an emerging discipline of tools and principles that support progress through the lifecycle — especially the data, modeling, and deployment steps. Steps that were once done manually (okay, but slow) become much quicker with MLOps tooling.</p>
+      <div class="callout">The key idea of MLOps is <strong>systematic ways</strong> to think about scoping, data, modeling, and deployment — backed by software tools that support best practices.</div>
+    </div>
+
+    <footer>
+      <p>Updated June 2026 &nbsp;·&nbsp; lucky &nbsp;·&nbsp;
+        <a href="index.html" style="color:#475569;text-decoration:none;">← Course Index</a>
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>
